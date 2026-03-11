@@ -1,0 +1,12 @@
+.env
+.env.production
+.env.backup*
+/dist
+/node_modules
+/logs
+logs/
+*.log
+*.pem
+.DS_Store
+/scripts
+scripts/

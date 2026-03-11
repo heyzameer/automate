@@ -1,0 +1,58 @@
+import { Router, Request, Response } from 'express';
+import proxy from 'express-http-proxy';
+import config from '../config';
+import { sendSuccess } from '../utils/response';
+import { logger } from '../utils/logger';
+import { IncomingMessage } from 'http';
+
+const router = Router();
+
+// Health check route
+router.get('/health', (req: Request, res: Response) => {
+    sendSuccess(res, 'Gateway is healthy', {
+        status: 'OK',
+        timestamp: new Date(),
+        uptime: process.uptime(),
+        environment: config.env,
+    });
+});
+
+// Proxy to Auth Service
+router.use('/auth', proxy(config.services.auth, {
+    proxyReqPathResolver: (req: Request) => {
+        const path = `/api/v1/auth${req.url}`;
+        logger.info(`Proxying to Auth Service: ${path}`);
+        return path;
+    }
+}));
+
+// Proxy to Super Admin (which is in Auth Service)
+router.use('/super', proxy(config.services.auth, {
+    proxyReqPathResolver: (req: Request) => {
+        const path = `/api/v1/super${req.url}`;
+        logger.info(`Proxying to Super Admin API: ${path}`);
+        return path;
+    }
+}));
+
+// API Root
+router.get('/', (req: Request, res: Response) => {
+    sendSuccess(res, 'CarBot AI Gateway v1', {
+        version: '1.0.0',
+        status: 'Operational',
+        services: {
+            auth: 'connected'
+        }
+    });
+});
+
+// 404 handler
+router.use('*', (req: Request, res: Response) => {
+    res.status(404).json({
+        success: false,
+        message: 'Gateway endpoint not found',
+        timestamp: new Date(),
+    });
+});
+
+export default router;
