@@ -5,6 +5,11 @@ export interface IWhatsAppConfig {
     instanceId?: string;
     token?: string;
     isActive: boolean;
+    botEnabled?: boolean;
+    greetingMessage?: string;
+    includeGallery?: boolean;
+    includeSpecs?: boolean;
+    includeLocation?: boolean;
 }
 
 export interface IPlanLimits {

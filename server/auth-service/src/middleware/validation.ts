@@ -7,13 +7,14 @@ export const validate = (schema: Schema) => {
         const { error } = schema.validate(req.body, { abortEarly: false });
 
         if (error) {
-            console.error('Validation Error:', error.message);
+            console.error('[VALIDATION ERROR]', error.message, '| Full details:', JSON.stringify(error.details));
             const errors = error.details.map(detail => ({
                 field: detail.path.join('.'),
                 message: detail.message,
             }));
 
-            return sendError(res, 'Validation failed', 400, JSON.stringify(errors));
+            const errorSummary = errors.map(e => `${e.field}: ${e.message}`).join(', ');
+            return sendError(res, `Validation failed: ${errorSummary}`, 400, JSON.stringify(errors));
         }
         next();
     };

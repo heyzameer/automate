@@ -14,13 +14,15 @@ import { LoginSession } from '../models/LoginSession';
 import { logger } from '../utils/logger';
 
 import { ITenantRepository } from '../interfaces/IRepository/ITenantRepository';
+import { IEmailService } from '../interfaces/IService/IEmailService';
 
 @injectable()
 export class AuthService implements IAuthService {
     constructor(
         @inject('UserRepository') private userRepository: IUserRepository,
         @inject('OTPRepository') private otpRepository: IOTPRepository,
-        @inject('TenantRepository') private tenantRepository: ITenantRepository
+        @inject('TenantRepository') private tenantRepository: ITenantRepository,
+        @inject('EmailService') private emailService: IEmailService
     ) { }
 
     async register(userData: any): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
@@ -55,25 +57,45 @@ export class AuthService implements IAuthService {
     }
 
     async registerTenant(tenantData: any, adminData: any): Promise<{ user: IUser; tenant: any; accessToken: string; refreshToken: string }> {
+        logger.info(`[AUTH] Registering tenant: ${tenantData.name} with admin: ${adminData.email}`);
+        
         // 1. Check if email/phone already exists
         const existingEmail = await this.userRepository.findByEmail(adminData.email);
         if (existingEmail) {
+            logger.warn(`[AUTH] Email already registered: ${adminData.email}`);
             throw createError(ResponseMessages.EMAIL_ALREADY_REGISTERED, HttpStatus.CONFLICT);
         }
 
-        // 2. Create Tenant
+        const existingPhone = await this.userRepository.findByPhone(adminData.phone);
+        if (existingPhone) {
+            logger.warn(`[AUTH] Phone already registered: ${adminData.phone}`);
+            throw createError(ResponseMessages.PHONE_ALREADY_REGISTERED, HttpStatus.CONFLICT);
+        }
+
+        // 2. Generate slug from name if not provided (or overwrite since user says not needed)
+        const name = tenantData.name;
+        let slug = tenantData.slug || name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
+        
+        // Ensure slug is unique (simple check, or use a library)
+        const existingTenantBySlug = await this.tenantRepository.findOne({ slug });
+        if (existingTenantBySlug) {
+            slug = `${slug}-${Date.now().toString().slice(-4)}`;
+        }
+
+        // 3. Create Tenant
         const tenant = await this.tenantRepository.create({
             ...tenantData,
-            isActive: true, // Should probably be false until activated by super admin, but setting true for now per tasks
+            slug,
+            isActive: true, 
         });
 
-        // 3. Create Admin User for this Tenant
+        // 4. Create Admin User for this Tenant
         const hashedPassword = await hashPassword(adminData.password);
         const adminUser = await this.userRepository.create({
             ...adminData,
             password: hashedPassword,
             role: UserRole.SHOWROOM_ADMIN,
-            tenantId: tenant.id,
+            tenantId: (tenant as any)._id,
             isActive: true,
         });
 
@@ -85,18 +107,32 @@ export class AuthService implements IAuthService {
             refreshToken
         });
 
+        // Send Welcome Email
+        this.emailService.sendWelcomeEmail(adminUser.email, adminUser.fullName).catch(err => {
+            logger.error(`Welcome email failed: ${err.message}`);
+        });
+
         return { user: adminUser, tenant, accessToken, refreshToken };
     }
 
     async login(email: string, password?: string): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
+        console.log(`[AUTH] Login attempt for: ${email}`);
         const user = await this.userRepository.findByEmail(email);
 
-        if (!user || !user.isActive) {
+        if (!user) {
+            console.log(`[AUTH] User not found: ${email}`);
+            throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
+        }
+
+        if (!user.isActive) {
+            console.log(`[AUTH] User inactive: ${email}`);
             throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
         }
 
         if (password) {
+            console.log(`[AUTH] Comparing password for ${email}`);
             const isPasswordValid = await comparePassword(password, user.password || '');
+            console.log(`[AUTH] Password valid: ${isPasswordValid}`);
             if (!isPasswordValid) {
                 throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
             }
@@ -127,17 +163,33 @@ export class AuthService implements IAuthService {
     }
 
     async superLogin(email: string, password?: string): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
+        console.log(`[AUTH] Super login attempt for: ${email}`);
         const user = await this.userRepository.findByEmail(email);
 
-        if (!user || !user.isActive || user.role !== UserRole.SUPER_ADMIN) {
+        if (!user) {
+            console.log(`[AUTH] User not found: ${email}`);
+            throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
+        }
+
+        if (!user.isActive) {
+            console.log(`[AUTH] User inactive: ${email}`);
+            throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
+        }
+
+        if (user.role !== UserRole.SUPER_ADMIN) {
+            console.log(`[AUTH] Role mismatch. User role: ${user.role}, expected: ${UserRole.SUPER_ADMIN}`);
             throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
         }
 
         if (password) {
+            console.log(`[AUTH] Comparing password for ${email}`);
             const isPasswordValid = await comparePassword(password, user.password || '');
+            console.log(`[AUTH] Password valid: ${isPasswordValid}`);
             if (!isPasswordValid) {
                 throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
             }
+        } else {
+            console.log(`[AUTH] No password provided for ${email}`);
         }
 
         await this.userRepository.updateLastLogin(user.id);
@@ -219,8 +271,10 @@ export class AuthService implements IAuthService {
         const otpCode = generateOTP();
         await this.otpRepository.createOTP(user.id, OTPType.PASSWORD_RESET, otpCode);
 
-        // Log it for testing/verification in this simulation
-        logger.info(`[TEST] OTP for ${email} (PASSWORD_RESET): ${otpCode}`);
+        // Send Email
+        await this.emailService.sendOTP(user.email, otpCode, user.fullName);
+
+        logger.info(`OTP sent to ${email} for password reset`);
     }
 
     async resetPassword(email: string, otp: string, newPassword?: string): Promise<void> {

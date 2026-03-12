@@ -8,6 +8,7 @@ import passport from 'passport';
 
 import {
     registerSchema,
+    registerTenantSchema,
     loginSchema,
     forgotPasswordSchema,
     resetPasswordSchema,
@@ -35,7 +36,7 @@ router.get(
 
 // Public routes
 router.post('/register', authLimiter, validate(registerSchema), authController.register);
-router.post('/register-tenant', authLimiter, authController.registerTenant);
+router.post('/register-tenant', authLimiter, validate(registerTenantSchema), authController.registerTenant);
 router.post('/login', authLimiter, validate(loginSchema), authController.login);
 router.post('/super-login', authLimiter, validate(loginSchema), authController.superLogin);
 router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.requestPasswordReset);
@@ -46,6 +47,8 @@ router.post('/validate-token', authController.validateToken);
 // Protected routes
 router.use(authenticate);
 router.get('/profile', authController.getProfile);
+router.get('/my-tenant', authController.getMyTenant);
+router.patch('/my-tenant', authController.updateMyTenant);
 router.patch('/profile', authController.updateProfile);
 router.post('/change-password', validate(changePasswordSchema), authController.changePassword);
 router.post('/request-otp', otpLimiter, validate(requestOTPSchema), authController.requestOTP);

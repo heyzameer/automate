@@ -15,7 +15,7 @@ export const generalLimiter = rateLimit({
 
 export const authLimiter = rateLimit({
     windowMs: 15 * 60 * 1000, // 15 minutes
-    max: 5, // 5 attempts per window
+    max: 100, // Increased to 100 attempts per window
     skipSuccessfulRequests: true,
     message: {
         success: false,
@@ -26,7 +26,7 @@ export const authLimiter = rateLimit({
 
 export const otpLimiter = rateLimit({
     windowMs: 60 * 1000, // 1 minute
-    max: 3, // 3 OTP requests per minute
+    max: 20, // Increased to 20 attempts per minute
     message: {
         success: false,
         message: 'Too many OTP requests, please try again later.',

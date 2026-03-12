@@ -10,6 +10,23 @@ export const registerSchema = Joi.object({
     role: Joi.string().valid(...Object.values(UserRole)).default(UserRole.CUSTOMER),
 });
 
+export const registerTenantSchema = Joi.object({
+    tenantData: Joi.object({
+        name: Joi.string().min(2).max(100).required(),
+        description: Joi.string().max(500).optional(),
+        address: Joi.string().max(200).optional(),
+        website: Joi.string().uri().optional().allow(''),
+        logo: Joi.string().uri().optional().allow(''),
+        expiryDate: Joi.date().optional(),
+    }).required(),
+    adminData: Joi.object({
+        fullName: Joi.string().min(1).max(100).required(),
+        email: emailSchema,
+        phone: phoneSchema,
+        password: Joi.string().min(8).max(128).required(),
+    }).required(),
+});
+
 export const loginSchema = Joi.object({
     email: emailSchema,
     password: Joi.string().required(),

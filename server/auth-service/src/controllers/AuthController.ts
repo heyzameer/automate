@@ -167,6 +167,47 @@ export class AuthController {
         sendSuccess(res, ResponseMessages.PROFILE_RETRIEVED, { user });
     });
 
+    getMyTenant = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+        if (!req.user?.tenantId) {
+            return sendError(res, 'No tenant assigned', HttpStatus.FORBIDDEN);
+        }
+        const TenantModel = require('../models/Tenant').Tenant;
+        const tenant = await TenantModel.findById(req.user.tenantId);
+        if (!tenant) {
+            return sendError(res, 'Tenant not found', HttpStatus.NOT_FOUND);
+        }
+        sendSuccess(res, 'Tenant retrieved', { tenant });
+    });
+
+    updateMyTenant = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+        if (!req.user?.tenantId) {
+            return sendError(res, 'No tenant assigned', HttpStatus.FORBIDDEN);
+        }
+        const TenantModel = require('../models/Tenant').Tenant;
+        const updateData = req.body;
+        
+        const safeUpdateData: any = {};
+        if (updateData.whatsappConfig) {
+             if (updateData.whatsappConfig.botEnabled !== undefined) safeUpdateData['whatsappConfig.botEnabled'] = updateData.whatsappConfig.botEnabled;
+             if (updateData.whatsappConfig.greetingMessage !== undefined) safeUpdateData['whatsappConfig.greetingMessage'] = updateData.whatsappConfig.greetingMessage;
+             if (updateData.whatsappConfig.includeGallery !== undefined) safeUpdateData['whatsappConfig.includeGallery'] = updateData.whatsappConfig.includeGallery;
+             if (updateData.whatsappConfig.includeSpecs !== undefined) safeUpdateData['whatsappConfig.includeSpecs'] = updateData.whatsappConfig.includeSpecs;
+             if (updateData.whatsappConfig.includeLocation !== undefined) safeUpdateData['whatsappConfig.includeLocation'] = updateData.whatsappConfig.includeLocation;
+        }
+
+        const tenant = await TenantModel.findByIdAndUpdate(
+            req.user.tenantId,
+            { $set: safeUpdateData },
+            { new: true }
+        );
+
+        if (!tenant) {
+            return sendError(res, 'Tenant not found', HttpStatus.NOT_FOUND);
+        }
+
+        sendSuccess(res, 'Tenant updated', { tenant });
+    });
+
     updateProfile = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
         const userId = req.user!.userId;
         const updateData = req.body;

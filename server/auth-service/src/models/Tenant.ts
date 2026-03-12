@@ -11,7 +11,7 @@ const tenantSchema = new Schema<ITenant>(
         },
         slug: {
             type: String,
-            required: [true, 'Tenant slug is required'],
+            required: false,
             unique: true,
             lowercase: true,
             trim: true,
@@ -33,6 +33,11 @@ const tenantSchema = new Schema<ITenant>(
             instanceId: { type: String },
             token: { type: String },
             isActive: { type: Boolean, default: false },
+            botEnabled: { type: Boolean, default: true },
+            greetingMessage: { type: String, default: "Hi 👋\nThanks for contacting us." },
+            includeGallery: { type: Boolean, default: true },
+            includeSpecs: { type: Boolean, default: true },
+            includeLocation: { type: Boolean, default: true },
         },
         limits: {
             maxCars: { type: Number, default: 50 },

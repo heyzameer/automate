@@ -9,6 +9,7 @@ import { ITenantRepository } from '../interfaces/IRepository/ITenantRepository';
 
 // Service interfaces
 import { IAuthService } from '../interfaces/IService/IAuthService';
+import { IEmailService } from '../interfaces/IService/IEmailService';
 
 // Implementations
 import { UserRepository } from '../repositories/UserRepository';
@@ -16,6 +17,7 @@ import { OTPRepository } from '../repositories/OTPRepository';
 import { SystemSettingRepository } from '../repositories/SystemSettingRepository';
 import { TenantRepository } from '../repositories/TenantRepository';
 import { AuthService } from '../services/AuthService';
+import { EmailService } from '../services/EmailService';
 
 // Controllers
 import { AuthController } from '../controllers/AuthController';
@@ -29,6 +31,7 @@ container.registerSingleton<ITenantRepository>('TenantRepository', TenantReposit
 
 // Register services
 container.registerSingleton<IAuthService>('AuthService', AuthService);
+container.registerSingleton<IEmailService>('EmailService', EmailService);
 
 // Register controllers
 container.registerSingleton(AuthController);

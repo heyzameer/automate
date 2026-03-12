@@ -35,6 +35,18 @@ export const handleError = (error: CustomError, req: Request, res: Response, _ne
         userAgent: req.get('User-Agent'),
     });
 
+    // Special handling for MongoDB duplicate key error
+    if ((error as any).code === 11000) {
+        const field = Object.keys((error as any).keyValue)[0];
+        message = `Unique constraint failed: ${field} already exists.`;
+        res.status(409).json({
+            success: false,
+            message,
+            timestamp: new Date(),
+        });
+        return;
+    }
+
     // Don't leak error details in production
     if (config.env === 'production' && !error.isOperational) {
         message = 'Something went wrong!';
