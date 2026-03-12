@@ -12,12 +12,14 @@ import {
     LogOut,
     Bell,
     Car,
-    CreditCard
+    CreditCard,
+    UserCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { authService } from '../../services/auth.service';
 import { useAuth } from '../../hooks/useAuth';
+import { ROUTES } from '../../constants/routes';
 
 interface SidebarLinkProps {
     to: string;
@@ -58,13 +60,13 @@ export default function DashboardLayout() {
         const storedUser = authService.getStoredUser();
         if (storedUser) {
             if (storedUser.role === 'super_admin') {
-                navigate('/super/dashboard');
+                navigate(ROUTES.SUPER_ADMIN.DASHBOARD);
             } else {
                 setUser(storedUser);
                 fetchTenantData();
             }
         } else {
-            navigate('/login');
+            navigate(ROUTES.LOGIN);
         }
     }, [navigate, location.pathname]);
 
@@ -122,63 +124,65 @@ export default function DashboardLayout() {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto flex flex-col">
-                    <div className="py-8 px-4 space-y-1 flex-1">
-                        <div className="px-4 mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                            Menu
-                        </div>
-                        <SidebarLink to="/dashboard" icon={LayoutDashboard} onClick={() => setSidebarOpen(false)}>
-                            Dashboard
-                        </SidebarLink>
-
-                        <div className="px-4 mt-10 mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                            Inventory
-                        </div>
-                        <SidebarLink to="/vehicles/add" icon={PlusCircle} onClick={() => setSidebarOpen(false)}>
-                            Add Vehicle
-                        </SidebarLink>
-                        <SidebarLink to="/vehicles" icon={List} end onClick={() => setSidebarOpen(false)}>
-                            My Listings
-                        </SidebarLink>
-
-                        <div className="px-4 mt-10 mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                            Acquisition
-                        </div>
-                        <SidebarLink to="/leads" icon={Users} onClick={() => setSidebarOpen(false)}>
-                            Enquiries
-                        </SidebarLink>
-                        <SidebarLink to="/automation" icon={MessageSquare} onClick={() => setSidebarOpen(false)}>
-                            WhatsApp Bot
-                        </SidebarLink>
-
-                        <div className="px-4 mt-10 mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                            Settings
-                        </div>
-                        <SidebarLink to="/subscription" icon={CreditCard} onClick={() => setSidebarOpen(false)}>
-                            Plan & Billing
-                        </SidebarLink>
-                        <SidebarLink to="/settings" icon={Settings} onClick={() => setSidebarOpen(false)}>
-                            Store Settings
-                        </SidebarLink>
-                    </div>
-
-                    {/* Sidebar Bottom */}
-                    <div className="p-6 border-t border-slate-50 space-y-4">
-                        <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold">
+                {/* Sidebar Content */}
+                <div className="flex-1 overflow-y-auto flex flex-col scrollbar-hide">
+                    {/* User Profile - Brought Up */}
+                    <div className="p-6 pb-2">
+                        <div className="bg-slate-50 rounded-2xl p-4 flex items-center gap-3 border border-slate-100/50">
+                            <div className="w-10 h-10 rounded-xl bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold flex-shrink-0">
                                 {initials}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-bold text-slate-900 truncate">{user.fullName}</p>
-                                <p className="text-xs text-slate-500 font-medium truncate capitalize">{user.role.replace('_', ' ')}</p>
+                                <p className="text-[10px] text-slate-500 font-bold uppercase tracking-tight truncate">{user.role.replace('_', ' ')}</p>
                             </div>
                         </div>
+                    </div>
+
+                    <div className="py-2 px-4 space-y-1">
+                        <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                            Menu
+                        </div>
+                        <SidebarLink to={ROUTES.DASHBOARD.HOME} icon={LayoutDashboard} onClick={() => setSidebarOpen(false)}>
+                            Dashboard
+                        </SidebarLink>
+
+                        <div className="px-4 mt-6 mb-2 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                            Inventory
+                        </div>
+                        <SidebarLink to={ROUTES.VEHICLES.ADD} icon={PlusCircle} onClick={() => setSidebarOpen(false)}>
+                            Add Vehicle
+                        </SidebarLink>
+                        <SidebarLink to={ROUTES.VEHICLES.BASE} icon={List} end onClick={() => setSidebarOpen(false)}>
+                            My Listings
+                        </SidebarLink>
+
+                        <div className="px-4 mt-6 mb-2 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                            Acquisition
+                        </div>
+                        <SidebarLink to={ROUTES.ENQUIRIES.LEADS} icon={Users} onClick={() => setSidebarOpen(false)}>
+                            Enquiries
+                        </SidebarLink>
+                        <SidebarLink to={ROUTES.AUTOMATION.WHATSAPP} icon={MessageSquare} onClick={() => setSidebarOpen(false)}>
+                            WhatsApp Bot
+                        </SidebarLink>
+
+                        <div className="px-4 mt-6 mb-2 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                            Account
+                        </div>
+                        <SidebarLink to={ROUTES.DASHBOARD.SUBSCRIPTION} icon={CreditCard} onClick={() => setSidebarOpen(false)}>
+                            Plan & Billing
+                        </SidebarLink>
+                        <SidebarLink to={ROUTES.DASHBOARD.SETTINGS} icon={Settings} onClick={() => setSidebarOpen(false)}>
+                            Store Settings
+                        </SidebarLink>
+
                         <button 
                             onClick={handleLogout}
-                            className="flex items-center gap-3 px-4 py-3 w-full text-slate-500 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-all duration-300 transition-colors font-bold text-sm"
+                            className="flex items-center gap-3 px-4 py-3 w-full text-slate-500 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-all duration-300 font-medium text-left"
                         >
-                            <LogOut className="w-5 h-5" />
-                            <span>Sign Out</span>
+                            <LogOut className="w-5 h-5 flex-shrink-0" />
+                            <span className="whitespace-nowrap">Sign Out</span>
                         </button>
                     </div>
                 </div>
@@ -196,29 +200,38 @@ export default function DashboardLayout() {
                     </button>
 
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-400">Section /</span>
+                        <Car className="w-4 h-4 text-slate-400" />
+                        <span className="text-sm font-semibold text-slate-400">/</span>
                         <span className="text-sm font-bold text-slate-900 capitalize">
-                            {location.pathname.split('/').pop() || 'Overview'}
+                            {location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'Overview'}
                         </span>
                     </div>
 
-                    <div className="flex items-center gap-4 ml-auto">
+                    <div className="flex items-center gap-4">
                         {tenant && (
-                            <div className="hidden md:flex flex-col items-end mr-4">
-                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-2 py-0.5 rounded-full">
+                            <div className="hidden lg:flex flex-col items-end mr-2">
+                                <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50 px-3 py-1 rounded-full border border-indigo-100/50">
                                     {tenant.plan || 'BASIC'} PLAN
                                 </span>
                             </div>
                         )}
-                        <button className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl relative transition-all duration-300">
-                            <Bell className="w-5 h-5" />
+                        
+                        <div className="h-8 w-px bg-slate-100 mx-2 hidden md:block"></div>
+                        
+                        <button className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl relative transition-all duration-300 group">
+                            <Bell className="w-5 h-5 transition-transform group-hover:rotate-12" />
                             <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
                         </button>
+                        
+                        {/* Quick Action Profile for mobile/tablet top header */}
+                        <div className="md:hidden w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-600">
+                             {initials}
+                        </div>
                     </div>
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto p-8 lg:p-10">
+                <main className="flex-1 overflow-y-auto p-6 lg:p-10 bg-[#fbfcfd]">
                     <div className="max-w-7xl mx-auto">
                         <Outlet />
                     </div>

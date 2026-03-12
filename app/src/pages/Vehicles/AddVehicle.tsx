@@ -16,6 +16,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { cn } from '../../lib/utils';
 import { useVehicles } from '../../hooks/useVehicles';
+import { ROUTES } from '../../constants/routes';
 
 interface InputGroupProps {
     label: string;
@@ -94,7 +95,7 @@ export default function AddVehicle() {
             area: form.area,
             isNegotiable: form.isNegotiable,
         });
-        if (success) navigate('/vehicles');
+        if (success) navigate(ROUTES.VEHICLES.BASE);
     };
 
     return (
@@ -287,7 +288,7 @@ export default function AddVehicle() {
                 <div className="flex flex-col-reverse sm:flex-row justify-end gap-3 pt-4">
                     <button
                         type="button"
-                        onClick={() => navigate('/vehicles')}
+                        onClick={() => navigate(ROUTES.VEHICLES.BASE)}
                         className="px-6 py-3 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 font-medium bg-white"
                     >
                         Cancel

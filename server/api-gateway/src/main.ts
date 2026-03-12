@@ -4,7 +4,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 import config from './config';
 import 'reflect-metadata';
-import { DatabaseConnection } from './config/database';
 import { corsMiddleware } from './middleware/cors';
 import { securityMiddleware } from './middleware/security';
 import { generalLimiter } from './middleware/rateLimit';
@@ -13,22 +12,15 @@ import routes from './routes';
 import { maintenanceMiddleware } from './middleware/maintenanceMiddleware';
 import { handleError } from './utils/errorHandler';
 import { logger } from './utils/logger';
-import { container } from 'tsyringe';
-import './container/container';
 import cookieParser from 'cookie-parser';
-import passport from 'passport';
 
 class Application {
     private app: express.Application;
     private server: any;
-    private database: DatabaseConnection;
 
     constructor() {
         this.app = express();
-        this.app.use(passport.initialize());
-
         this.server = createServer(this.app);
-        this.database = DatabaseConnection.getInstance();
 
         this.initializeMiddlewares();
         this.initializeRoutes();
@@ -68,7 +60,7 @@ class Application {
         this.app.get('/', (req, res) => {
             res.json({
                 success: true,
-                message: 'Backend Template API',
+                message: 'CarBot AI Gateway API',
                 version: '1.0.0',
                 timestamp: new Date(),
                 docs: '/api/v1/health',
@@ -87,20 +79,17 @@ class Application {
 
     public async start(): Promise<void> {
         try {
-            // Connect to database
-            await this.database.connect();
-
             // Start server
             this.server.listen(config.port, () => {
-                logger.info(`Server running on port ${config.port} in ${config.env} mode`);
-                logger.info(`API available at http://localhost:${config.port}/api/v1`);
+                logger.info(`Gateway running on port ${config.port} in ${config.env} mode`);
+                logger.info(`Gateway available at http://localhost:${config.port}/api/v1`);
             });
 
             // Graceful shutdown handlers
             this.setupGracefulShutdown();
 
         } catch (error) {
-            logger.error('Failed to start application:', error);
+            logger.error('Failed to start gateway:', error);
             process.exit(1);
         }
     }
@@ -112,18 +101,8 @@ class Application {
             // Close server
             this.server.close(async () => {
                 logger.info('HTTP server closed');
-
-                try {
-                    // Close database connection
-                    await this.database.disconnect();
-                    logger.info('Database connection closed');
-
-                    logger.info('Graceful shutdown completed');
-                    process.exit(0);
-                } catch (error) {
-                    logger.error('Error during graceful shutdown:', error);
-                    process.exit(1);
-                }
+                logger.info('Graceful shutdown completed');
+                process.exit(0);
             });
         };
 

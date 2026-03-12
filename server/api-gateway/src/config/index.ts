@@ -30,52 +30,17 @@ const getBool = (key: string, fallback = false): boolean => {
 };
 
 const config: AppConfig = {
-    port: getInt('PORT', true, 3000),
+    port: getInt('PORT', true, 5000),
     env: get('NODE_ENV', true, 'development')!,
-    jwtSecret: get('JWT_SECRET', true)!,
-    jwtExpiration: get('JWT_EXPIRATION', false, '24h')!,
-    jwtRefreshExpiration: get('JWT_REFRESH_EXPIRATION', false, '7d')!,
-
-    cookieExpiration: getInt('COOKIE_EXPIRATION', false, 7), // days
-    frontendUrl: get('FRONTEND_URL', false, 'http://localhost:5173/auth/google/callback')!,
-    maxSizeLimit: get('MAX_SIZE_LIMIT', false, '1mb')!,
-
-    database: {
-        uri: get('MONGODB_URI', true)!,
-        options: {
-            maxPoolSize: getInt('DB_MAX_POOL_SIZE', false, 10),
-            serverSelectionTimeoutMS: getInt('DB_SERVER_SELECTION_TIMEOUT', false, 5000),
-            socketTimeoutMS: getInt('DB_SOCKET_TIMEOUT', false, 45000),
-            heartbeatFrequencyMS: getInt('DB_HEARTBEAT_FREQUENCY', false, 10000),
-        },
-    },
-
+    maxSizeLimit: get('MAX_SIZE_LIMIT', false, '10mb')!,
     cors: {
         origin: get('CORS_ORIGIN', false, 'http://localhost:5173')!,
-        credentials: getBool('CORS_CREDENTIALS', false),
+        credentials: getBool('CORS_CREDENTIALS', true),
     },
-
     rateLimit: {
         windowMs: getInt('RATE_LIMIT_WINDOW_MS', false, 15 * 60 * 1000),
         max: getInt('RATE_LIMIT_MAX', false, 1000),
     },
-
-    otp: {
-        expirationMinutes: getInt('OTP_EXPIRATION_MINUTES', false, 10),
-        maxAttempts: getInt('OTP_MAX_ATTEMPTS', false, 3),
-    },
-
-    email: {
-        service: get('EMAIL_SERVICE', false, 'gmail')!,
-        host: get('EMAIL_HOST', false, 'smtp.gmail.com')!,
-        port: getInt('EMAIL_PORT', false, 587),
-        secure: getBool('EMAIL_SECURE', false),
-        auth: {
-            user: get('EMAIL_USER', false, '')!,
-            pass: get('EMAIL_PASS', false, '')!,
-        },
-    },
-
     logs: {
         level: get('LOG_LEVEL', false, 'info')!,
         maxSize: get('LOG_MAX_SIZE', false, '20m')!,
@@ -84,15 +49,6 @@ const config: AppConfig = {
     services: {
         auth: get('AUTH_SERVICE_URL', false, 'http://localhost:5001')!,
     },
-    encryptionSecret: get('ENCRYPTION_SECRET', false, '0000000000000000000000000000000000000000000000000000000000000000')!,
-
-    redis: {
-        host: get('REDIS_HOST', false, 'localhost')!,
-        port: getInt('REDIS_PORT', false, 6379),
-        password: get('REDIS_PASSWORD', false),
-    },
-
-    cookieMaxAge: getInt('COOKIE_MAX_AGE', false, getInt('COOKIE_EXPIRATION', false, 7) * 24 * 60 * 60 * 1000)
 };
 
 export default config;

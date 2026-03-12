@@ -11,11 +11,13 @@ import {
     MessageSquare,
     ShieldCheck,
     Menu,
-    ChevronRight
+    ChevronRight,
+    UserCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { useAuth } from '../../hooks/useAuth';
+import { ROUTES } from '../../constants/routes';
 
 interface SidebarLinkProps {
     to: string;
@@ -51,16 +53,15 @@ export default function SuperAdminLayout() {
     const location = useLocation();
     const { logout, getStoredUser } = useAuth();
     
-    // We get user directly from localStorage via auth service on each render safely
     const user = getStoredUser();
 
     useEffect(() => {
         if (user) {
             if (user.role !== 'super_admin') {
-                navigate('/dashboard');
+                navigate(ROUTES.DASHBOARD.HOME);
             }
         } else {
-            navigate('/login');
+            navigate(ROUTES.LOGIN);
         }
     }, [navigate, user]);
 
@@ -105,57 +106,58 @@ export default function SuperAdminLayout() {
                     </div>
                 </div>
 
-                <div className="flex-1 overflow-y-auto flex flex-col">
-                    <div className="py-8 px-4 space-y-1 flex-1">
-                        <div className="px-4 mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                            System
-                        </div>
-                        <SidebarLink to="/super/dashboard" icon={LayoutDashboard} onClick={() => setSidebarOpen(false)}>
-                            Overview
-                        </SidebarLink>
-
-                        <div className="px-4 mt-10 mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                            Governance
-                        </div>
-                        <SidebarLink to="/super/showrooms" icon={Users} onClick={() => setSidebarOpen(false)}>
-                            Manage Showrooms
-                        </SidebarLink>
-                        <SidebarLink to="/super/form-builder" icon={CheckSquare} onClick={() => setSidebarOpen(false)}>
-                            Global Forms
-                        </SidebarLink>
-
-                        <div className="px-4 mt-10 mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                            Automation
-                        </div>
-                        <SidebarLink to="/super/wa-config" icon={MessageSquare} onClick={() => setSidebarOpen(false)}>
-                            WA API Configuration
-                        </SidebarLink>
-
-                        <div className="px-4 mt-10 mb-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
-                            System
-                        </div>
-                        <SidebarLink to="/super/settings" icon={Settings} onClick={() => setSidebarOpen(false)}>
-                            Global Settings
-                        </SidebarLink>
-                    </div>
-
-                    {/* Sidebar Bottom */}
-                    <div className="p-6 border-t border-slate-50 space-y-4">
-                        <div className="bg-slate-900 rounded-2xl p-4 flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-white font-bold">
+                <div className="flex-1 overflow-y-auto flex flex-col scrollbar-hide">
+                    {/* Admin Profile - Brought Up */}
+                    <div className="p-6 pb-2">
+                        <div className="bg-slate-900 rounded-2xl p-4 flex items-center gap-3 shadow-xl shadow-slate-200">
+                            <div className="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-white font-bold flex-shrink-0">
                                 SA
                             </div>
                             <div className="flex-1 min-w-0">
                                 <p className="text-sm font-bold text-white truncate">{user.fullName}</p>
-                                <p className="text-xs text-slate-400 font-medium truncate uppercase tracking-tighter">Super Admin</p>
+                                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">Root Admin</p>
                             </div>
                         </div>
+                    </div>
+
+                    <div className="py-2 px-4 space-y-1">
+                        <div className="px-4 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                            System
+                        </div>
+                        <SidebarLink to={ROUTES.SUPER_ADMIN.DASHBOARD} icon={LayoutDashboard} onClick={() => setSidebarOpen(false)}>
+                            Overview
+                        </SidebarLink>
+
+                        <div className="px-4 mt-6 mb-2 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                            Governance
+                        </div>
+                        <SidebarLink to={ROUTES.SUPER_ADMIN.SHOWROOMS} icon={Users} onClick={() => setSidebarOpen(false)}>
+                            Manage Showrooms
+                        </SidebarLink>
+                        <SidebarLink to={ROUTES.SUPER_ADMIN.FORM_BUILDER} icon={CheckSquare} onClick={() => setSidebarOpen(false)}>
+                            Global Forms
+                        </SidebarLink>
+
+                        <div className="px-4 mt-6 mb-2 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                            Automation
+                        </div>
+                        <SidebarLink to={ROUTES.SUPER_ADMIN.WA_CONFIG} icon={MessageSquare} onClick={() => setSidebarOpen(false)}>
+                            WA API Config
+                        </SidebarLink>
+
+                        <div className="px-4 mt-6 mb-2 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                            System
+                        </div>
+                        <SidebarLink to={ROUTES.SUPER_ADMIN.SETTINGS} icon={Settings} onClick={() => setSidebarOpen(false)}>
+                            Global Settings
+                        </SidebarLink>
+
                         <button 
                             onClick={handleLogout}
-                            className="flex items-center gap-3 px-4 py-3 w-full text-slate-500 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-all duration-300 transition-colors font-bold text-sm"
+                            className="flex items-center gap-3 px-4 py-3 w-full text-slate-500 hover:bg-rose-50 hover:text-rose-600 rounded-xl transition-all duration-300 font-medium text-left"
                         >
-                            <LogOut className="w-5 h-5" />
-                            <span>Sign Out</span>
+                            <LogOut className="w-5 h-5 flex-shrink-0" />
+                            <span className="whitespace-nowrap flex-1">Sign Out</span>
                         </button>
                     </div>
                 </div>
@@ -173,15 +175,16 @@ export default function SuperAdminLayout() {
                     </button>
 
                     <div className="flex items-center gap-2">
-                        <span className="text-sm font-semibold text-slate-400">System Control /</span>
+                        <ShieldCheck className="w-4 h-4 text-slate-400" />
+                        <span className="text-sm font-semibold text-slate-400">/</span>
                         <span className="text-sm font-bold text-slate-900 capitalize">
-                            {location.pathname.split('/').pop() || 'Overview'}
+                            {location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'Overview'}
                         </span>
                     </div>
 
                     <div className="flex items-center gap-4 ml-auto">
                         <div className="hidden md:flex flex-col items-end mr-4">
-                            <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest bg-rose-50 px-2 py-0.5 rounded-full">Root Access</span>
+                            <span className="text-[10px] font-black text-rose-600 uppercase tracking-widest bg-rose-50 px-3 py-1 rounded-full border border-rose-100/50">Root Access</span>
                         </div>
                         <button className="p-2.5 text-slate-400 hover:text-slate-900 hover:bg-slate-100 rounded-xl relative transition-all duration-300">
                             <Bell className="w-5 h-5" />
@@ -191,7 +194,7 @@ export default function SuperAdminLayout() {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto p-8 lg:p-10">
+                <main className="flex-1 overflow-y-auto p-8 lg:p-10 bg-[#fbfcfd]">
                     <div className="max-w-7xl mx-auto">
                         <Outlet />
                     </div>

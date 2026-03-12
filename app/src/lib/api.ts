@@ -32,8 +32,17 @@ api.interceptors.response.use(
     if (error.response?.status === 401 && !isAuthRoute) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      // Use window.location as we are outside of React routing context here
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login';
+      }
     }
+
+    if (error.response?.status === 403) {
+      console.error('Forbidden access attempt detected');
+      // Optionally handle specific 403 scenarios
+    }
+
     return Promise.reject(error);
   }
 );

@@ -14,19 +14,20 @@ import {
     User,
     CheckCircle
 } from 'lucide-react';
-import { vehicles } from '../../lib/data';
+import { vehicles, type VehicleMock } from '@/lib/mock-data';
+import { ROUTES } from '../../constants/routes';
 
 export default function VehicleDetail() {
-    const { id } = useParams();
+    const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const vehicle = vehicles.find(v => v.id === parseInt(id)) || vehicles[0]; // Fallback to first vehicle if not found
+    const vehicle = vehicles.find((v: VehicleMock) => v.id === parseInt(id || '0')) || vehicles[0]; // Fallback to first vehicle if not found
 
     return (
         <div className="max-w-5xl mx-auto space-y-6">
             {/* Header */}
             <div className="flex items-center justify-between">
                 <div className="flex items-center gap-4">
-                    <button onClick={() => navigate('/vehicles')} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
+                    <button onClick={() => navigate(ROUTES.VEHICLES.BASE)} className="p-2 hover:bg-gray-100 rounded-full transition-colors">
                         <ArrowLeft className="w-5 h-5 text-gray-500" />
                     </button>
                     <div>

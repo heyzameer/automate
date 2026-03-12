@@ -13,7 +13,6 @@ import routes from './routes';
 import { maintenanceMiddleware } from './middleware/maintenanceMiddleware';
 import { handleError } from './utils/errorHandler';
 import { logger } from './utils/logger';
-import { container } from 'tsyringe';
 import './container/container';
 import cookieParser from 'cookie-parser';
 import passport from 'passport';

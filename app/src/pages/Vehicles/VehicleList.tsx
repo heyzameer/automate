@@ -14,6 +14,7 @@ import {
 import { Link } from 'react-router-dom';
 import { useVehicles } from '../../hooks/useVehicles';
 import { Vehicle } from '../../services/vehicle.service';
+import { ROUTES } from '../../constants/routes';
 
 interface VehicleCardProps {
     vehicle: Vehicle & {
@@ -108,7 +109,7 @@ export default function VehicleList() {
                     <h1 className="text-2xl font-bold text-gray-900">My Listings</h1>
                     <p className="text-sm text-gray-500">Manage your vehicle inventory</p>
                 </div>
-                <Link to="/vehicles/add" className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm shadow-blue-200">
+                <Link to={ROUTES.VEHICLES.ADD} className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm shadow-blue-200">
                     <Plus className="w-5 h-5 mr-2" />
                     Add Vehicle
                 </Link>

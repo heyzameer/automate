@@ -5,12 +5,15 @@ export const API_ENDPOINTS = {
     REGISTER_TENANT: '/auth/register-tenant',
     MY_TENANT: '/auth/my-tenant',
     PROFILE: '/auth/profile',
+    FORGOT_PASSWORD: '/auth/forgot-password',
+    RESET_PASSWORD: '/auth/reset-password',
   },
   SUPER: {
     TENANTS: '/super/tenants',
     TENANT_BY_ID: (id: string) => `/super/tenants/${id}`,
     SETTINGS: '/super/settings',
     WA_CONFIG: '/super/wa-config',
+    STATS: '/super/dashboard/stats',
   },
   VEHICLES: {
     BASE: '/vehicles',

@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { Toaster } from 'react-hot-toast';
 import { useAuth } from '../../hooks/useAuth';
+import { ROUTES } from '../../constants/routes';
 
 const Login = () => {
     const [isAdminLogin, setIsAdminLogin] = useState(false);
@@ -123,7 +124,7 @@ const Login = () => {
                             <div className="flex items-center justify-between mb-1.5">
                                 <label className="block text-sm font-semibold text-slate-700">Password</label>
                                 {!isAdminLogin && (
-                                    <Link to="/forgot-password" className="text-xs font-semibold text-indigo-600 hover:text-indigo-500">
+                                    <Link to={ROUTES.FORGOT_PASSWORD} className="text-xs font-semibold text-indigo-600 hover:text-indigo-500">
                                         Forgot password?
                                     </Link>
                                 )}
@@ -171,7 +172,7 @@ const Login = () => {
                             {!isAdminLogin && (
                                 <div className="text-center">
                                     <span className="text-sm text-slate-500 font-medium">New dealership? </span>
-                                    <Link to="/register" className="text-sm font-bold text-indigo-600 hover:text-indigo-500">
+                                    <Link to={ROUTES.REGISTER} className="text-sm font-bold text-indigo-600 hover:text-indigo-500">
                                         Partner with us
                                     </Link>
                                 </div>

@@ -13,6 +13,16 @@ import {
 } from 'lucide-react';
 import api from '../../lib/api';
 import toast, { Toaster } from 'react-hot-toast';
+import { ROUTES } from '../../constants/routes';
+import { API_ENDPOINTS } from '../../constants/endpoints';
+
+interface FieldErrors {
+    email?: string;
+    otp?: string;
+    password?: string;
+    confirmPassword?: string;
+    [key: string]: string | undefined;
+}
 
 const ForgotPassword = () => {
     const [step, setStep] = useState(1); // 1: Request OTP, 2: Reset Password
@@ -20,11 +30,11 @@ const ForgotPassword = () => {
     const [email, setEmail] = useState('');
     const [formData, setFormData] = useState({ otp: '', password: '', confirmPassword: '' });
     const [error, setError] = useState('');
-    const [fieldErrors, setFieldErrors] = useState({});
+    const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
     const navigate = useNavigate();
 
     const validateStep1 = () => {
-        const errors = {};
+        const errors: FieldErrors = {};
         if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
             errors.email = 'Valid email is required';
         }
@@ -33,7 +43,7 @@ const ForgotPassword = () => {
     };
 
     const validateStep2 = () => {
-        const errors = {};
+        const errors: FieldErrors = {};
         if (!formData.otp || formData.otp.length !== 6) {
             errors.otp = '6-digit code is required';
         }
@@ -47,20 +57,20 @@ const ForgotPassword = () => {
         return Object.keys(errors).length === 0;
     };
 
-    const handleEmailChange = (e) => {
+    const handleEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         setEmail(e.target.value);
         if (error) setError('');
         if (fieldErrors.email) setFieldErrors({ ...fieldErrors, email: '' });
     };
 
-    const handleFormChange = (e) => {
+    const handleFormChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
         if (error) setError('');
         if (fieldErrors[name]) setFieldErrors({ ...fieldErrors, [name]: '' });
     };
 
-    const handleRequestOTP = async (e) => {
+    const handleRequestOTP = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateStep1()) return;
         
@@ -68,10 +78,10 @@ const ForgotPassword = () => {
         setError('');
 
         try {
-            await api.post('/auth/forgot-password', { email });
+            await api.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email });
             toast.success("OTP sent to your email!");
             setStep(2);
-        } catch (err) {
+        } catch (err: any) {
             const message = err.response?.data?.message || 'Failed to send OTP. Please check your email.';
             setError(message);
             toast.error(message);
@@ -80,7 +90,7 @@ const ForgotPassword = () => {
         }
     };
 
-    const handleResetPassword = async (e) => {
+    const handleResetPassword = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateStep2()) return;
 
@@ -88,14 +98,14 @@ const ForgotPassword = () => {
         setError('');
 
         try {
-            await api.post('/auth/reset-password', {
+            await api.post(API_ENDPOINTS.AUTH.RESET_PASSWORD, {
                 email,
                 otp: formData.otp,
                 password: formData.password
             });
             toast.success("Password reset successful! Redirecting to login...");
-            setTimeout(() => navigate('/login'), 2000);
-        } catch (err) {
+            setTimeout(() => navigate(ROUTES.LOGIN), 2000);
+        } catch (err: any) {
             const message = err.response?.data?.message || 'Failed to reset password. Check your OTP.';
             setError(message);
             toast.error(message);
@@ -277,7 +287,7 @@ const ForgotPassword = () => {
                     </AnimatePresence>
                     
                     <div className="mt-8 border-t border-slate-100 pt-6 text-center">
-                        <Link to="/login" className="text-sm font-bold text-slate-400 hover:text-indigo-600 transition-colors">
+                        <Link to={ROUTES.LOGIN} className="text-sm font-bold text-slate-400 hover:text-indigo-600 transition-colors">
                             Back to Sign In
                         </Link>
                     </div>

@@ -15,6 +15,17 @@ import {
 } from 'lucide-react';
 import api from '../../lib/api';
 import toast, { Toaster } from 'react-hot-toast';
+import { ROUTES } from '../../constants/routes';
+import { API_ENDPOINTS } from '../../constants/endpoints';
+
+interface FieldErrors {
+    businessName?: string;
+    fullName?: string;
+    email?: string;
+    phone?: string;
+    password?: string;
+    [key: string]: string | undefined;
+}
 
 const Register = () => {
     const navigate = useNavigate();
@@ -28,10 +39,10 @@ const Register = () => {
         password: '',
     });
     const [error, setError] = useState('');
-    const [fieldErrors, setFieldErrors] = useState({});
+    const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
     const validateStep1 = () => {
-        const errors = {};
+        const errors: FieldErrors = {};
         if (!formData.businessName || formData.businessName.length < 2) {
             errors.businessName = 'Business name must be at least 2 characters';
         }
@@ -40,7 +51,7 @@ const Register = () => {
     };
 
     const validateStep2 = () => {
-        const errors = {};
+        const errors: FieldErrors = {};
         if (!formData.fullName || formData.fullName.length < 2) {
             errors.fullName = 'Full name is required';
         }
@@ -57,7 +68,7 @@ const Register = () => {
         return Object.keys(errors).length === 0;
     };
 
-    const handleChange = (e) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const { name, value } = e.target;
         setFormData({ ...formData, [name]: value });
         if (error) setError('');
@@ -66,7 +77,7 @@ const Register = () => {
         }
     };
 
-    const handleNext = (e) => {
+    const handleNext = (e: React.FormEvent) => {
         e.preventDefault();
         if (validateStep1()) {
             setStep(2);
@@ -75,7 +86,7 @@ const Register = () => {
         }
     };
 
-    const handleSubmit = async (e) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!validateStep2()) {
             toast.error("Please fix the errors before submitting");
@@ -99,10 +110,10 @@ const Register = () => {
         };
 
         try {
-            const { data } = await api.post('/auth/register-tenant', payload);
+            await api.post(API_ENDPOINTS.AUTH.REGISTER_TENANT, payload);
             toast.success("Dealership registered! Redirecting to login...");
-            setTimeout(() => navigate('/login'), 2000);
-        } catch (err) {
+            setTimeout(() => navigate(ROUTES.LOGIN), 2000);
+        } catch (err: any) {
             const message = err.response?.data?.message || err.message || 'Registration failed. Check your data.';
             setError(message);
             toast.error(message);
@@ -321,7 +332,7 @@ const Register = () => {
                 
                 <div className="mt-8 flex items-center justify-center space-x-2">
                     <span className="text-sm text-slate-500 font-medium">Already a partner? </span>
-                    <Link to="/login" className="text-sm font-bold text-indigo-600 hover:text-indigo-500">
+                    <Link to={ROUTES.LOGIN} className="text-sm font-bold text-indigo-600 hover:text-indigo-500">
                         Sign in to Dashboard
                     </Link>
                 </div>

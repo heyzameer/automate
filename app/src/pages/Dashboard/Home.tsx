@@ -12,6 +12,7 @@ import {
     Users
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { ROUTES } from '../../constants/routes';
 
 interface StatCardProps {
     title: string;
@@ -86,7 +87,7 @@ export default function DashboardHome() {
                     <button className="hidden sm:flex px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all text-sm shadow-sm">
                         View Analytics
                     </button>
-                    <Link to="/vehicles/add" className="inline-flex items-center justify-center px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 transform hover:-translate-y-0.5 active:translate-y-0 text-sm">
+                    <Link to={ROUTES.VEHICLES.ADD} className="inline-flex items-center justify-center px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 transform hover:-translate-y-0.5 active:translate-y-0 text-sm">
                         <Plus className="w-5 h-5 mr-2" />
                         List Vehicle
                     </Link>
@@ -159,7 +160,7 @@ export default function DashboardHome() {
                             </div>
                             <h3 className="font-black text-2xl mb-3 tracking-tight">AI Sales Bot</h3>
                             <p className="text-slate-400 text-sm mb-8 leading-relaxed font-medium">Your AI bot is currently handling <span className="text-white font-bold text-lg">12</span> active conversations on WhatsApp.</p>
-                            <Link to="/automation" className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white text-slate-900 rounded-2xl text-sm font-black transition transform hover:scale-[1.02] active:scale-[0.98]">
+                            <Link to={ROUTES.AUTOMATION.WHATSAPP} className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white text-slate-900 rounded-2xl text-sm font-black transition transform hover:scale-[1.02] active:scale-[0.98]">
                                 View Bot Status <ExternalLink className="w-4 h-4 ml-2" />
                             </Link>
                         </div>

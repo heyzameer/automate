@@ -1,5 +1,7 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ROUTES } from './constants/routes';
+
 import Login from './pages/Auth/Login';
 import Register from './pages/Auth/Register';
 import ForgotPassword from './pages/Auth/ForgotPassword';
@@ -23,13 +25,13 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/login" element={<Login />} />
-        <Route path="/register" element={<Register />} />
-        <Route path="/forgot-password" element={<ForgotPassword />} />
+        <Route path={ROUTES.LOGIN} element={<Login />} />
+        <Route path={ROUTES.REGISTER} element={<Register />} />
+        <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
 
         {/* Super Admin Routes */}
-        <Route path="/super" element={<SuperAdminLayout />}>
-          <Route index element={<Navigate to="/super/dashboard" replace />} />
+        <Route path={ROUTES.SUPER_ADMIN.BASE} element={<SuperAdminLayout />}>
+          <Route index element={<Navigate to={ROUTES.SUPER_ADMIN.DASHBOARD} replace />} />
           <Route path="dashboard" element={<SuperAdminDashboard />} />
           <Route path="showrooms" element={<TenantList />} />
           <Route path="form-builder" element={<FormBuilder />} />
@@ -38,8 +40,8 @@ function App() {
         </Route>
 
         {/* Showroom Routes */}
-        <Route path="/" element={<DashboardLayout />}>
-          <Route index element={<Navigate to="/dashboard" replace />} />
+        <Route path={ROUTES.HOME} element={<DashboardLayout />}>
+          <Route index element={<Navigate to={ROUTES.DASHBOARD.HOME} replace />} />
           <Route path="dashboard" element={<DashboardHome />} />
           <Route path="vehicles">
             <Route index element={<VehicleList />} />

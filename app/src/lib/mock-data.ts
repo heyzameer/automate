@@ -1,4 +1,21 @@
-export const vehicles = [
+export interface VehicleMock {
+  id: number;
+  name: string;
+  year: number;
+  type: string;
+  price: number;
+  status: 'Available' | 'Sold' | 'Reserved';
+  image: string;
+  enquiries: number;
+  km_driven: number;
+  fuel: string;
+  ownership: string;
+  transmission: string;
+  location: string;
+  date_added: string;
+}
+
+export const vehicles: VehicleMock[] = [
   {
     id: 1,
     name: "Yamaha R15 V3",
