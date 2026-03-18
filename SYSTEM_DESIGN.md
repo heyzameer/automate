@@ -458,7 +458,28 @@ Each microservice operates its own MongoDB instance (DB-per-service pattern).
 }
 ```
 
-### 3.5 Billing Service DB
+### 3.5 Campaign Service DB
+```javascript
+// Campaign Collection
+{
+  _id: ObjectId,
+  tenant_id: ObjectId,
+  name: "Diwali Bonanza",
+  type: "whatsapp", // 'whatsapp', 'email'
+  target_audience: "hot_leads", // 'hot_leads', 'all_leads', 'past_buyers'
+  template_id: "diwali_offer_01",
+  scheduled_at: ISODate,
+  status: "completed", // 'draft', 'scheduled', 'running', 'completed'
+  stats: {
+    sent: 150,
+    delivered: 145,
+    read: 120,
+    replied: 15
+  }
+}
+```
+
+### 3.6 Billing Service DB
 ```javascript
 // Invoice Collection
 {
@@ -475,11 +496,129 @@ Each microservice operates its own MongoDB instance (DB-per-service pattern).
   pdf_url: "cloudinary_url",
   created_at: ISODate
 }
+
+// Expense Collection
+{
+  _id: ObjectId,
+  tenant_id: ObjectId,
+  description: "Showroom Rent",
+  category: "Fixed", // 'Fixed', 'Variable'
+  amount: 50000,
+  date: ISODate
+}
 ```
 
-### 3.6 Indexes, Reliability & Partitioning
+### 3.7 Analytics Service DB
+```javascript
+// AnalyticsCache Collection
+{
+  _id: ObjectId,
+  tenant_id: ObjectId,
+  month: "2026-03",
+  total_leads: 350,
+  cars_sold: 12,
+  revenue: 14500000,
+  total_profit: 850000,
+  avg_days_to_sell: 18,
+  leads_by_temperature: { hot: 50, warm: 100, cold: 200 }
+}
+```
+
+### 3.8 Notification Service DB
+```javascript
+// ProcessedEvent Collection (For Idempotency)
+{
+  _id: ObjectId,
+  event_id: "msg-uuid-1234",
+  tenant_id: ObjectId,
+  type: "appointment.booked",
+  processed_at: ISODate,
+  status: "success", // 'success', 'failed'
+  error_log: null
+}
+```
+
+### 3.9 Indexes & Partitioning Strategy
 - **Indexes:** Every collection must have a compound index on `{ tenant_id: 1, _id: 1 }` or `{ tenant_id: 1, secondary_field: 1 }` (e.g., `phone` in Leads).
 - **Partitioning Data:** Since this is Multi-Tenant on shared DBs, scoping all Mongoose queries by `tenant_id` from the `req.user` JWT is absolutely critical.
+
+### 3.10 Database Entity-Relationship Diagram
+
+*Conceptually, entities relate to each other across microservices via soft references (e.g., `tenant_id`, `car_id`).*
+
+```mermaid
+erDiagram
+    TENANT ||--o{ TENANT_USER : "has staff"
+    TENANT ||--o{ CAR : "owns inventory"
+    TENANT ||--o{ LEAD : "manages"
+    TENANT ||--o{ SESSION : "interacts with"
+    TENANT ||--o{ CAMPAIGN : "runs"
+    TENANT ||--o{ INVOICE : "generates"
+    TENANT ||--o{ EVENT : "logs"
+
+    CAR ||--o{ LEAD : "interests"
+    CAR ||--|| INVOICE : "billed via"
+    
+    LEAD ||--o{ SESSION : "originates from"
+    TENANT_USER ||--o{ LEAD : "assigned to"
+
+    TENANT {
+        ObjectId _id PK
+        string showroom_name
+        string plan
+        string whatsapp_number
+    }
+    TENANT_USER {
+        ObjectId _id PK
+        ObjectId tenant_id FK
+        string email
+        string role
+    }
+    CAR {
+        ObjectId _id PK
+        ObjectId tenant_id FK
+        string stock_code
+        string brand
+        string model
+        float price
+        string status
+    }
+    LEAD {
+        ObjectId _id PK
+        ObjectId tenant_id FK
+        ObjectId car_of_interest FK
+        ObjectId assigned_to FK
+        string phone
+        string temperature
+        string status
+    }
+    SESSION {
+        ObjectId _id PK
+        ObjectId tenant_id FK
+        string phone
+        string state
+    }
+    CAMPAIGN {
+        ObjectId _id PK
+        ObjectId tenant_id FK
+        string name
+        string target_audience
+        string status
+    }
+    INVOICE {
+        ObjectId _id PK
+        ObjectId tenant_id FK
+        ObjectId car_id FK
+        string buyer_name
+        float total_amount
+    }
+    EVENT {
+        ObjectId _id PK
+        ObjectId tenant_id FK
+        string type
+        string status
+    }
+```
 
 ---
 
