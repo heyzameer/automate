@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Calendar, Activity, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
+import { Package, Calendar, CheckCircle2, XCircle, AlertCircle, Loader2 } from 'lucide-react';
 import { authService } from '../../services/auth.service';
 import toast from 'react-hot-toast';
 

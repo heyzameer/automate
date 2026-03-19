@@ -2,13 +2,14 @@ import { Request, Response, NextFunction } from 'express';
 import { CustomError } from '../types';
 import { logger } from './logger';
 import config from '../config';
+import { Server } from 'http'; // Added import for Server
 
 export class AppError extends Error implements CustomError {
     statusCode: number;
     isOperational: boolean;
-    data?: any;
+    data?: unknown;
 
-    constructor(message: string, statusCode: number, data?: any) {
+    constructor(message: string, statusCode: number, data?: unknown) {
         super(message);
         this.statusCode = statusCode;
         this.isOperational = true;
@@ -53,7 +54,6 @@ export const handleError = (error: CustomError, req: Request, res: Response, _ne
     }
 
     res.status(statusCode).json({
-        success: false,
         message,
         data: (error as any).data,
         timestamp: new Date(),
@@ -61,7 +61,8 @@ export const handleError = (error: CustomError, req: Request, res: Response, _ne
     });
 };
 
-export const asyncHandler = (fn: any) => {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const asyncHandler = (fn: (...args: any[]) => any) => {
     return (req: Request, res: Response, next: NextFunction) => {
         Promise.resolve(fn(req, res, next)).catch(next);
     };

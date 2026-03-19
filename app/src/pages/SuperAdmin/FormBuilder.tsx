@@ -4,9 +4,9 @@ import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 const FormBuilder = () => {
-    const [tenants, setTenants] = useState([]);
-    const [selectedTenant, setSelectedTenant] = useState(null);
-    const [fields, setFields] = useState([]);
+    const [tenants, setTenants] = useState<any[]>([]);
+    const [selectedTenant, setSelectedTenant] = useState<any>(null);
+    const [fields, setFields] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
 
@@ -18,7 +18,7 @@ const FormBuilder = () => {
                 if (data.data.length > 0) {
                     setSelectedTenant(data.data[0]);
                 }
-            } catch (error) {
+            } catch {
                 toast.error("Failed to fetch showrooms");
             } finally {
                 setLoading(false);
@@ -33,7 +33,7 @@ const FormBuilder = () => {
         }
     }, [selectedTenant]);
 
-    const fetchFields = async (tenantId) => {
+    const fetchFields = async (tenantId: string) => {
         try {
             const { data } = await api.get(`/super/tenants/${tenantId}/form-fields`);
             setFields(data.data || []);
@@ -55,7 +55,7 @@ const FormBuilder = () => {
         setFields([...fields, newField]);
     };
 
-    const removeField = (id) => {
+    const removeField = (id: string | number) => {
         setFields(fields.filter(f => f.id !== id));
     };
 
@@ -65,7 +65,7 @@ const FormBuilder = () => {
         try {
             await api.post(`/super/tenants/${selectedTenant._id}/form-fields`, { fields });
             toast.success("Form structure saved!");
-        } catch (error) {
+        } catch {
             toast.error("Failed to save form structure");
         } finally {
             setSaving(false);

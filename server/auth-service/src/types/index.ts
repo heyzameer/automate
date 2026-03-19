@@ -121,6 +121,20 @@ export interface RequestUser {
     tenantId?: string;
 }
 
+export interface RegisterDTO {
+    email: string;
+    phone: string;
+    password?: string;
+    fullName: string;
+    [key: string]: unknown;
+}
+
+export interface TenantRegisterDTO {
+    name: string;
+    slug?: string;
+    [key: string]: unknown;
+}
+
 declare global {
     // eslint-disable-next-line @typescript-eslint/no-namespace
     namespace Express {

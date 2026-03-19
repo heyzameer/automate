@@ -8,12 +8,10 @@ import {
     Settings,
     Users,
     Menu,
-    X,
     LogOut,
     Bell,
     Car,
-    CreditCard,
-    UserCircle
+    CreditCard
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
@@ -50,25 +48,11 @@ const SidebarLink = ({ to, icon: Icon, children, end, onClick }: SidebarLinkProp
 
 export default function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [user, setUser] = useState<any>(null);
-    const [tenant, setTenant] = useState<any>(null);
+    const [user, setUser] = useState<{ fullName: string; role: string } | null>(null);
+    const [tenant, setTenant] = useState<{ plan?: string } | null>(null);
     const navigate = useNavigate();
     const location = useLocation();
     const { logout } = useAuth();
-
-    useEffect(() => {
-        const storedUser = authService.getStoredUser();
-        if (storedUser) {
-            if (storedUser.role === 'super_admin') {
-                navigate(ROUTES.SUPER_ADMIN.DASHBOARD);
-            } else {
-                setUser(storedUser);
-                fetchTenantData();
-            }
-        } else {
-            navigate(ROUTES.LOGIN);
-        }
-    }, [navigate, location.pathname]);
 
     const fetchTenantData = async () => {
         try {
@@ -80,6 +64,21 @@ export default function DashboardLayout() {
             console.error("Failed to fetch tenant info in layout", error);
         }
     };
+
+    useEffect(() => {
+        const storedUser = authService.getStoredUser();
+        if (storedUser) {
+            if (storedUser.role === 'super_admin') {
+                navigate(ROUTES.SUPER_ADMIN.DASHBOARD);
+            } else {
+                // eslint-disable-next-line react-hooks/set-state-in-effect
+                setUser(storedUser);
+                fetchTenantData();
+            }
+        } else {
+            navigate(ROUTES.LOGIN);
+        }
+    }, [navigate, location.pathname]);
 
     const handleLogout = () => {
         logout();

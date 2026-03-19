@@ -6,13 +6,11 @@ import {
     Settings,
     LogOut,
     Bell,
-    Car,
     CheckSquare,
     MessageSquare,
     ShieldCheck,
     Menu,
     ChevronRight,
-    UserCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';

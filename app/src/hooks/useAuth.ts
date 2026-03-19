@@ -28,8 +28,9 @@ export const useAuth = () => {
         navigate('/dashboard');
       }
       return true;
-    } catch (err: any) {
-      const message = err.response?.data?.message || 'Login failed. Check your credentials.';
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      const message = e.response?.data?.message || 'Login failed. Check your credentials.';
       setError(message);
       toast.error(message);
       return false;

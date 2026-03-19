@@ -1,10 +1,11 @@
 import { injectable, inject } from 'tsyringe';
 import jwt from 'jsonwebtoken';
+import { ITenant } from '../interfaces/IModel/ITenant';
 import { IAuthService } from '../interfaces/IService/IAuthService';
 import { IUserRepository } from '../interfaces/IRepository/IUserRepository';
 import { IOTPRepository } from '../interfaces/IRepository/IOTPRepository';
 import { IUser } from '../interfaces/IModel/IUser';
-import { OTPType, JWTPayload, UserRole } from '../types';
+import { OTPType, JWTPayload, UserRole, RegisterDTO, TenantRegisterDTO } from '../types';
 import { createError } from '../utils/errorHandler';
 import { HttpStatus } from '../enums/HttpStatus';
 import { ResponseMessages } from '../enums/ResponseMessages';
@@ -19,35 +20,33 @@ import { IEmailService } from '../interfaces/IService/IEmailService';
 @injectable()
 export class AuthService implements IAuthService {
     constructor(
-        @inject('UserRepository') private userRepository: IUserRepository,
-        @inject('OTPRepository') private otpRepository: IOTPRepository,
-        @inject('TenantRepository') private tenantRepository: ITenantRepository,
-        @inject('EmailService') private emailService: IEmailService
+        @inject('UserRepository') private _userRepository: IUserRepository,
+        @inject('OTPRepository') private _otpRepository: IOTPRepository,
+        @inject('TenantRepository') private _tenantRepository: ITenantRepository,
+        @inject('EmailService') private _emailService: IEmailService
     ) { }
 
-    async register(userData: any): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
-        const existingEmail = await this.userRepository.findByEmail(userData.email);
+    async register(userData: RegisterDTO): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
+        const existingEmail = await this._userRepository.findByEmail(userData.email);
         if (existingEmail) {
             throw createError(ResponseMessages.EMAIL_ALREADY_REGISTERED, HttpStatus.CONFLICT);
         }
 
-        const existingPhone = await this.userRepository.findByPhone(userData.phone);
+        const existingPhone = await this._userRepository.findByPhone(userData.phone);
         if (existingPhone) {
             throw createError(ResponseMessages.PHONE_ALREADY_REGISTERED, HttpStatus.CONFLICT);
         }
 
-        const hashedPassword = await hashPassword(userData.password);
+        const hashedPassword = await hashPassword(userData.password || '');
 
-        // Create new user (requires your BaseRepository create method)
-        const newUser = await this.userRepository.create({
+        const newUser = await this._userRepository.create({
             ...userData,
             password: hashedPassword,
-        });
+        } as unknown as Partial<IUser>);
 
         const accessToken = this.generateAccessToken(newUser);
         const refreshToken = this.generateRefreshToken(newUser);
 
-        // Save login session
         await LoginSession.create({
             userId: newUser.id,
             refreshToken
@@ -56,48 +55,43 @@ export class AuthService implements IAuthService {
         return { user: newUser, accessToken, refreshToken };
     }
 
-    async registerTenant(tenantData: any, adminData: any): Promise<{ user: IUser; tenant: any; accessToken: string; refreshToken: string }> {
+    async registerTenant(tenantData: TenantRegisterDTO, adminData: RegisterDTO): Promise<{ user: IUser; tenant: ITenant; accessToken: string; refreshToken: string }> {
         logger.info(`[AUTH] Registering tenant: ${tenantData.name} with admin: ${adminData.email}`);
         
-        // 1. Check if email/phone already exists
-        const existingEmail = await this.userRepository.findByEmail(adminData.email);
+        const existingEmail = await this._userRepository.findByEmail(adminData.email);
         if (existingEmail) {
             logger.warn(`[AUTH] Email already registered: ${adminData.email}`);
             throw createError(ResponseMessages.EMAIL_ALREADY_REGISTERED, HttpStatus.CONFLICT);
         }
 
-        const existingPhone = await this.userRepository.findByPhone(adminData.phone);
+        const existingPhone = await this._userRepository.findByPhone(adminData.phone);
         if (existingPhone) {
             logger.warn(`[AUTH] Phone already registered: ${adminData.phone}`);
             throw createError(ResponseMessages.PHONE_ALREADY_REGISTERED, HttpStatus.CONFLICT);
         }
 
-        // 2. Generate slug from name if not provided (or overwrite since user says not needed)
         const name = tenantData.name;
         let slug = tenantData.slug || name.toLowerCase().replace(/ /g, '-').replace(/[^\w-]+/g, '');
         
-        // Ensure slug is unique (simple check, or use a library)
-        const existingTenantBySlug = await this.tenantRepository.findOne({ slug });
+        const existingTenantBySlug = await this._tenantRepository.findOne({ slug });
         if (existingTenantBySlug) {
             slug = `${slug}-${Date.now().toString().slice(-4)}`;
         }
 
-        // 3. Create Tenant
-        const tenant = await this.tenantRepository.create({
+        const tenant = await this._tenantRepository.create({
             ...tenantData,
             slug,
             isActive: true, 
-        });
+        } as unknown as Partial<ITenant>);
 
-        // 4. Create Admin User for this Tenant
-        const hashedPassword = await hashPassword(adminData.password);
-        const adminUser = await this.userRepository.create({
+        const hashedPassword = await hashPassword(adminData.password || '');
+        const adminUser = await this._userRepository.create({
             ...adminData,
             password: hashedPassword,
             role: UserRole.SHOWROOM_ADMIN,
-            tenantId: (tenant as any)._id,
+            tenantId: tenant.id || tenant._id,
             isActive: true,
-        });
+        } as unknown as Partial<IUser>);
 
         const accessToken = this.generateAccessToken(adminUser);
         const refreshToken = this.generateRefreshToken(adminUser);
@@ -107,8 +101,7 @@ export class AuthService implements IAuthService {
             refreshToken
         });
 
-        // Send Welcome Email
-        this.emailService.sendWelcomeEmail(adminUser.email, adminUser.fullName).catch(err => {
+        this._emailService.sendWelcomeEmail(adminUser.email, adminUser.fullName).catch(err => {
             logger.error(`Welcome email failed: ${err.message}`);
         });
 
@@ -117,7 +110,7 @@ export class AuthService implements IAuthService {
 
     async login(email: string, password?: string): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
         console.log(`[AUTH] Login attempt for: ${email}`);
-        const user = await this.userRepository.findByEmail(email);
+        const user = await this._userRepository.findByEmail(email);
 
         if (!user) {
             console.log(`[AUTH] User not found: ${email}`);
@@ -140,7 +133,7 @@ export class AuthService implements IAuthService {
 
         // Check if tenant is active if it's a showroom user
         if (user.tenantId) {
-            const tenant = await this.tenantRepository.findById(user.tenantId as any);
+            const tenant = await this._tenantRepository.findById(user.tenantId);
             if (!tenant || !tenant.isActive) {
                 throw createError('Tenant account is deactivated. Contact support.', HttpStatus.FORBIDDEN);
             }
@@ -149,7 +142,7 @@ export class AuthService implements IAuthService {
             }
         }
 
-        await this.userRepository.updateLastLogin(user.id);
+        await this._userRepository.updateLastLogin(user.id);
 
         const accessToken = this.generateAccessToken(user);
         const refreshToken = this.generateRefreshToken(user);
@@ -164,7 +157,7 @@ export class AuthService implements IAuthService {
 
     async superLogin(email: string, password?: string): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
         console.log(`[AUTH] Super login attempt for: ${email}`);
-        const user = await this.userRepository.findByEmail(email);
+        const user = await this._userRepository.findByEmail(email);
 
         if (!user) {
             console.log(`[AUTH] User not found: ${email}`);
@@ -192,7 +185,7 @@ export class AuthService implements IAuthService {
             console.log(`[AUTH] No password provided for ${email}`);
         }
 
-        await this.userRepository.updateLastLogin(user.id);
+        await this._userRepository.updateLastLogin(user.id);
 
         const accessToken = this.generateAccessToken(user);
         const refreshToken = this.generateRefreshToken(user);
@@ -214,7 +207,7 @@ export class AuthService implements IAuthService {
         const refreshToken = this.generateRefreshToken(user);
 
         await LoginSession.create({
-            userId: user.id || (user as any)._id,
+            userId: user.id || user._id,
             refreshToken
         });
 
@@ -230,7 +223,7 @@ export class AuthService implements IAuthService {
                 throw createError('Invalid session', HttpStatus.UNAUTHORIZED);
             }
 
-            const user = await this.userRepository.findById(decoded.userId);
+            const user = await this._userRepository.findById(decoded.userId);
             if (!user || !user.isActive) {
                 throw createError(ResponseMessages.USER_NOT_FOUND_OR_INACTIVE, HttpStatus.UNAUTHORIZED);
             }
@@ -253,42 +246,42 @@ export class AuthService implements IAuthService {
         }
     }
 
-    async validateToken(token: string): Promise<any> {
+    async validateToken(token: string): Promise<JWTPayload> {
         try {
-            return jwt.verify(token, config.jwtSecret);
+            return jwt.verify(token, config.jwtSecret) as JWTPayload;
         } catch (error) {
             throw createError(ResponseMessages.INVALID_TOKEN, HttpStatus.UNAUTHORIZED);
         }
     }
 
     async requestPasswordReset(email: string): Promise<void> {
-        const user = await this.userRepository.findByEmail(email);
+        const user = await this._userRepository.findByEmail(email);
         if (!user) {
             throw createError(ResponseMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
         }
 
         // Create and store OTP
         const otpCode = generateOTP();
-        await this.otpRepository.createOTP(user.id, OTPType.PASSWORD_RESET, otpCode);
+        await this._otpRepository.createOTP(user.id, OTPType.PASSWORD_RESET, otpCode);
 
         // Send Email
-        await this.emailService.sendOTP(user.email, otpCode, user.fullName);
+        await this._emailService.sendOTP(user.email, otpCode, user.fullName);
 
         logger.info(`OTP sent to ${email} for password reset`);
     }
 
     async resetPassword(email: string, otp: string, newPassword?: string): Promise<void> {
-        const user = await this.userRepository.findByEmail(email);
+        const user = await this._userRepository.findByEmail(email);
         if (!user) throw createError(ResponseMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
 
-        const otpStatus = await this.otpRepository.verifyOTP(user.id, OTPType.PASSWORD_RESET, otp);
+        const otpStatus = await this._otpRepository.verifyOTP(user.id, OTPType.PASSWORD_RESET, otp);
         if (!otpStatus.success) {
             throw createError(otpStatus.message, HttpStatus.BAD_REQUEST);
         }
 
         if (newPassword) {
             const hashed = await hashPassword(newPassword);
-            await this.userRepository.update(user.id, { password: hashed });
+            await this._userRepository.update(user.id, { password: hashed });
         }
     }
 
@@ -297,24 +290,24 @@ export class AuthService implements IAuthService {
             throw createError(ResponseMessages.BOTH_PASSWORDS_REQUIRED, HttpStatus.BAD_REQUEST);
         }
 
-        const user = await this.userRepository.findById(userId);
+        const user = await this._userRepository.findById(userId);
         if (!user) throw createError(ResponseMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
 
         const isPasswordValid = await comparePassword(currentPassword, user.password || '');
         if (!isPasswordValid) throw createError(ResponseMessages.CURRENT_PASSWORD_INCORRECT, HttpStatus.BAD_REQUEST);
 
         const hashed = await hashPassword(newPassword);
-        await this.userRepository.update(user.id, { password: hashed });
+        await this._userRepository.update(user.id, { password: hashed });
     }
 
     async requestOTPVerification(userId: string, type: OTPType): Promise<void> {
         const otpCode = generateOTP();
-        await this.otpRepository.createOTP(userId, type, otpCode);
+        await this._otpRepository.createOTP(userId, type, otpCode);
         logger.info(`[TEST] OTP for UserID ${userId} (${type}): ${otpCode}`);
     }
 
     async verifyOTP(userId: string, type: OTPType, code: string): Promise<void> {
-        const verifyResp = await this.otpRepository.verifyOTP(userId, type, code);
+        const verifyResp = await this._otpRepository.verifyOTP(userId, type, code);
         if (!verifyResp.success) {
             throw createError(verifyResp.message, HttpStatus.BAD_REQUEST);
         }
@@ -322,24 +315,24 @@ export class AuthService implements IAuthService {
 
     async generateVerificationOTPs(userId: string, type: OTPType): Promise<void> {
         const otpCode = generateOTP();
-        await this.otpRepository.createOTP(userId, type, otpCode);
+        await this._otpRepository.createOTP(userId, type, otpCode);
         logger.info(`[TEST] Generated Verification OTP: ${otpCode}`);
     }
 
     async getUserFromToken(token: string): Promise<IUser> {
         const decoded = await this.validateToken(token) as JWTPayload;
-        const user = await this.userRepository.findById(decoded.userId);
+        const user = await this._userRepository.findById(decoded.userId);
         if (!user || !user.isActive) throw createError(ResponseMessages.USER_NOT_FOUND, HttpStatus.UNAUTHORIZED);
         return user;
     }
 
-    async updateProfile(userId: string, updateData: any): Promise<IUser> {
-        const user = await this.userRepository.update(userId, updateData);
+    async updateProfile(userId: string, updateData: unknown): Promise<IUser> {
+        const user = await this._userRepository.update(userId, updateData as Partial<IUser>);
         if (!user) throw createError(ResponseMessages.USER_NOT_FOUND, HttpStatus.NOT_FOUND);
         return user;
     }
 
-    generateAccessToken(user: any): string {
+    generateAccessToken(user: IUser): string {
         return jwt.sign(
             {
                 userId: user.id || user._id,
@@ -348,11 +341,11 @@ export class AuthService implements IAuthService {
                 tenantId: user.tenantId
             },
             config.jwtSecret,
-            { expiresIn: config.jwtExpiration as any }
+            { expiresIn: config.jwtExpiration as jwt.SignOptions['expiresIn'] }
         );
     }
 
-    generateRefreshToken(user: any): string {
+    generateRefreshToken(user: IUser): string {
         return jwt.sign(
             {
                 userId: user.id || user._id,
@@ -360,7 +353,7 @@ export class AuthService implements IAuthService {
                 tenantId: user.tenantId
             },
             config.jwtSecret,
-            { expiresIn: config.jwtRefreshExpiration as any }
+            { expiresIn: config.jwtRefreshExpiration as jwt.SignOptions['expiresIn'] }
         );
     }
 }

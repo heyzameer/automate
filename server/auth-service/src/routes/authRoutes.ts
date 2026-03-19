@@ -5,6 +5,7 @@ import { authenticate } from '../middleware/auth';
 import { authLimiter, otpLimiter } from '../middleware/rateLimit';
 import { container } from '../container/container';
 import passport from 'passport';
+import { AUTH_ROUTES } from '../constants/routes';
 
 import {
     registerSchema,
@@ -24,36 +25,36 @@ const authController = container.resolve(AuthController);
 import '../config/passport';
 
 router.get(
-    '/google',
+    AUTH_ROUTES.AUTH.GOOGLE,
     passport.authenticate('google', { scope: ['profile', 'email'], session: false })
 );
 
 router.get(
-    '/google/callback',
+    AUTH_ROUTES.AUTH.GOOGLE_CALLBACK,
     passport.authenticate('google', { session: false, failureRedirect: '/login-failed' }),
     authController.googleCallback
 );
 
 // Public routes
-router.post('/register', authLimiter, validate(registerSchema), authController.register);
-router.post('/register-tenant', authLimiter, validate(registerTenantSchema), authController.registerTenant);
-router.post('/login', authLimiter, validate(loginSchema), authController.login);
-router.post('/super-login', authLimiter, validate(loginSchema), authController.superLogin);
-router.post('/forgot-password', authLimiter, validate(forgotPasswordSchema), authController.requestPasswordReset);
-router.post('/reset-password', authLimiter, validate(resetPasswordSchema), authController.resetPassword);
-router.post('/refresh-token', authController.refreshToken);
-router.post('/validate-token', authController.validateToken);
+router.post(AUTH_ROUTES.AUTH.REGISTER, authLimiter, validate(registerSchema), authController.register);
+router.post(AUTH_ROUTES.AUTH.REGISTER_TENANT, authLimiter, validate(registerTenantSchema), authController.registerTenant);
+router.post(AUTH_ROUTES.AUTH.LOGIN, authLimiter, validate(loginSchema), authController.login);
+router.post(AUTH_ROUTES.AUTH.SUPER_LOGIN, authLimiter, validate(loginSchema), authController.superLogin);
+router.post(AUTH_ROUTES.AUTH.FORGOT_PASSWORD, authLimiter, validate(forgotPasswordSchema), authController.requestPasswordReset);
+router.post(AUTH_ROUTES.AUTH.RESET_PASSWORD, authLimiter, validate(resetPasswordSchema), authController.resetPassword);
+router.post(AUTH_ROUTES.AUTH.REFRESH_TOKEN, authController.refreshToken);
+router.post(AUTH_ROUTES.AUTH.VALIDATE_TOKEN, authController.validateToken);
 
 // Protected routes
 router.use(authenticate);
-router.get('/profile', authController.getProfile);
-router.get('/my-tenant', authController.getMyTenant);
-router.patch('/my-tenant', authController.updateMyTenant);
-router.patch('/profile', authController.updateProfile);
-router.post('/change-password', validate(changePasswordSchema), authController.changePassword);
-router.post('/request-otp', otpLimiter, validate(requestOTPSchema), authController.requestOTP);
-router.post('/resend-otp', otpLimiter, validate(resendOTPSchema), authController.requestResendOTP);
-router.post('/verify-otp', validate(verifyOTPSchema), authController.verifyOTP);
-router.post('/logout', authController.logout);
+router.get(AUTH_ROUTES.AUTH.PROFILE, authController.getProfile);
+router.get(AUTH_ROUTES.AUTH.MY_TENANT, authController.getMyTenant);
+router.patch(AUTH_ROUTES.AUTH.MY_TENANT, authController.updateMyTenant);
+router.patch(AUTH_ROUTES.AUTH.PROFILE, authController.updateProfile);
+router.post(AUTH_ROUTES.AUTH.CHANGE_PASSWORD, validate(changePasswordSchema), authController.changePassword);
+router.post(AUTH_ROUTES.AUTH.REQUEST_OTP, otpLimiter, validate(requestOTPSchema), authController.requestOTP);
+router.post(AUTH_ROUTES.AUTH.RESEND_OTP, otpLimiter, validate(resendOTPSchema), authController.requestResendOTP);
+router.post(AUTH_ROUTES.AUTH.VERIFY_OTP, validate(verifyOTPSchema), authController.verifyOTP);
+router.post(AUTH_ROUTES.AUTH.LOGOUT, authController.logout);
 
 export default router;

@@ -10,24 +10,24 @@ import { User } from '../models/User';
 @injectable()
 export class SuperAdminController {
     constructor(
-        @inject('TenantRepository') private tenantRepository: ITenantRepository
+        @inject('TenantRepository') private _tenantRepository: ITenantRepository
     ) { }
 
     getTenants = asyncHandler(async (req: Request, res: Response) => {
-        const tenants = await this.tenantRepository.find({});
+        const tenants = await this._tenantRepository.find({});
         sendSuccess(res, 'Tenants retrieved successfully', tenants);
     });
 
     updateTenant = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
         const updateData = req.body;
-        const tenant = await this.tenantRepository.update(id, updateData);
+        const tenant = await this._tenantRepository.update(id, updateData);
         sendSuccess(res, 'Tenant updated successfully', tenant);
     });
 
     deleteTenant = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
-        await this.tenantRepository.delete(id);
+        await this._tenantRepository.delete(id);
         sendSuccess(res, 'Tenant deleted successfully');
     });
 
@@ -49,7 +49,7 @@ export class SuperAdminController {
     });
 
     getDashboardStats = asyncHandler(async (req: Request, res: Response) => {
-        const tenantCount = await this.tenantRepository.count();
+        const tenantCount = await this._tenantRepository.count();
         const activeUsers = await User.countDocuments({ isActive: true });
         sendSuccess(res, 'Dashboard stats retrieved', {
             tenantCount,

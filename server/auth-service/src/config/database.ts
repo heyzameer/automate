@@ -3,27 +3,27 @@ import config from './index';
 import { logger } from '../utils/logger';
 
 export class DatabaseConnection {
-    private static instance: DatabaseConnection;
-    private isConnected: boolean = false;
+    private static _instance: DatabaseConnection;
+    private _isConnected: boolean = false;
 
     private constructor() { }
 
     public static getInstance(): DatabaseConnection {
-        if (!DatabaseConnection.instance) {
-            DatabaseConnection.instance = new DatabaseConnection();
+        if (!DatabaseConnection._instance) {
+            DatabaseConnection._instance = new DatabaseConnection();
         }
-        return DatabaseConnection.instance;
+        return DatabaseConnection._instance;
     }
 
     public async connect(): Promise<void> {
-        if (this.isConnected) {
+        if (this._isConnected) {
             logger.info('Database already connected');
             return;
         }
 
         try {
             await mongoose.connect(config.database.uri, config.database.options);
-            this.isConnected = true;
+            this._isConnected = true;
             logger.info('Database connected successfully');
 
             mongoose.connection.on('error', (error) => {
@@ -32,12 +32,12 @@ export class DatabaseConnection {
 
             mongoose.connection.on('disconnected', () => {
                 logger.warn('Database disconnected');
-                this.isConnected = false;
+                this._isConnected = false;
             });
 
             mongoose.connection.on('reconnected', () => {
                 logger.info('Database reconnected');
-                this.isConnected = true;
+                this._isConnected = true;
             });
 
         } catch (error) {
@@ -47,13 +47,13 @@ export class DatabaseConnection {
     }
 
     public async disconnect(): Promise<void> {
-        if (!this.isConnected) {
+        if (!this._isConnected) {
             return;
         }
 
         try {
             await mongoose.disconnect();
-            this.isConnected = false;
+            this._isConnected = false;
             logger.info('Database disconnected successfully');
         } catch (error) {
             logger.error('Error disconnecting from database:', error);
@@ -62,6 +62,6 @@ export class DatabaseConnection {
     }
 
     public getConnectionStatus(): boolean {
-        return this.isConnected;
+        return this._isConnected;
     }
 }

@@ -1,5 +1,5 @@
 import express from 'express';
-import { createServer } from 'http';
+import { createServer, Server } from 'http';
 import dotenv from 'dotenv';
 dotenv.config();
 import config from './config';
@@ -18,53 +18,53 @@ import cookieParser from 'cookie-parser';
 import passport from 'passport';
 
 class Application {
-    private app: express.Application;
-    private server: any;
-    private database: DatabaseConnection;
+    private _app: express.Application;
+    private _server: Server;
+    private _database: DatabaseConnection;
 
     constructor() {
-        this.app = express();
-        this.app.use(passport.initialize());
+        this._app = express();
+        this._app.use(passport.initialize());
 
-        this.server = createServer(this.app);
-        this.database = DatabaseConnection.getInstance();
+        this._server = createServer(this._app);
+        this._database = DatabaseConnection.getInstance();
 
-        this.initializeMiddlewares();
-        this.initializeRoutes();
-        this.initializeErrorHandling();
+        this._initializeMiddlewares();
+        this._initializeRoutes();
+        this._initializeErrorHandling();
     }
 
-    private initializeMiddlewares(): void {
+    private _initializeMiddlewares(): void {
         // Security middlewares
-        this.app.use(securityMiddleware);
-        this.app.use(corsMiddleware);
+        this._app.use(securityMiddleware);
+        this._app.use(corsMiddleware);
 
         // Logging middleware
-        this.app.use(httpLogger);
+        this._app.use(httpLogger);
 
         // Maintenance Mode
-        this.app.use(maintenanceMiddleware);
+        this._app.use(maintenanceMiddleware);
 
         // Rate limiting
-        this.app.use(generalLimiter);
+        this._app.use(generalLimiter);
 
         // Body parsing middleware
-        this.app.use(express.json({ limit: config.maxSizeLimit }));
-        this.app.use(express.urlencoded({ extended: true, limit: config.maxSizeLimit }));
-        this.app.use(cookieParser());
+        this._app.use(express.json({ limit: config.maxSizeLimit }));
+        this._app.use(express.urlencoded({ extended: true, limit: config.maxSizeLimit }));
+        this._app.use(cookieParser());
 
         logger.info('Middlewares initialized');
     }
 
-    private initializeRoutes(): void {
+    private _initializeRoutes(): void {
         // Handle preflight requests for all routes
-        this.app.options('*', corsMiddleware);
+        this._app.options('*', corsMiddleware);
 
         // API routes
-        this.app.use('/api/v1', routes);
+        this._app.use('/api/v1', routes);
 
         // Root route
-        this.app.get('/', (req, res) => {
+        this._app.get('/', (req, res) => {
             res.json({
                 success: true,
                 message: 'Backend Template API',
@@ -77,9 +77,9 @@ class Application {
         logger.info('Routes initialized');
     }
 
-    private initializeErrorHandling(): void {
+    private _initializeErrorHandling(): void {
         // Global error handler
-        this.app.use(handleError);
+        this._app.use(handleError);
 
         logger.info('Error handling initialized');
     }
@@ -87,16 +87,16 @@ class Application {
     public async start(): Promise<void> {
         try {
             // Connect to database
-            await this.database.connect();
+            await this._database.connect();
 
             // Start server
-            this.server.listen(config.port, () => {
+            this._server.listen(config.port, () => {
                 logger.info(`Server running on port ${config.port} in ${config.env} mode`);
                 logger.info(`API available at http://localhost:${config.port}/api/v1`);
             });
 
             // Graceful shutdown handlers
-            this.setupGracefulShutdown();
+            this._setupGracefulShutdown();
 
         } catch (error) {
             logger.error('Failed to start application:', error);
@@ -104,17 +104,17 @@ class Application {
         }
     }
 
-    private setupGracefulShutdown(): void {
+    private _setupGracefulShutdown(): void {
         const gracefulShutdown = async (signal: string) => {
             logger.info(`Received ${signal}. Starting graceful shutdown...`);
 
             // Close server
-            this.server.close(async () => {
+            this._server.close(async () => {
                 logger.info('HTTP server closed');
 
                 try {
                     // Close database connection
-                    await this.database.disconnect();
+                    await this._database.disconnect();
                     logger.info('Database connection closed');
 
                     logger.info('Graceful shutdown completed');

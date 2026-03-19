@@ -10,7 +10,6 @@ import {
   ArrowRight,
   Loader2,
   CheckCircle2,
-  Globe,
   AlertCircle
 } from 'lucide-react';
 import api from '../../lib/api';
@@ -113,8 +112,9 @@ const Register = () => {
             await api.post(API_ENDPOINTS.AUTH.REGISTER_TENANT, payload);
             toast.success("Dealership registered! Redirecting to login...");
             setTimeout(() => navigate(ROUTES.LOGIN), 2000);
-        } catch (err: any) {
-            const message = err.response?.data?.message || err.message || 'Registration failed. Check your data.';
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } }; message?: string };
+            const message = e.response?.data?.message || e.message || 'Registration failed. Check your data.';
             setError(message);
             toast.error(message);
             setFormData(prev => ({ ...prev, password: '' }));

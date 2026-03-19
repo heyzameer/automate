@@ -1,4 +1,4 @@
-import { Document, Model, FilterQuery, UpdateQuery, QueryOptions } from 'mongoose';
+import { Document, Model, FilterQuery, UpdateQuery, QueryOptions, PipelineStage } from 'mongoose';
 import { PaginationOptions, PaginatedResult } from '../types';
 import { IBaseRepository } from '../interfaces/IRepository/IBaseRepository';
 
@@ -29,21 +29,21 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
     async findWithPagination(
         filter: FilterQuery<T> = {},
         pagination: PaginationOptions,
-        populateFields?: any
+        populateFields?: string | string[] | Record<string, unknown>
     ): Promise<PaginatedResult<T>> {
         const { page, limit, sort, order } = pagination;
         const skip = (page - 1) * limit;
         const sortOrder = order === 'asc' ? 1 : -1;
 
-        let query = this.model.find(filter).skip(skip).limit(limit).sort({ [sort || '_id']: sortOrder });
+        let query: any = this.model.find(filter).skip(skip).limit(limit).sort({ [sort || '_id']: sortOrder });
 
         if (populateFields) {
             if (Array.isArray(populateFields)) {
                 populateFields.forEach(field => {
-                    query = query.populate(field) as any;
+                    query = query.populate(field as string);
                 });
             } else {
-                query = query.populate(populateFields) as any;
+                query = query.populate(populateFields as string | any);
             }
         }
 
@@ -106,7 +106,7 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
         return count > 0;
     }
 
-    async aggregate(pipeline: any[]): Promise<any[]> {
+    async aggregate(pipeline: PipelineStage[]): Promise<unknown[]> {
         return this.model.aggregate(pipeline);
     }
 }

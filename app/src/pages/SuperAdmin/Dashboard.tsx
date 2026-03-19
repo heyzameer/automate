@@ -4,11 +4,7 @@ import {
     Activity, 
     CreditCard, 
     Clock, 
-    Loader2, 
     TrendingUp, 
-    ArrowUpRight,
-    Search,
-    Filter,
     MoreHorizontal,
     Plus,
     LayoutGrid,
@@ -29,7 +25,7 @@ interface Stats {
     upcomingExpiries: number;
 }
 
-const StatCard = ({ title, value, icon: Icon, trend, color, delay }: any) => (
+const StatCard = ({ title, value, icon: Icon, trend, color, delay }: { title: string, value: string | number, icon: React.ElementType, trend: string, color: string, delay?: number }) => (
     <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}

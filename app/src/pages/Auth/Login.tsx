@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { 
   Car, 
   Mail, 
@@ -17,7 +17,7 @@ import { ROUTES } from '../../constants/routes';
 const Login = () => {
     const [isAdminLogin, setIsAdminLogin] = useState(false);
     const [formData, setFormData] = useState({ email: '', password: '' });
-    const [fieldErrors, setFieldErrors] = useState<any>({});
+    const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     
     const { loading, error, setError, authenticate, checkAuth } = useAuth();
 
@@ -26,7 +26,7 @@ const Login = () => {
     }, [checkAuth]);
 
     const validate = () => {
-        const errors: any = {};
+        const errors: Record<string, string> = {};
         if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
             errors.email = 'Valid email is required';
         }

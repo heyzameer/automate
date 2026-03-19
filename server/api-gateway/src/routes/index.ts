@@ -4,11 +4,12 @@ import config from '../config';
 import { sendSuccess } from '../utils/response';
 import { logger } from '../utils/logger';
 import { IncomingMessage } from 'http';
+import { GATEWAY_ROUTES, PROXY_PATHS } from '../constants/routes';
 
 const router = Router();
 
 // Health check route
-router.get('/health', (req: Request, res: Response) => {
+router.get(GATEWAY_ROUTES.HEALTH, (req: Request, res: Response) => {
     sendSuccess(res, 'Gateway is healthy', {
         status: 'OK',
         timestamp: new Date(),
@@ -18,25 +19,25 @@ router.get('/health', (req: Request, res: Response) => {
 });
 
 // Proxy to Auth Service
-router.use('/auth', proxy(config.services.auth, {
+router.use(GATEWAY_ROUTES.AUTH, proxy(config.services.auth, {
     proxyReqPathResolver: (req: any) => {
-        const path = `/api/v1/auth${req.url}`;
+        const path = `${PROXY_PATHS.AUTH_SERVICE}${req.url}`;
         logger.info(`Proxying to Auth Service: ${path}`);
         return path;
     }
 }) as any);
 
 // Proxy to Super Admin (which is in Auth Service)
-router.use('/super', proxy(config.services.auth, {
+router.use(GATEWAY_ROUTES.SUPER_ADMIN, proxy(config.services.auth, {
     proxyReqPathResolver: (req: any) => {
-        const path = `/api/v1/super${req.url}`;
+        const path = `${PROXY_PATHS.SUPER_ADMIN_API}${req.url}`;
         logger.info(`Proxying to Super Admin API: ${path}`);
         return path;
     }
 }) as any);
 
 // API Root
-router.get('/', (req: Request, res: Response) => {
+router.get(GATEWAY_ROUTES.ROOT, (req: Request, res: Response) => {
     sendSuccess(res, 'CarBot AI Gateway v1', {
         version: '1.0.0',
         status: 'Operational',
@@ -47,7 +48,7 @@ router.get('/', (req: Request, res: Response) => {
 });
 
 // 404 handler
-router.use('*', (req: Request, res: Response) => {
+router.use(GATEWAY_ROUTES.WILDCARD, (req: Request, res: Response) => {
     res.status(404).json({
         success: false,
         message: 'Gateway endpoint not found',

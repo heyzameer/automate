@@ -1,13 +1,17 @@
 import { OTPType } from '../types';
 
 export interface RegisterDto {
-    user: any;
+    user: unknown;
     accessToken: string;
     refreshToken: string;
 }
 
 export interface RegisterRequestDto {
-    [key: string]: any;
+    email: string;
+    phone: string;
+    password?: string;
+    fullName: string;
+    [key: string]: unknown;
 }
 
 export interface LoginRequestDto {

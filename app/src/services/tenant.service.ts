@@ -27,7 +27,7 @@ export const tenantService = {
     await api.patch(API_ENDPOINTS.SUPER.TENANT_BY_ID(id), { isActive });
   },
 
-  registerTenant: async (payload: any): Promise<void> => {
+  registerTenant: async (payload: Record<string, unknown>): Promise<void> => {
     await api.post(API_ENDPOINTS.AUTH.REGISTER_TENANT, payload);
   }
 };

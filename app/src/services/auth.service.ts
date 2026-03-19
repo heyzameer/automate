@@ -3,8 +3,17 @@ import { API_ENDPOINTS } from '../constants/endpoints';
 import { User } from '../types';
 
 export interface LoginPayload {
-  email: string;
+  email?: string;
   password?: string;
+}
+
+export interface AuthTenant {
+  name: string;
+  plan?: string;
+  limits?: { maxCars?: number; maxLeads?: number };
+  expiryDate: string;
+  isActive: boolean;
+  [key: string]: unknown;
 }
 
 export interface AuthResponse {
@@ -37,7 +46,7 @@ export const authService = {
     return localStorage.getItem('token');
   },
 
-  getMyTenant: async (): Promise<any> => {
+  getMyTenant: async (): Promise<{ tenant?: AuthTenant }> => {
     const { data } = await api.get(API_ENDPOINTS.AUTH.MY_TENANT);
     return data.data;
   }

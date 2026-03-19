@@ -5,7 +5,7 @@ export interface IAccessLog extends Document {
     userId?: mongoose.Types.ObjectId;
     action: string;
     resource: string;
-    details: any;
+    details: unknown;
     ipAddress?: string;
     userAgent?: string;
     timestamp: Date;

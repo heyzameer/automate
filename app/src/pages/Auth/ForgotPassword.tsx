@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Car, 
   Mail, 
   Lock, 
   ArrowRight, 
@@ -81,8 +80,9 @@ const ForgotPassword = () => {
             await api.post(API_ENDPOINTS.AUTH.FORGOT_PASSWORD, { email });
             toast.success("OTP sent to your email!");
             setStep(2);
-        } catch (err: any) {
-            const message = err.response?.data?.message || 'Failed to send OTP. Please check your email.';
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } } };
+            const message = e.response?.data?.message || 'Failed to send OTP. Please check your email.';
             setError(message);
             toast.error(message);
         } finally {
@@ -105,8 +105,9 @@ const ForgotPassword = () => {
             });
             toast.success("Password reset successful! Redirecting to login...");
             setTimeout(() => navigate(ROUTES.LOGIN), 2000);
-        } catch (err: any) {
-            const message = err.response?.data?.message || 'Failed to reset password. Check your OTP.';
+        } catch (err: unknown) {
+            const e = err as { response?: { data?: { message?: string } } };
+            const message = e.response?.data?.message || 'Failed to reset password. Check your OTP.';
             setError(message);
             toast.error(message);
         } finally {

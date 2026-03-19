@@ -13,7 +13,7 @@ export const useTenants = () => {
       setLoading(true);
       const data = await tenantService.getAllTenants();
       setTenants(data);
-    } catch (error) {
+    } catch {
       toast.error("Failed to fetch showrooms");
     } finally {
       setLoading(false);
@@ -29,7 +29,7 @@ export const useTenants = () => {
       await tenantService.updateTenantStatus(id, !currentStatus);
       toast.success("Status updated");
       await fetchTenants();
-    } catch (error) {
+    } catch {
       toast.error("Failed to update status");
     }
   };
@@ -40,22 +40,23 @@ export const useTenants = () => {
       await tenantService.updateTenantPlan(id, payload);
       toast.success("Plan updated successfully!");
       await fetchTenants();
-    } catch (error) {
+    } catch {
       toast.error("Failed to update plan");
     } finally {
       setSaving(false);
     }
   };
 
-  const addTenant = async (payload: any) => {
+  const addTenant = async (payload: Record<string, unknown>) => {
     setSaving(true);
     try {
       await tenantService.registerTenant(payload);
       toast.success("Showroom added successfully!");
       await fetchTenants();
       return true;
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || "Failed to add showroom");
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || "Failed to add showroom");
       return false;
     } finally {
       setSaving(false);

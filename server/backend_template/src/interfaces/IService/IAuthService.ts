@@ -2,13 +2,13 @@ import { OTPType, UserRole } from '../../types';
 import { IUser } from '../IModel/IUser';
 
 export interface IAuthService {
-    register(userData: any): Promise<{ user: IUser; accessToken: string; refreshToken: string }>;
+    register(userData: unknown): Promise<{ user: IUser; accessToken: string; refreshToken: string }>;
     login(email: string, password?: string, method?: 'password' | 'otp'): Promise<{ user: IUser; accessToken: string; refreshToken: string }>;
     logout(userId: string): Promise<void>;
     socialLogin(user: IUser): Promise<{ accessToken: string; refreshToken: string }>;
 
     refreshToken(token: string): Promise<{ accessToken: string; refreshToken: string }>;
-    validateToken(token: string): Promise<any>;
+    validateToken(token: string): Promise<unknown>;
 
     requestPasswordReset(email: string): Promise<void>;
     resetPassword(email: string, otp: string, newPassword?: string): Promise<void>;
@@ -19,8 +19,8 @@ export interface IAuthService {
     generateVerificationOTPs(userId: string, type: OTPType): Promise<void>;
 
     getUserFromToken(token: string): Promise<IUser>;
-    updateProfile(userId: string, updateData: any): Promise<IUser>;
+    updateProfile(userId: string, updateData: unknown): Promise<IUser>;
 
-    generateAccessToken(user: any): string;
-    generateRefreshToken(user: any): string;
+    generateAccessToken(user: unknown): string;
+    generateRefreshToken(user: unknown): string;
 }

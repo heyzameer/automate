@@ -1,17 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { User, Shield, Bell, Key, Save, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ShowroomSettings = () => {
-    const [user, setUser] = useState(null);
-    const [loading, setLoading] = useState(false);
-
-    useEffect(() => {
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    const [user, setUser] = useState<{ fullName: string; email: string; phone?: string } | null>(() => {
         const storedUser = localStorage.getItem('user');
-        if (storedUser) {
-            setUser(JSON.parse(storedUser));
-        }
-    }, []);
+        return storedUser ? JSON.parse(storedUser) : null;
+    });
+    const [loading, setLoading] = useState(false);
 
     const handleSave = () => {
         setLoading(true);

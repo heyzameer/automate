@@ -1,19 +1,18 @@
 import React, { useState, useEffect } from 'react';
-import { MessageSquare, Shield, ExternalLink, Loader2, Save, Power } from 'lucide-react';
+import { MessageSquare, ExternalLink, Loader2, Power } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 const WhatsAppConfig = () => {
-    const [tenants, setTenants] = useState([]);
+    const [tenants, setTenants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
-    const [updating, setUpdating] = useState(false);
 
     useEffect(() => {
         const fetchTenants = async () => {
             try {
                 const { data } = await api.get('/super/tenants');
                 setTenants(data.data);
-            } catch (error) {
+            } catch {
                 toast.error("Failed to fetch showrooms");
             } finally {
                 setLoading(false);
@@ -22,17 +21,14 @@ const WhatsAppConfig = () => {
         fetchTenants();
     }, []);
 
-    const handleUpdateWA = async (id, config) => {
-        setUpdating(true);
+    const handleUpdateWA = async (id: string, config: any) => {
         try {
             await api.patch(`/super/tenants/${id}`, { whatsappConfig: config });
             toast.success("WhatsApp configuration updated");
             // Refresh local state
             setTenants(tenants.map(t => (t._id || t.id) === id ? { ...t, whatsappConfig: config } : t));
-        } catch (error) {
+        } catch {
             toast.error("Failed to update config");
-        } finally {
-            setUpdating(false);
         }
     };
 

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Laptop, Lock, Globe, Save } from 'lucide-react';
+import { Database, Lock, Globe, Save } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const SystemSettings = () => {

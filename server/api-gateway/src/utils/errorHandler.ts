@@ -6,9 +6,9 @@ import config from '../config';
 export class AppError extends Error implements CustomError {
     statusCode: number;
     isOperational: boolean;
-    data?: any;
+    data?: unknown;
 
-    constructor(message: string, statusCode: number, data?: any) {
+    constructor(message: string, statusCode: number, data?: unknown) {
         super(message);
         this.statusCode = statusCode;
         this.isOperational = true;
@@ -43,13 +43,13 @@ export const handleError = (error: CustomError, req: Request, res: Response, _ne
     res.status(statusCode).json({
         success: false,
         message,
-        data: (error as any).data,
+        data: (error as unknown).data,
         timestamp: new Date(),
         ...(config.env === 'development' && { stack: error.stack }),
     });
 };
 
-export const asyncHandler = (fn: any) => {
+export const asyncHandler = (fn: unknown) => {
     return (req: Request, res: Response, next: NextFunction) => {
         Promise.resolve(fn(req, res, next)).catch(next);
     };

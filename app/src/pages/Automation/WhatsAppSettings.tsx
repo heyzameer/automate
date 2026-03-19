@@ -1,13 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { MessageSquare, Save, Power, Image, FileText, MapPin, Loader2 } from 'lucide-react';
+import { MessageSquare, Save, Image, FileText, MapPin, Loader2 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
 export default function Automation() {
-    const [enabled, setEnabled] = useState(true);
-    const [tenant, setTenant] = useState(null);
+    const [tenant, setTenant] = useState<{name?: string} | null>(null);
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
     
@@ -34,7 +33,7 @@ export default function Automation() {
                         includeLocation: t.whatsappConfig?.includeLocation ?? true
                     });
                 }
-            } catch (error) {
+            } catch {
                 toast.error("Failed to load automation settings");
             } finally {
                 setLoading(false);
@@ -48,7 +47,7 @@ export default function Automation() {
         try {
             await api.patch('/auth/my-tenant', { whatsappConfig: config });
             toast.success("Automation settings saved successfully");
-        } catch (error) {
+        } catch {
             toast.error("Failed to save settings");
         } finally {
             setSaving(false);

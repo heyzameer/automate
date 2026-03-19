@@ -12,7 +12,7 @@ export const useVehicles = () => {
     try {
       const data = await vehicleService.getAll();
       setVehicles(data);
-    } catch (error) {
+    } catch {
       toast.error('Failed to fetch vehicles');
     } finally {
       setLoading(false);
@@ -30,8 +30,9 @@ export const useVehicles = () => {
       toast.success('Vehicle listed successfully!');
       await fetchVehicles();
       return true;
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to create vehicle');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'Failed to create vehicle');
       return false;
     } finally {
       setSaving(false);
@@ -44,7 +45,7 @@ export const useVehicles = () => {
       toast.success('Vehicle removed');
       setVehicles(prev => prev.filter(v => (v._id || v.id) !== id));
       return true;
-    } catch (error) {
+    } catch {
       toast.error('Failed to delete vehicle');
       return false;
     }
@@ -57,8 +58,9 @@ export const useVehicles = () => {
       setVehicles(prev => prev.map(v => (v._id || v.id) === id ? updated : v));
       toast.success('Vehicle updated');
       return true;
-    } catch (error: any) {
-      toast.error(error.response?.data?.message || 'Failed to update vehicle');
+    } catch (err: unknown) {
+      const e = err as { response?: { data?: { message?: string } } };
+      toast.error(e.response?.data?.message || 'Failed to update vehicle');
       return false;
     } finally {
       setSaving(false);

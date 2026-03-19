@@ -6,10 +6,10 @@ import { logger } from '../utils/logger';
 
 @injectable()
 export class EmailService implements IEmailService {
-    private transporter: nodemailer.Transporter;
+    private _transporter: nodemailer.Transporter;
 
     constructor() {
-        this.transporter = nodemailer.createTransport({
+        this._transporter = nodemailer.createTransport({
             host: config.email.host,
             port: config.email.port,
             secure: config.email.secure,
@@ -19,12 +19,12 @@ export class EmailService implements IEmailService {
             },
         });
 
-        this.verifyTransporter();
+        this._verifyTransporter();
     }
 
-    private async verifyTransporter() {
+    private async _verifyTransporter() {
         try {
-            await this.transporter.verify();
+            await this._transporter.verify();
             logger.info('Email transporter verified successfully');
         } catch (error) {
             logger.error('Email transporter verification failed:', error);
@@ -54,7 +54,7 @@ export class EmailService implements IEmailService {
         };
 
         try {
-            await this.transporter.sendMail(mailOptions);
+            await this._transporter.sendMail(mailOptions);
             logger.info(`OTP email sent to ${to}`);
         } catch (error) {
             logger.error(`Failed to send OTP email to ${to}:`, error);
@@ -79,7 +79,7 @@ export class EmailService implements IEmailService {
         };
 
         try {
-            await this.transporter.sendMail(mailOptions);
+            await this._transporter.sendMail(mailOptions);
             logger.info(`Welcome email sent to ${to}`);
         } catch (error) {
             logger.error(`Failed to send welcome email to ${to}:`, error);

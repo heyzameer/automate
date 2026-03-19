@@ -11,8 +11,7 @@ import {
     Gauge,
     Fuel,
     Settings,
-    User,
-    CheckCircle
+    User
 } from 'lucide-react';
 import { vehicles, type VehicleMock } from '@/lib/mock-data';
 import { ROUTES } from '../../constants/routes';

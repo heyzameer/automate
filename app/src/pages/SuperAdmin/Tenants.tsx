@@ -3,6 +3,7 @@ import {
   Plus, Search, ToggleLeft, ToggleRight, Calendar, Loader2, Trash2, Edit2, X, Save
 } from 'lucide-react';
 import { useTenants } from '../../hooks/useTenants';
+import { Tenant } from '../../types';
 
 const TenantList = () => {
   const { tenants, loading, saving, toggleStatus, updatePlan, addTenant } = useTenants();
@@ -10,9 +11,9 @@ const TenantList = () => {
   const [planFilter, setPlanFilter] = useState('All Plans');
   
   // Modal State
-  const [editingTenant, setEditingTenant] = useState<any>(null);
+  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-  const [editForm, setEditForm] = useState<any>({});
+  const [editForm, setEditForm] = useState({ plan: 'basic', maxCars: 50, maxLeads: 100, expiryDate: '' });
   const [addForm, setAddForm] = useState({
     name: '',
     email: '',
@@ -26,19 +27,19 @@ const TenantList = () => {
     await toggleStatus(id, currentStatus);
   };
 
-  const openEditModal = (tenant: any) => {
+  const openEditModal = (tenant: Tenant) => {
     setEditingTenant(tenant);
     setEditForm({
-      plan: tenant.plan || 'basic',
-      maxCars: tenant.limits?.maxCars || 50,
-      maxLeads: tenant.limits?.maxLeads || 100,
-      expiryDate: new Date(tenant.expiryDate).toISOString().split('T')[0]
+      plan: String(tenant.plan || 'basic'),
+      maxCars: Number((tenant.limits as { maxCars?: number })?.maxCars || 50),
+      maxLeads: Number((tenant.limits as { maxLeads?: number })?.maxLeads || 100),
+      expiryDate: new Date(String(tenant.expiryDate)).toISOString().split('T')[0]
     });
   };
 
   const closeEditModal = () => {
     setEditingTenant(null);
-    setEditForm({});
+    setEditForm({ plan: 'basic', maxCars: 50, maxLeads: 100, expiryDate: '' });
   };
 
   const handleUpdateTenant = async () => {
@@ -51,7 +52,7 @@ const TenantList = () => {
       },
       expiryDate: new Date(editForm.expiryDate).toISOString()
     };
-    await updatePlan(editingTenant._id || editingTenant.id, payload);
+    await updatePlan(String(editingTenant._id || editingTenant.id), payload);
     closeEditModal();
   };
 
@@ -235,7 +236,7 @@ const TenantList = () => {
                     <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Plan Tier</label>
                     <select 
                         value={editForm.plan.toLowerCase()}
-                        onChange={(e) => setEditForm((prev: any) => ({ ...prev, plan: e.target.value }))}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, plan: e.target.value }))}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     >
                         <option value="basic">Basic Plan</option>
@@ -251,7 +252,7 @@ const TenantList = () => {
                             type="number" 
                             min="1"
                             value={editForm.maxCars}
-                            onChange={(e) => setEditForm((prev: any) => ({ ...prev, maxCars: Number(e.target.value) }))}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, maxCars: Number(e.target.value) }))}
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         />
                     </div>
@@ -261,7 +262,7 @@ const TenantList = () => {
                             type="number" 
                             min="1"
                             value={editForm.maxLeads}
-                            onChange={(e) => setEditForm((prev: any) => ({ ...prev, maxLeads: Number(e.target.value) }))}
+                            onChange={(e) => setEditForm((prev) => ({ ...prev, maxLeads: Number(e.target.value) }))}
                             className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         />
                     </div>
@@ -272,7 +273,7 @@ const TenantList = () => {
                     <input 
                         type="date" 
                         value={editForm.expiryDate}
-                        onChange={(e) => setEditForm((prev: any) => ({ ...prev, expiryDate: e.target.value }))}
+                        onChange={(e) => setEditForm((prev) => ({ ...prev, expiryDate: e.target.value }))}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
                 </div>
@@ -316,7 +317,7 @@ const TenantList = () => {
                         type="text" 
                         required
                         value={addForm.name}
-                        onChange={(e) => setAddForm((prev: any) => ({ ...prev, name: e.target.value }))}
+                        onChange={(e) => setAddForm((prev) => ({ ...prev, name: e.target.value }))}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         placeholder="e.g. Royal Motors"
                     />
@@ -328,7 +329,7 @@ const TenantList = () => {
                         type="text" 
                         required
                         value={addForm.fullName}
-                        onChange={(e) => setAddForm((prev: any) => ({ ...prev, fullName: e.target.value }))}
+                        onChange={(e) => setAddForm((prev) => ({ ...prev, fullName: e.target.value }))}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         placeholder="e.g. John Doe"
                     />
@@ -340,7 +341,7 @@ const TenantList = () => {
                         type="email" 
                         required
                         value={addForm.email}
-                        onChange={(e) => setAddForm((prev: any) => ({ ...prev, email: e.target.value }))}
+                        onChange={(e) => setAddForm((prev) => ({ ...prev, email: e.target.value }))}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         placeholder="admin@example.com"
                     />
@@ -352,7 +353,7 @@ const TenantList = () => {
                         type="text" 
                         required
                         value={addForm.phone}
-                        onChange={(e) => setAddForm((prev: any) => ({ ...prev, phone: e.target.value }))}
+                        onChange={(e) => setAddForm((prev) => ({ ...prev, phone: e.target.value }))}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         placeholder="+91 9999999999"
                     />
@@ -365,7 +366,7 @@ const TenantList = () => {
                         required
                         minLength={8}
                         value={addForm.password}
-                        onChange={(e) => setAddForm((prev: any) => ({ ...prev, password: e.target.value }))}
+                        onChange={(e) => setAddForm((prev) => ({ ...prev, password: e.target.value }))}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                         placeholder="Min 8 characters"
                     />
@@ -377,7 +378,7 @@ const TenantList = () => {
                         type="date" 
                         required
                         value={addForm.expiryDate}
-                        onChange={(e) => setAddForm((prev: any) => ({ ...prev, expiryDate: e.target.value }))}
+                        onChange={(e) => setAddForm((prev) => ({ ...prev, expiryDate: e.target.value }))}
                         className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
                     />
                 </div>

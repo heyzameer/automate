@@ -29,7 +29,7 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
     async findWithPagination(
         filter: FilterQuery<T> = {},
         pagination: PaginationOptions,
-        populateFields?: any
+        populateFields?: unknown
     ): Promise<PaginatedResult<T>> {
         const { page, limit, sort, order } = pagination;
         const skip = (page - 1) * limit;
@@ -40,10 +40,10 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
         if (populateFields) {
             if (Array.isArray(populateFields)) {
                 populateFields.forEach(field => {
-                    query = query.populate(field) as any;
+                    query = query.populate(field) as unknown;
                 });
             } else {
-                query = query.populate(populateFields) as any;
+                query = query.populate(populateFields) as unknown;
             }
         }
 
@@ -106,7 +106,7 @@ export abstract class BaseRepository<T extends Document> implements IBaseReposit
         return count > 0;
     }
 
-    async aggregate(pipeline: any[]): Promise<any[]> {
+    async aggregate(pipeline: unknown[]): Promise<any[]> {
         return this.model.aggregate(pipeline);
     }
 }

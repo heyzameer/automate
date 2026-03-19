@@ -1,4 +1,4 @@
-import { Document, FilterQuery, QueryOptions, UpdateQuery } from 'mongoose';
+import { Document, FilterQuery, QueryOptions, UpdateQuery, PipelineStage } from 'mongoose';
 import { PaginatedResult, PaginationOptions } from '../../types';
 
 export interface IBaseRepository<T extends Document> {
@@ -9,7 +9,7 @@ export interface IBaseRepository<T extends Document> {
     findWithPagination(
         filter: FilterQuery<T>,
         pagination: PaginationOptions,
-        populateFields?: any
+        populateFields?: string | string[] | Record<string, unknown>
     ): Promise<PaginatedResult<T>>;
     update(id: string, data: UpdateQuery<T>, options?: QueryOptions): Promise<T | null>;
     updateOne(filter: FilterQuery<T>, data: UpdateQuery<T>, options?: QueryOptions): Promise<T | null>;
@@ -20,5 +20,5 @@ export interface IBaseRepository<T extends Document> {
     count(filter?: FilterQuery<T>): Promise<number>;
     countDocuments(filter?: FilterQuery<T>): Promise<number>;
     exists(filter: FilterQuery<T>): Promise<boolean>;
-    aggregate(pipeline: any[]): Promise<any[]>;
+    aggregate(pipeline: PipelineStage[]): Promise<unknown[]>;
 }
