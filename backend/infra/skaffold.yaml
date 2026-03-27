@@ -1,0 +1,17 @@
+apiVersion: skaffold/v4beta13
+kind: Config
+metadata:
+  name: carbot-backend-infra
+
+requires:
+  - configs: ["auth-service-cfg"]
+    path: ../services/auth-service
+  - configs: ["api-gateway-cfg"]
+    path: ../services/api-gateway
+
+manifests:
+  rawYaml:
+    - ./k8s/*
+
+deploy:
+  kubectl: {}

@@ -1,0 +1,42 @@
+{
+  "name": "@carbot/auth-service",
+  "version": "1.0.0",
+  "description": "CarBot Authentication Service",
+  "main": "dist/main.js",
+  "scripts": {
+    "dev": "tsx watch src/main.ts",
+    "build": "tsc",
+    "lint": "biome lint .",
+    "format": "biome format . --write",
+    "test": "vitest"
+  },
+  "dependencies": {
+    "@carbot/logger": "workspace:*",
+    "express": "^4.18.2",
+    "mongoose": "^7.6.3",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^6.10.0",
+    "dotenv": "^16.6.1",
+    "passport": "^0.7.0",
+    "passport-google-oauth20": "^2.0.0",
+    "nodemailer": "^7.0.12",
+    "ioredis": "^5.9.2",
+    "joi": "^17.11.0",
+    "compression": "^1.7.4",
+    "reflect-metadata": "^0.2.2",
+    "tsyringe": "^4.10.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "@types/node": "^24.10.1",
+    "@types/express": "^5.0.5",
+    "@types/jsonwebtoken": "^9.0.10",
+    "tsx": "^4.20.6",
+    "vitest": "^3.2.4",
+    "@biomejs/biome": "2.3.5"
+  }
+}

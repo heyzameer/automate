@@ -1,0 +1,17 @@
+{
+  "name": "carbot-backend",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Monorepo for CarBot Backend services and infrastructure",
+  "scripts": {
+    "dev": "pnpm --recursive run dev",
+    "build": "pnpm --recursive run build",
+    "lint": "pnpm --recursive run lint",
+    "format": "pnpm --recursive run format",
+    "typecheck": "pnpm --recursive run typecheck"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3",
+    "tsx": "^4.20.6"
+  }
+}
