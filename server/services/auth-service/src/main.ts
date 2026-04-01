@@ -67,7 +67,7 @@ class Application {
         this._app.get('/', (req, res) => {
             res.json({
                 success: true,
-                message: 'Backend Template API',
+                message: 'CarBot AI — Auth Service',
                 version: '1.0.0',
                 timestamp: new Date(),
                 docs: '/api/v1/health',

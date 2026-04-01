@@ -98,6 +98,7 @@ export interface AppConfig {
     };
     logs: {
         level: string;
+        directory: string;
         maxSize: string;
         maxFiles: string;
     };
@@ -106,6 +107,11 @@ export interface AppConfig {
         host: string;
         port: number;
         password?: string;
+    };
+    google?: {
+        clientId: string;
+        clientSecret: string;
+        callbackUrl: string;
     };
 }
 

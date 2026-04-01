@@ -1,0 +1,10 @@
+# Namespace definition — apply this first.
+# kubectl apply -f infra/k8s/namespace.yaml
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: carbot
+  labels:
+    name: carbot
+    environment: production

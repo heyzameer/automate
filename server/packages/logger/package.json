@@ -1,0 +1,21 @@
+{
+  "name": "@carbot/logger",
+  "version": "1.0.0",
+  "description": "Centralised Pino/Winston structured logger for all CarBot services",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w",
+    "clean": "rimraf dist"
+  },
+  "dependencies": {
+    "winston": "^3.10.0",
+    "winston-daily-rotate-file": "^5.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "rimraf": "^5.0.5",
+    "@types/node": "^20.8.6"
+  }
+}

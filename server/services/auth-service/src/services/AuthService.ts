@@ -109,23 +109,23 @@ export class AuthService implements IAuthService {
     }
 
     async login(email: string, password?: string): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
-        console.log(`[AUTH] Login attempt for: ${email}`);
+        logger.info(`[AUTH] Login attempt for: ${email}`);
         const user = await this._userRepository.findByEmail(email);
 
         if (!user) {
-            console.log(`[AUTH] User not found: ${email}`);
+            logger.warn(`[AUTH] User not found: ${email}`);
             throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
         }
 
         if (!user.isActive) {
-            console.log(`[AUTH] User inactive: ${email}`);
+            logger.warn(`[AUTH] User inactive: ${email}`);
             throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
         }
 
         if (password) {
-            console.log(`[AUTH] Comparing password for ${email}`);
+            logger.debug(`[AUTH] Comparing password for ${email}`);
             const isPasswordValid = await comparePassword(password, user.password || '');
-            console.log(`[AUTH] Password valid: ${isPasswordValid}`);
+            logger.debug(`[AUTH] Password valid: ${isPasswordValid}`);
             if (!isPasswordValid) {
                 throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
             }
@@ -156,33 +156,33 @@ export class AuthService implements IAuthService {
     }
 
     async superLogin(email: string, password?: string): Promise<{ user: IUser; accessToken: string; refreshToken: string }> {
-        console.log(`[AUTH] Super login attempt for: ${email}`);
+        logger.info(`[AUTH] Super login attempt for: ${email}`);
         const user = await this._userRepository.findByEmail(email);
 
         if (!user) {
-            console.log(`[AUTH] User not found: ${email}`);
+            logger.warn(`[AUTH] User not found: ${email}`);
             throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
         }
 
         if (!user.isActive) {
-            console.log(`[AUTH] User inactive: ${email}`);
+            logger.warn(`[AUTH] User inactive: ${email}`);
             throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
         }
 
         if (user.role !== UserRole.SUPER_ADMIN) {
-            console.log(`[AUTH] Role mismatch. User role: ${user.role}, expected: ${UserRole.SUPER_ADMIN}`);
+            logger.warn(`[AUTH] Role mismatch. User role: ${user.role}, expected: ${UserRole.SUPER_ADMIN}`);
             throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
         }
 
         if (password) {
-            console.log(`[AUTH] Comparing password for ${email}`);
+            logger.debug(`[AUTH] Comparing password for ${email}`);
             const isPasswordValid = await comparePassword(password, user.password || '');
-            console.log(`[AUTH] Password valid: ${isPasswordValid}`);
+            logger.debug(`[AUTH] Password valid: ${isPasswordValid}`);
             if (!isPasswordValid) {
                 throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
             }
         } else {
-            console.log(`[AUTH] No password provided for ${email}`);
+            logger.warn(`[AUTH] No password provided for super login attempt by ${email}`);
         }
 
         await this._userRepository.updateLastLogin(user.id);

@@ -19,12 +19,14 @@ export interface AppConfig {
     };
     logs: {
         level: string;
+        directory: string;
         maxSize: string;
         maxFiles: string;
     };
     services: {
         auth: string;
     };
+    jwtSecret: string;
 }
 
 export interface CustomError extends Error {
@@ -36,6 +38,7 @@ export interface RequestUser {
     userId: string;
     email: string;
     role: UserRole;
+    tenantId?: string;
 }
 
 declare global {

@@ -1,0 +1,118 @@
+# auth-service — Kubernetes Deployment + Service
+# Apply: kubectl apply -f infra/k8s/auth-service/
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: auth-service
+  namespace: carbot
+  labels:
+    app: auth-service
+    version: v1
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: auth-service
+  template:
+    metadata:
+      labels:
+        app: auth-service
+        version: v1
+    spec:
+      containers:
+        - name: auth-service
+          image: carbot/auth-service:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5001
+          envFrom:
+            - configMapRef:
+                name: auth-service-config
+            - secretRef:
+                name: auth-service-secrets
+          resources:
+            requests:
+              cpu: '150m'
+              memory: '256Mi'
+            limits:
+              cpu: '750m'
+              memory: '768Mi'
+          livenessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 5001
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /api/v1/health
+              port: 5001
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: auth-service
+  namespace: carbot
+spec:
+  selector:
+    app: auth-service
+  ports:
+    - protocol: TCP
+      port: 5001
+      targetPort: 5001
+  type: ClusterIP   # Internal only — exposed through the API Gateway
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: auth-service-config
+  namespace: carbot
+data:
+  NODE_ENV: "production"
+  PORT: "5001"
+  JWT_EXPIRATION: "24h"
+  JWT_REFRESH_EXPIRATION: "7d"
+  CORS_CREDENTIALS: "true"
+  RATE_LIMIT_WINDOW_MS: "900000"
+  RATE_LIMIT_MAX: "5000"
+  OTP_EXPIRATION_MINUTES: "10"
+  OTP_MAX_ATTEMPTS: "3"
+  EMAIL_SERVICE: "gmail"
+  EMAIL_HOST: "smtp.gmail.com"
+  EMAIL_PORT: "465"
+  EMAIL_SECURE: "true"
+  LOG_LEVEL: "info"
+  MAX_SIZE_LIMIT: "1mb"
+  COOKIE_EXPIRATION: "7"
+---
+# IMPORTANT: Apply this Secret separately from a secure vault or CI/CD pipeline.
+# Never commit real secret values to source control.
+#
+# Create with:
+#   kubectl create secret generic auth-service-secrets \
+#     --from-literal=JWT_SECRET='<your-secret>' \
+#     --from-literal=MONGODB_URI='<your-uri>' \
+#     --from-literal=EMAIL_USER='<email>' \
+#     --from-literal=EMAIL_PASS='<pass>' \
+#     --from-literal=ENCRYPTION_SECRET='<32-byte-hex>' \
+#     --from-literal=GOOGLE_CLIENT_ID='<id>' \
+#     --from-literal=GOOGLE_CLIENT_SECRET='<secret>' \
+#     -n carbot
+apiVersion: v1
+kind: Secret
+metadata:
+  name: auth-service-secrets
+  namespace: carbot
+type: Opaque
+# data values must be base64 encoded — populate via CI/CD, not manually
+stringData:
+  JWT_SECRET: "REPLACE_ME"
+  MONGODB_URI: "REPLACE_ME"
+  EMAIL_USER: "REPLACE_ME"
+  EMAIL_PASS: "REPLACE_ME"
+  ENCRYPTION_SECRET: "REPLACE_ME"
+  GOOGLE_CLIENT_ID: "REPLACE_ME"
+  GOOGLE_CLIENT_SECRET: "REPLACE_ME"

@@ -1,0 +1,66 @@
+export enum HttpStatus {
+  OK = 200,
+  CREATED = 201,
+  ACCEPTED = 202,
+  NO_CONTENT = 204,
+  BAD_REQUEST = 400,
+  UNAUTHORIZED = 401,
+  FORBIDDEN = 403,
+  NOT_FOUND = 404,
+  METHOD_NOT_ALLOWED = 405,
+  CONFLICT = 409,
+  UNPROCESSABLE_ENTITY = 422,
+  TOO_MANY_REQUESTS = 429,
+  INTERNAL_SERVER_ERROR = 500,
+  NOT_IMPLEMENTED = 501,
+  BAD_GATEWAY = 502,
+  SERVICE_UNAVAILABLE = 503,
+  GATEWAY_TIMEOUT = 504,
+}
+
+export enum ResponseMessages {
+  // Authentication & Authorization
+  AUTH_REQUIRED = 'Authentication required',
+  AUTH_TOKEN_REQUIRED = 'Authentication token required',
+  INVALID_TOKEN = 'Invalid or expired token',
+  TOKEN_EXPIRED = 'Token has expired',
+  ACCESS_DENIED = 'Access denied',
+  UNAUTHORIZED = 'Unauthorized access',
+  INSUFFICIENT_PERMISSIONS = 'Insufficient permissions',
+  INVALID_CREDENTIALS = 'Invalid email or password',
+  ACCOUNT_DEACTIVATED = 'Account has been deactivated',
+  ACCOUNT_LOCKED = 'Account is locked',
+
+  // User & Registration
+  USER_NOT_FOUND = 'User not found',
+  USER_NOT_FOUND_OR_INACTIVE = 'User not found or inactive',
+  EMAIL_ALREADY_REGISTERED = 'Email address is already in use',
+  PHONE_ALREADY_REGISTERED = 'Phone number is already in use',
+  REGISTER_SUCCESS = 'Registration successful',
+  LOGIN_SUCCESS = 'Login successful',
+  LOGOUT_SUCCESS = 'Logout successful',
+  PROFILE_RETRIEVED = 'Profile retrieved successfully',
+  PROFILE_UPDATED = 'Profile updated successfully',
+
+  // Password & OTP
+  PASSWORD_RESET_OTP_SENT = 'Password reset OTP has been sent to your email',
+  PASSWORD_RESET_SUCCESS = 'Password has been reset successfully',
+  PASSWORD_CHANGED = 'Password changed successfully',
+  CURRENT_PASSWORD_INCORRECT = 'The current password you entered is incorrect',
+  OTP_SENT = 'OTP sent successfully',
+  OTP_VERIFIED = 'OTP verified successfully',
+  OTP_INVALID = 'Invalid OTP code',
+  OTP_EXPIRED = 'OTP has expired',
+
+  // Global & Generic
+  GENERIC_SUCCESS = 'Operation completed successfully',
+  GENERIC_ERROR = 'An unexpected error occurred',
+  INVALID_REQUEST = 'The request payload is invalid',
+  VALIDATION_FAILED = 'Validation failed',
+  NOT_FOUND = 'The requested resource was not found',
+  RESOURCE_CREATED = 'Resource created successfully',
+  RESOURCE_UPDATED = 'Resource updated successfully',
+  RESOURCE_DELETED = 'Resource deleted successfully',
+  INTERNAL_SERVER_ERROR = 'Internal server error',
+  SERVICE_UNAVAILABLE = 'The service is temporarily unavailable',
+}

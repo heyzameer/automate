@@ -8,14 +8,29 @@ import config from '../config';
 
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
     try {
-        const authHeader = req.headers.authorization;
+        // 1. Check if headers were injected by the API Gateway
+        const userIdHeader = req.headers['x-user-id'] as string;
+        const tenantIdHeader = req.headers['x-tenant-id'] as string;
+        const userEmailHeader = req.headers['x-user-email'] as string;
+        const userRoleHeader = req.headers['x-user-role'] as string;
 
+        if (userIdHeader) {
+            req.user = {
+                userId: userIdHeader,
+                email: userEmailHeader || '',
+                role: userRoleHeader as UserRole,
+                tenantId: tenantIdHeader,
+            };
+            return next();
+        }
+
+        // 2. Fallback to direct token verification
+        const authHeader = req.headers.authorization;
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
             return sendError(res, 'Authentication token required', 401);
         }
 
         const token = authHeader.split(' ')[1];
-
         try {
             const decoded = jwt.verify(token, config.jwtSecret) as JWTPayload;
 
@@ -39,6 +54,7 @@ export const authenticate = async (req: Request, res: Response, next: NextFuncti
         next(error);
     }
 };
+
 
 export const authorize = (roles: UserRole[]) => {
     return (req: Request, res: Response, next: NextFunction) => {

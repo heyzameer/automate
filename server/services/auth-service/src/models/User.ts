@@ -1,6 +1,7 @@
 import mongoose, { Schema } from 'mongoose';
 import { UserRole } from '../types';
 import { IUser } from '../interfaces/IModel/IUser';
+import { tenantPlugin } from '@carbot/common';
 
 const userSchema = new Schema<IUser>(
     {
@@ -77,6 +78,9 @@ const userSchema = new Schema<IUser>(
         },
     }
 );
+
+// Apply Tenant Isolation Plugin
+userSchema.plugin(tenantPlugin);
 
 // Indexes for performance
 userSchema.index({ email: 1 }, { unique: true });

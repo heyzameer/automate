@@ -3,7 +3,7 @@ import { createServer } from 'http';
 import dotenv from 'dotenv';
 dotenv.config();
 import config from './config';
-import 'reflect-metadata';
+
 import { corsMiddleware } from './middleware/cors';
 import { securityMiddleware } from './middleware/security';
 import { generalLimiter } from './middleware/rateLimit';

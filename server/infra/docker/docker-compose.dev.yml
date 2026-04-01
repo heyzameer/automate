@@ -1,0 +1,77 @@
+# docker-compose.dev.yml
+# Runs the full CarBot backend stack locally without Kubernetes.
+# Usage: docker compose -f infra/docker/docker-compose.dev.yml up
+
+version: '3.9'
+
+services:
+  # ─── Infrastructure ──────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7
+    container_name: carbot-mongo
+    restart: unless-stopped
+    environment:
+      MONGO_INITDB_DATABASE: carbot
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+    networks:
+      - carbot-net
+
+  redis:
+    image: redis:7-alpine
+    container_name: carbot-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    networks:
+      - carbot-net
+
+  # ─── Services ────────────────────────────────────────────────────────────────
+  api-gateway:
+    build:
+      context: ../..          # monorepo root (server/)
+      dockerfile: services/api-gateway/Dockerfile
+    container_name: carbot-api-gateway
+    restart: unless-stopped
+    ports:
+      - '5000:5000'
+    environment:
+      NODE_ENV: development
+      PORT: 5000
+      CORS_ORIGIN: http://localhost:5173
+      CORS_CREDENTIALS: 'true'
+      AUTH_SERVICE_URL: http://auth-service:5001
+      LOG_LEVEL: debug
+    depends_on:
+      - auth-service
+    networks:
+      - carbot-net
+
+  auth-service:
+    build:
+      context: ../..
+      dockerfile: services/auth-service/Dockerfile
+    container_name: carbot-auth-service
+    restart: unless-stopped
+    ports:
+      - '5001:5001'
+    env_file:
+      - ../../services/auth-service/.env
+    environment:
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongo:27017/carbot_auth
+      REDIS_HOST: redis
+    depends_on:
+      - mongo
+      - redis
+    networks:
+      - carbot-net
+
+volumes:
+  mongo_data:
+
+networks:
+  carbot-net:
+    driver: bridge

@@ -8,7 +8,7 @@ const error = (message = 'error') => {
 
 const get = (key: string, required = false, fallback?: string): string | undefined => {
     const v = process.env[key];
-    if ((v === undefined || v === '') && required) error(`${key} not defined`);
+    if ((v === undefined || v === '') && required && fallback === undefined) error(`${key} not defined`);
     return (v === undefined || v === '') ? fallback : v;
 };
 
@@ -30,14 +30,14 @@ const getBool = (key: string, fallback = false): boolean => {
 };
 
 const config: AppConfig = {
-    port: getInt('PORT', true, 3000),
+    port: getInt('PORT', true, 5001),
     env: get('NODE_ENV', true, 'development')!,
-    jwtSecret: get('JWT_SECRET', true)!,
+    jwtSecret: get('JWT_SECRET', true, 'supersecretjwtkeyforcarbotai2024')!,
     jwtExpiration: get('JWT_EXPIRATION', false, '24h')!,
     jwtRefreshExpiration: get('JWT_REFRESH_EXPIRATION', false, '7d')!,
 
     cookieExpiration: getInt('COOKIE_EXPIRATION', false, 7), // days
-    frontendUrl: get('FRONTEND_URL', false, 'http://localhost:5173/auth/google/callback')!,
+    frontendUrl: get('FRONTEND_URL', false, 'http://localhost:5173')!,
     maxSizeLimit: get('MAX_SIZE_LIMIT', false, '1mb')!,
 
     database: {
@@ -52,7 +52,7 @@ const config: AppConfig = {
 
     cors: {
         origin: get('CORS_ORIGIN', false, 'http://localhost:5173')!,
-        credentials: getBool('CORS_CREDENTIALS', false),
+        credentials: getBool('CORS_CREDENTIALS', true),
     },
 
     rateLimit: {
@@ -78,6 +78,7 @@ const config: AppConfig = {
 
     logs: {
         level: get('LOG_LEVEL', false, 'info')!,
+        directory: get('LOG_DIRECTORY', false, '../../logs')!,
         maxSize: get('LOG_MAX_SIZE', false, '20m')!,
         maxFiles: get('LOG_MAX_FILES', false, '7d')!,
     },
@@ -90,7 +91,13 @@ const config: AppConfig = {
         password: get('REDIS_PASSWORD', false),
     },
 
-    cookieMaxAge: getInt('COOKIE_MAX_AGE', false, getInt('COOKIE_EXPIRATION', false, 7) * 24 * 60 * 60 * 1000)
+    google: {
+        clientId: get('GOOGLE_CLIENT_ID', false, 'dummy-client-id')!,
+        clientSecret: get('GOOGLE_CLIENT_SECRET', false, 'dummy-client-secret')!,
+        callbackUrl: get('GOOGLE_CALLBACK_URL', false, 'http://localhost:5001/api/v1/auth/google/callback')!,
+    },
+
+    cookieMaxAge: getInt('COOKIE_MAX_AGE', false, getInt('COOKIE_EXPIRATION', false, 7) * 24 * 60 * 60 * 1000),
 };
 
 export default config;

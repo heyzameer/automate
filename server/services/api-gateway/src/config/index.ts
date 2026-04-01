@@ -8,7 +8,7 @@ const error = (message = 'error') => {
 
 const get = (key: string, required = false, fallback?: string): string | undefined => {
     const v = process.env[key];
-    if ((v === undefined || v === '') && required) error(`${key} not defined`);
+    if ((v === undefined || v === '') && required && fallback === undefined) error(`${key} not defined`);
     return (v === undefined || v === '') ? fallback : v;
 };
 
@@ -43,12 +43,14 @@ const config: AppConfig = {
     },
     logs: {
         level: get('LOG_LEVEL', false, 'info')!,
+        directory: get('LOG_DIRECTORY', false, '../../logs')!,
         maxSize: get('LOG_MAX_SIZE', false, '20m')!,
         maxFiles: get('LOG_MAX_FILES', false, '7d')!,
     },
     services: {
         auth: get('AUTH_SERVICE_URL', false, 'http://localhost:5001')!,
     },
+    jwtSecret: get('JWT_SECRET', true, 'supersecretjwtkeyforcarbotai2024')!,
 };
 
 export default config;

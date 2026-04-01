@@ -1,0 +1,17 @@
+{
+  "name": "@carbot/types",
+  "version": "1.0.0",
+  "description": "Shared TypeScript interfaces, enums and DTOs for all CarBot services",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc -w",
+    "clean": "rimraf dist"
+  },
+  "devDependencies": {
+    "typescript": "^5.2.2",
+    "rimraf": "^5.0.5",
+    "@types/node": "^20.8.6"
+  }
+}

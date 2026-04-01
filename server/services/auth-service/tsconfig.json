@@ -3,16 +3,20 @@
         "target": "ES2022",
         "module": "CommonJS",
         "moduleResolution": "node",
-        "rootDir": "src",
         "outDir": "dist",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
         "forceConsistentCasingInFileNames": true,
         "experimentalDecorators": true,
-        "emitDecoratorMetadata": true
+        "emitDecoratorMetadata": true,
+        "baseUrl": ".",
+        "paths": {
+            "@carbot/common": ["../../packages/common/src"]
+        }
     },
     "include": [
-        "src/**/*"
+        "src/**/*",
+        "../../packages/common/src/**/*"
     ]
 }

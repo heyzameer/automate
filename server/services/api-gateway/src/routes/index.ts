@@ -3,8 +3,8 @@ import proxy from 'express-http-proxy';
 import config from '../config';
 import { sendSuccess } from '../utils/response';
 import { logger } from '../utils/logger';
-import { IncomingMessage } from 'http';
 import { GATEWAY_ROUTES, PROXY_PATHS } from '../constants/routes';
+import { authenticate } from '../middleware/auth';
 
 const router = Router();
 
@@ -18,23 +18,36 @@ router.get(GATEWAY_ROUTES.HEALTH, (req: Request, res: Response) => {
     });
 });
 
-// Proxy to Auth Service
-router.use(GATEWAY_ROUTES.AUTH, proxy(config.services.auth, {
-    proxyReqPathResolver: (req: any) => {
-        const path = `${PROXY_PATHS.AUTH_SERVICE}${req.url}`;
-        logger.info(`Proxying to Auth Service: ${path}`);
+// Middleware to inject headers for microservices
+const proxyOptions = {
+    proxyReqOptDecorator: (proxyReqOpts: any, srcReq: Request) => {
+        if (srcReq.user) {
+            proxyReqOpts.headers['X-User-Id'] = srcReq.user.userId;
+            proxyReqOpts.headers['X-User-Email'] = srcReq.user.email;
+            proxyReqOpts.headers['X-User-Role'] = srcReq.user.role;
+            if (srcReq.user.tenantId) {
+                proxyReqOpts.headers['X-Tenant-Id'] = srcReq.user.tenantId;
+            }
+        }
+        return proxyReqOpts;
+    },
+    proxyReqPathResolver: (req: Request) => {
+        const path = req.originalUrl.includes(GATEWAY_ROUTES.AUTH)
+            ? `${PROXY_PATHS.AUTH_SERVICE}${req.url}`
+            : `${PROXY_PATHS.SUPER_ADMIN_API}${req.url}`;
+        logger.info(`Proxying to service: ${path}`);
         return path;
     }
-}) as any);
+};
+
+// Apply authentication to all proxied routes
+router.use(authenticate);
+
+// Proxy to Auth Service
+router.use(GATEWAY_ROUTES.AUTH, proxy(config.services.auth, proxyOptions) as any);
 
 // Proxy to Super Admin (which is in Auth Service)
-router.use(GATEWAY_ROUTES.SUPER_ADMIN, proxy(config.services.auth, {
-    proxyReqPathResolver: (req: any) => {
-        const path = `${PROXY_PATHS.SUPER_ADMIN_API}${req.url}`;
-        logger.info(`Proxying to Super Admin API: ${path}`);
-        return path;
-    }
-}) as any);
+router.use(GATEWAY_ROUTES.SUPER_ADMIN, proxy(config.services.auth, proxyOptions) as any);
 
 // API Root
 router.get(GATEWAY_ROUTES.ROOT, (req: Request, res: Response) => {
@@ -57,3 +70,4 @@ router.use(GATEWAY_ROUTES.WILDCARD, (req: Request, res: Response) => {
 });
 
 export default router;
+

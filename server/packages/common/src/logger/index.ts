@@ -10,8 +10,10 @@ const consoleFormat = winston.format.printf(({ level, message, timestamp, ...met
 });
 
 export const createLogger = (serviceName: string, logsConfig?: any) => {
+    const logDir = logsConfig?.directory || 'logs';
+
     const fileRotateTransport = new DailyRotateFile({
-        filename: `logs/${serviceName}-%DATE%.log`,
+        filename: `${logDir}/${serviceName}-%DATE%.log`,
         datePattern: 'YYYY-MM-DD',
         zippedArchive: true,
         maxSize: logsConfig?.maxSize || '20m',
@@ -20,7 +22,7 @@ export const createLogger = (serviceName: string, logsConfig?: any) => {
     });
 
     const errorRotateTransport = new DailyRotateFile({
-        filename: `logs/${serviceName}-error-%DATE%.log`,
+        filename: `${logDir}/${serviceName}-error-%DATE%.log`,
         datePattern: 'YYYY-MM-DD',
         zippedArchive: true,
         maxSize: logsConfig?.maxSize || '10m',
