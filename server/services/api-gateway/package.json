@@ -36,8 +36,7 @@
         "passport-google-oauth20": "^2.0.0",
         "reflect-metadata": "^0.2.2",
         "tsyringe": "^4.10.0",
-        "winston": "^3.10.0",
-        "winston-daily-rotate-file": "^5.0.0"
+        "@carbot/common": "workspace:*"
     },
     "devDependencies": {
         "@types/bcryptjs": "^2.4.5",
