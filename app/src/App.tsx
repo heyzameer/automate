@@ -18,6 +18,9 @@ import SuperAdminDashboard from './pages/SuperAdmin/Dashboard';
 import FormBuilder from './pages/SuperAdmin/FormBuilder';
 import WhatsAppConfig from './pages/SuperAdmin/WhatsAppConfig';
 import SuperAdminSettings from './pages/SuperAdmin/Settings';
+import SuperAdminBilling from './pages/SuperAdmin/Billing';
+import SuperAdminCampaigns from './pages/SuperAdmin/Campaigns';
+import SuperAdminLeads from './pages/SuperAdmin/Leads';
 import Subscription from './pages/Dashboard/Subscription';
 import ShowroomSettings from './pages/Dashboard/Settings';
 
@@ -34,8 +37,11 @@ function App() {
           <Route index element={<Navigate to={ROUTES.SUPER_ADMIN.DASHBOARD} replace />} />
           <Route path="dashboard" element={<SuperAdminDashboard />} />
           <Route path="showrooms" element={<TenantList />} />
+          <Route path="billing" element={<SuperAdminBilling />} />
+          <Route path="campaigns" element={<SuperAdminCampaigns />} />
           <Route path="form-builder" element={<FormBuilder />} />
           <Route path="wa-config" element={<WhatsAppConfig />} />
+          <Route path="leads" element={<SuperAdminLeads />} />
           <Route path="settings" element={<SuperAdminSettings />} />
         </Route>
 
@@ -46,6 +52,7 @@ function App() {
           <Route path="vehicles">
             <Route index element={<VehicleList />} />
             <Route path="add" element={<AddVehicle />} />
+            <Route path="edit/:id" element={<AddVehicle isEdit={true} />} />
             <Route path=":id" element={<VehicleDetail />} />
           </Route>
           <Route path="automation" element={<Automation />} />

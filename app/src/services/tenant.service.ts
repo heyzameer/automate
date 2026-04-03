@@ -29,5 +29,9 @@ export const tenantService = {
 
   registerTenant: async (payload: Record<string, unknown>): Promise<void> => {
     await api.post(API_ENDPOINTS.AUTH.REGISTER_TENANT, payload);
+  },
+
+  assignBotToTenant: async (id: string, botForm: any): Promise<void> => {
+    await api.post(`${API_ENDPOINTS.SUPER.TENANTS}/${id}/assign-bot`, botForm);
   }
 };

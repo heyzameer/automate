@@ -9,142 +9,197 @@ import {
     Fuel,
     Bike,
     Car,
-    Loader2
+    Loader2,
+    LayoutGrid,
+    LayoutList,
+    Edit,
+    Trash2,
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useVehicles } from '../../hooks/useVehicles';
 import { Vehicle } from '../../services/vehicle.service';
 import { ROUTES } from '../../constants/routes';
+import { cn } from '../../lib/utils';
+import toast from 'react-hot-toast';
 
 interface VehicleCardProps {
-    vehicle: Vehicle & {
-        image?: string;
-        date_added?: string;
-        enquiries?: number;
-        slug?: string;
-    };
+    vehicle: Vehicle;
+    onDelete: (id: string) => void;
 }
 
-const VehicleCard = ({ vehicle }: VehicleCardProps) => (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-md transition-shadow group">
-        <div className="relative aspect-[4/3] overflow-hidden bg-gray-100">
-            <img
-                src={vehicle.image || 'https://via.placeholder.com/400x300?text=No+Image'}
-                alt={vehicle.name}
-                className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            />
-            <div className="absolute top-3 left-3">
-                <span className={`px-2.5 py-1 rounded-full text-xs font-semibold backdrop-blur-md ${
-                    vehicle.status === 'Available' ? 'bg-green-500/90 text-white' :
-                    vehicle.status === 'Sold' ? 'bg-blue-500/90 text-white' : 'bg-orange-500/90 text-white'
-                }`}>
-                    {vehicle.status}
-                </span>
-            </div>
-            <button className="absolute top-3 right-3 p-1.5 rounded-full bg-white/90 hover:bg-white text-gray-600 opacity-0 group-hover:opacity-100 transition-opacity">
-                <MoreVertical className="w-4 h-4" />
-            </button>
-            <div className="absolute bottom-3 right-3">
-                <span className="px-2 py-1 rounded-lg bg-black/70 text-white text-xs font-medium backdrop-blur-sm flex items-center gap-1">
-                    {vehicle.type === 'bike' ? <Bike className="w-3 h-3" /> : <Car className="w-3 h-3" />}
-                    {vehicle.type}
-                </span>
-            </div>
-        </div>
-
-        <div className="p-4">
-            <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-gray-900 line-clamp-1 text-lg">{vehicle.name}</h3>
-            </div>
-            <p className="text-xl font-bold text-blue-600 mb-4">₹ {vehicle.price.toLocaleString('en-IN')}</p>
-
-            <div className="grid grid-cols-2 gap-y-2 text-sm text-gray-500 mb-4">
-                <div className="flex items-center gap-1.5">
-                    <Calendar className="w-3.5 h-3.5" />
-                    {vehicle.year}
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <Gauge className="w-3.5 h-3.5" />
-                    {vehicle.km_driven.toLocaleString()} km
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <Fuel className="w-3.5 h-3.5" />
-                    {vehicle.fuel}
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <MapPin className="w-3.5 h-3.5" />
-                    {vehicle.ownership} Owner
-                </div>
-            </div>
-
-            <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500">
-                <span>
-                    {vehicle.date_added
-                        ? `Added ${new Date(vehicle.date_added).toLocaleDateString()}`
-                        : vehicle.createdAt
-                        ? `Added ${new Date(vehicle.createdAt).toLocaleDateString()}`
-                        : 'Recently listed'}
-                </span>
-                <span className="text-blue-600 font-medium">{vehicle.enquiries ?? 0} Enquiries</span>
-            </div>
-        </div>
-    </div>
-);
-
-export default function VehicleList() {
-    const [filterType, setFilterType] = useState('all');
-    const [search, setSearch] = useState('');
-    const { vehicles, loading } = useVehicles();
-
-    const filteredVehicles = vehicles.filter(v => {
-        const matchesType = filterType === 'all' || v.type.toLowerCase() === filterType;
-        const matchesSearch = v.name.toLowerCase().includes(search.toLowerCase());
-        return matchesType && matchesSearch;
-    });
+const VehicleCard = ({ vehicle, onDelete }: VehicleCardProps) => {
+    const navigate = useNavigate();
+    // Helper to get attribute safely
+    const attr = (key: string) => vehicle.attributes?.[key] || 'N/A';
+    
+    const price = Number(attr('price'));
+    const year = attr('year_of_manufacture');
+    const km = attr('km');
+    const fuel = attr('fuel_type');
+    const ownership = attr('ownership');
+    const name = `${attr('brand')} ${attr('model')}`.trim() || 'Untitled Vehicle';
 
     return (
-        <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                    <h1 className="text-2xl font-bold text-gray-900">My Listings</h1>
-                    <p className="text-sm text-gray-500">Manage your vehicle inventory</p>
+        <div className="group bg-white rounded-[2rem] shadow-sm hover:shadow-2xl hover:shadow-indigo-100 border border-gray-100 overflow-hidden transition-all duration-500">
+            {/* Image Section */}
+            <div 
+                onClick={() => navigate(ROUTES.VEHICLES.DETAIL(vehicle._id || ''))}
+                className="relative aspect-[16/10] overflow-hidden bg-gray-50 cursor-pointer"
+            >
+                {vehicle.images?.[0] ? (
+                    <img
+                        src={vehicle.images[0]}
+                        alt={name}
+                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                    />
+                ) : (
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50 group-hover:bg-indigo-50/50 transition-colors duration-500">
+                        <div className="relative">
+                            <Car className="w-16 h-16 text-gray-200 group-hover:text-indigo-200 group-hover:scale-110 transition-all duration-700" />
+                            <div className="absolute inset-0 blur-2xl bg-indigo-400/10 group-hover:bg-indigo-400/20 transition-all" />
+                        </div>
+                        <span className="text-[10px] font-black text-gray-400 group-hover:text-indigo-400 mt-4 uppercase tracking-[0.2em] transition-colors">No Gallery Images</span>
+                    </div>
+                )}
+                
+                {/* Badge Overlay */}
+                <div className="absolute top-4 left-4 flex gap-2">
+                    <span className={cn(
+                        "px-3 py-1 rounded-full text-xs font-bold tracking-tight backdrop-blur-md shadow-sm border",
+                        vehicle.status === 'available' ? 'bg-emerald-500/90 text-white border-emerald-400' :
+                        vehicle.status === 'sold' ? 'bg-indigo-600/90 text-white border-indigo-500' : 
+                        'bg-amber-500/90 text-white border-amber-400'
+                    )}>
+                        {vehicle.status?.toUpperCase()}
+                    </span>
                 </div>
-                <Link to={ROUTES.VEHICLES.ADD} className="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 transition shadow-sm shadow-blue-200">
+            </div>
+
+            {/* Content Section */}
+            <div className="p-6">
+                <div className="flex flex-col gap-1 mb-4">
+                    <h3 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-1 text-xl tracking-tight">
+                        {name}
+                    </h3>
+                    <p className="text-gray-400 text-xs font-medium uppercase tracking-widest">{attr('variant') || 'Standard Variant'}</p>
+                </div>
+
+                <div className="flex items-baseline gap-1 mb-6">
+                    <span className="text-2xl font-black text-indigo-600">₹{price.toLocaleString('en-IN')}</span>
+                </div>
+
+                {/* Info Grid */}
+                <div className="grid grid-cols-2 gap-y-4 gap-x-2 text-sm mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+                    <div className="flex items-center gap-2.5 text-gray-600">
+                        <Calendar className="w-3.5 h-3.5 text-indigo-500" />
+                        <span className="font-semibold">{year}</span>
+                    </div>
+                    <div className="flex items-center gap-2.5 text-gray-600">
+                        <Gauge className="w-3.5 h-3.5 text-indigo-500" />
+                        <span className="font-semibold">{Number(km).toLocaleString()} km</span>
+                    </div>
+                </div>
+
+                {/* Footer Controls */}
+                <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+                    <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">
+                        {attr('plate_number') || 'PENDING REG'}
+                    </div>
+                    <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+                        <Link 
+                            to={`${ROUTES.VEHICLES.BASE}/edit/${vehicle._id || vehicle.id}`}
+                            className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm border border-gray-100"
+                        >
+                            <Edit className="w-4 h-4" />
+                        </Link>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onDelete(vehicle._id || vehicle.id!); }}
+                            className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm border border-gray-100"
+                        >
+                            <Trash2 className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    );
+};
+
+export default function VehicleList() {
+    const [search, setSearch] = useState('');
+    const { vehicles, loading, deleteVehicle } = useVehicles();
+
+    const filteredVehicles = Array.isArray(vehicles) ? vehicles.filter(v => {
+        const name = `${v.attributes?.brand || ''} ${v.attributes?.model || ''}`.toLowerCase();
+        return name.includes(search.toLowerCase()) || 
+               (v.attributes?.variant || '').toLowerCase().includes(search.toLowerCase());
+    }) : [];
+
+    const handleDelete = async (id: string) => {
+        if (window.confirm('Are you sure you want to delete this vehicle?')) {
+            await deleteVehicle(id);
+        }
+    };
+
+    return (
+        <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            {/* Page Header */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100">
+                <div className="space-y-1">
+                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Active Inventory</h1>
+                    <p className="text-gray-500 font-medium">Manage and monitor your digital showroom</p>
+                </div>
+                <Link 
+                    to={ROUTES.VEHICLES.ADD} 
+                    className="group relative inline-flex items-center justify-center px-8 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200/50 overflow-hidden"
+                >
+                    <div className="absolute inset-0 bg-white/10 translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-500 italic" />
                     <Plus className="w-5 h-5 mr-2" />
-                    Add Vehicle
+                    List New Vehicle
                 </Link>
             </div>
 
-            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                        type="text"
-                        placeholder="Search by name, model..."
-                        value={search}
-                        onChange={(e) => setSearch(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2.5 bg-white border border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-100 focus:border-blue-500 outline-none transition-all"
-                    />
+            {/* Filter Bar */}
+            <div className="relative group/search bg-white p-2 rounded-3xl shadow-sm border border-gray-100 focus-within:border-indigo-300 focus-within:ring-4 focus-within:ring-indigo-50 transition-all duration-300 max-w-2xl">
+                <div className="absolute left-6 top-1/2 -translate-y-1/2 w-6 h-6 text-gray-400 group-focus-within/search:text-indigo-500 transition-colors">
+                    <Search />
                 </div>
-                <div className="flex gap-2">
-                    <button onClick={() => setFilterType('all')} className={`px-4 py-2.5 rounded-lg border font-medium text-sm transition-colors ${filterType === 'all' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>All</button>
-                    <button onClick={() => setFilterType('bike')} className={`px-4 py-2.5 rounded-lg border font-medium text-sm transition-colors ${filterType === 'bike' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>Bikes</button>
-                    <button onClick={() => setFilterType('car')} className={`px-4 py-2.5 rounded-lg border font-medium text-sm transition-colors ${filterType === 'car' ? 'bg-gray-900 text-white border-gray-900' : 'bg-white border-gray-200 text-gray-700 hover:bg-gray-50'}`}>Cars</button>
-                </div>
+                <input
+                    type="text"
+                    placeholder="Search by brand, model or variant..."
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    className="w-full pl-16 pr-6 py-4 bg-transparent text-gray-900 font-medium placeholder:text-gray-400 outline-none"
+                />
             </div>
 
             {loading ? (
-                <div className="flex items-center justify-center h-64">
-                    <Loader2 className="w-8 h-8 animate-spin text-indigo-600" />
+                <div className="h-96 flex flex-col items-center justify-center gap-4">
+                    <div className="relative">
+                        <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
+                        <div className="absolute inset-0 blur-xl bg-indigo-400/20 animate-pulse rounded-full" />
+                    </div>
+                    <p className="text-gray-500 font-bold animate-pulse uppercase tracking-widest text-xs">Synchronizing Inventory</p>
                 </div>
             ) : filteredVehicles.length === 0 ? (
-                <div className="text-center py-20 text-gray-400 font-medium">
-                    {search || filterType !== 'all' ? 'No vehicles matched your filters.' : 'No vehicles listed yet. Add your first vehicle!'}
+                <div className="bg-white rounded-[3rem] py-32 flex flex-col items-center justify-center text-center px-10 border-2 border-dashed border-gray-100 group">
+                    <div className="w-20 h-20 bg-gray-50 rounded-3xl flex items-center justify-center mb-6 border border-gray-100 group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                        <LayoutGrid className="w-10 h-10 text-gray-300" />
+                    </div>
+                    <h2 className="text-2xl font-black text-gray-900 mb-2">Inventory Empty</h2>
+                    <p className="text-gray-500 max-w-sm mb-10 font-medium">Ready to sell? Start by adding your first vehicle to your digital showroom today.</p>
+                    <Link to={ROUTES.VEHICLES.ADD} className="px-10 py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:shadow-2xl hover:shadow-indigo-200 transition-all">
+                        Create Initial Listing
+                    </Link>
                 </div>
             ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
                     {filteredVehicles.map(vehicle => (
-                        <VehicleCard key={vehicle._id || vehicle.id} vehicle={vehicle as VehicleCardProps["vehicle"]} />
+                        <VehicleCard 
+                            key={vehicle._id || vehicle.id} 
+                            vehicle={vehicle} 
+                            onDelete={handleDelete}
+                        />
                     ))}
                 </div>
             )}

@@ -8,6 +8,7 @@
     "dev": "turbo run dev",
     "lint": "turbo run lint",
     "test": "turbo run test",
+    "kill-port:all": "taskkill /F /IM node.exe /T || exit 0",
     "clean": "turbo run clean && rimraf node_modules"
   },
   "devDependencies": {

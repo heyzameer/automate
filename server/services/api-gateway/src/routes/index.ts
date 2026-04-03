@@ -1,4 +1,4 @@
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import proxy from 'express-http-proxy';
 import config from '../config';
 import { sendSuccess } from '../utils/response';
@@ -20,6 +20,8 @@ router.get(GATEWAY_ROUTES.HEALTH, (req: Request, res: Response) => {
 
 // Middleware to inject headers for microservices
 const proxyOptions = {
+    timeout: 120000, // 2 minutes for uploads
+    parseReqBody: false, // Fix: Essential for large file uploads and preventing "Unexpected end of form"
     proxyReqOptDecorator: (proxyReqOpts: any, srcReq: Request) => {
         if (srcReq.user) {
             proxyReqOpts.headers['X-User-Id'] = srcReq.user.userId;
@@ -32,21 +34,42 @@ const proxyOptions = {
         return proxyReqOpts;
     },
     proxyReqPathResolver: (req: Request) => {
-        const path = req.originalUrl.includes(GATEWAY_ROUTES.AUTH)
-            ? `${PROXY_PATHS.AUTH_SERVICE}${req.url}`
-            : `${PROXY_PATHS.SUPER_ADMIN_API}${req.url}`;
+        let path = '';
+        if (req.originalUrl.includes(GATEWAY_ROUTES.AUTH)) {
+            path = `${PROXY_PATHS.AUTH_SERVICE}${req.url}`;
+        } else if (req.originalUrl.includes(GATEWAY_ROUTES.INVENTORY)) {
+            path = `${PROXY_PATHS.INVENTORY_SERVICE}${req.url}`;
+        } else if (req.originalUrl.includes(GATEWAY_ROUTES.BOT)) {
+            path = `${PROXY_PATHS.BOT_SERVICE}${req.url}`;
+        } else {
+            path = `${PROXY_PATHS.SUPER_ADMIN_API}${req.url}`;
+        }
         logger.info(`Proxying to service: ${path}`);
         return path;
+    },
+    proxyErrorHandler: (err: any, res: Response, next: NextFunction) => {
+        logger.error(`[PROXY_ERROR]: ${err.message}`);
+        res.status(504).json({
+            success: false,
+            message: 'Target service timed out or is unavailable'
+        });
     }
 };
 
-// Apply authentication to all proxied routes
-router.use(authenticate);
+// Apply authentication to all proxied routes EXCLUDING public bot webhooks
+router.use((req: Request, res: Response, next: NextFunction) => {
+    if (req.path.startsWith(GATEWAY_ROUTES.BOT)) {
+        return next();
+    }
+    return authenticate(req, res, next);
+});
 
-// Proxy to Auth Service
 router.use(GATEWAY_ROUTES.AUTH, proxy(config.services.auth, proxyOptions) as any);
 
-// Proxy to Super Admin (which is in Auth Service)
+router.use(GATEWAY_ROUTES.INVENTORY, proxy(config.services.inventory, proxyOptions) as any);
+
+router.use(GATEWAY_ROUTES.BOT, proxy(config.services.bot, proxyOptions) as any);
+
 router.use(GATEWAY_ROUTES.SUPER_ADMIN, proxy(config.services.auth, proxyOptions) as any);
 
 // API Root

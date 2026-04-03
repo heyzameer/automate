@@ -16,8 +16,13 @@ export const API_ENDPOINTS = {
     STATS: '/super/dashboard/stats',
   },
   VEHICLES: {
-    BASE: '/vehicles',
-    BY_ID: (id: string) => `/vehicles/${id}`,
+    BASE: '/inventory/vehicles',
+    BY_ID: (id: string) => `/inventory/vehicles/${id}`,
+    CONFIG: '/inventory/config/form',
+    BRANDS: '/inventory/brands',
+    MODELS: (brandId: string) => `/inventory/brands/${brandId}/models`,
+    DROPDOWN: (fieldName: string) => `/inventory/dropdown/${fieldName}`,
+    UPLOAD_IMAGES: '/inventory/images/upload',
   },
   LEADS: {
     BASE: '/leads',

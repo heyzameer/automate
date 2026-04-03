@@ -122,6 +122,12 @@ export class AuthService implements IAuthService {
             throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
         }
 
+        // Prevent super_admin from logging in through the partner portal
+        if (user.role === UserRole.SUPER_ADMIN) {
+            logger.warn(`[AUTH] Super admin attempted partner login: ${email}`);
+            throw createError(ResponseMessages.INVALID_CREDENTIALS, HttpStatus.UNAUTHORIZED);
+        }
+
         if (password) {
             logger.debug(`[AUTH] Comparing password for ${email}`);
             const isPasswordValid = await comparePassword(password, user.password || '');

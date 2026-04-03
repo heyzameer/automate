@@ -63,6 +63,21 @@ export const useTenants = () => {
     }
   };
 
+  const assignBot = async (id: string, botForm: any) => {
+    setSaving(true);
+    try {
+      await tenantService.assignBotToTenant(id, botForm);
+      toast.success("WhatsApp Bot connected successfully!");
+      fetchTenants();
+      return true;
+    } catch {
+      toast.error("Failed to connect bot");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return {
     tenants,
     loading,
@@ -70,6 +85,7 @@ export const useTenants = () => {
     fetchTenants,
     toggleStatus,
     updatePlan,
-    addTenant
+    addTenant,
+    assignBot
   };
 };

@@ -30,8 +30,9 @@ const tenantSchema = new Schema<ITenant>(
             required: [true, 'Expiry date is required'],
         },
         whatsappConfig: {
-            instanceId: { type: String },
-            token: { type: String },
+            phoneNumberId: { type: String },
+            accessToken: { type: String },
+            verifyToken: { type: String },
             isActive: { type: Boolean, default: false },
             botEnabled: { type: Boolean, default: true },
             greetingMessage: { type: String, default: "Hi 👋\nThanks for contacting us." },
@@ -43,9 +44,9 @@ const tenantSchema = new Schema<ITenant>(
             maxCars: { type: Number, default: 50 },
             maxLeads: { type: Number, default: 100 },
         },
-        paymentNotes: {
-            type: String,
-        },
+        address: { type: String, trim: true },
+        locationUrl: { type: String, trim: true },
+        paymentNotes: { type: String },
     },
     {
         timestamps: true,

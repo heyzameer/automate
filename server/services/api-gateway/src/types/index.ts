@@ -25,6 +25,8 @@ export interface AppConfig {
     };
     services: {
         auth: string;
+        inventory: string;
+        bot: string;
     };
     jwtSecret: string;
 }

@@ -1,13 +1,14 @@
 import React, { useState } from 'react';
-import { User, Shield, Bell, Key, Save, Loader2 } from 'lucide-react';
+import { User, Shield, Bell, Key, Save, Loader2, MapPin, ExternalLink } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const ShowroomSettings = () => {
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [user, setUser] = useState<{ fullName: string; email: string; phone?: string } | null>(() => {
         const storedUser = localStorage.getItem('user');
         return storedUser ? JSON.parse(storedUser) : null;
     });
+    const [address, setAddress] = useState('');
+    const [locationUrl, setLocationUrl] = useState('');
     const [loading, setLoading] = useState(false);
 
     const handleSave = () => {
@@ -71,7 +72,35 @@ const ShowroomSettings = () => {
                             </div>
                         </div>
 
-                        <div className="mt-10 flex justify-end">
+                        <h3 className="text-lg font-bold text-slate-900 mb-6">Showroom Details (AI Bot Info)</h3>
+                        <div className="grid grid-cols-2 gap-6 pb-6 border-b border-slate-50 mb-6">
+                            <div className="col-span-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-1">
+                                    <MapPin size={10} /> Physical Address 
+                                </label>
+                                <textarea 
+                                    rows={3}
+                                    value={address}
+                                    onChange={(e) => setAddress(e.target.value)}
+                                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold text-slate-900"
+                                    placeholder="Enter showroom address for the bot..."
+                                />
+                            </div>
+                            <div className="col-span-2">
+                                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2 flex items-center gap-1">
+                                    <ExternalLink size={10} /> Google Maps Link
+                                </label>
+                                <input 
+                                    type="text" 
+                                    value={locationUrl}
+                                    onChange={(e) => setLocationUrl(e.target.value)}
+                                    className="w-full px-5 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all font-bold text-slate-900"
+                                    placeholder="https://maps.google.com/..."
+                                />
+                            </div>
+                        </div>
+
+                        <div className="flex justify-end">
                             <button 
                                 onClick={handleSave}
                                 disabled={loading}

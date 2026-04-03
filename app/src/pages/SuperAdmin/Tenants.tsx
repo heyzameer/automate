@@ -1,25 +1,25 @@
 import React, { useState } from 'react';
 import { 
-  Plus, Search, ToggleLeft, ToggleRight, Calendar, Loader2, Trash2, Edit2, X, Save
+  Plus, Search, ToggleLeft, ToggleRight, Calendar, Loader2, Trash2, Edit2, X, Save, MessageSquare
 } from 'lucide-react';
 import { useTenants } from '../../hooks/useTenants';
 import { Tenant } from '../../types';
 
 const TenantList = () => {
-  const { tenants, loading, saving, toggleStatus, updatePlan, addTenant } = useTenants();
+  const { tenants, loading, saving, toggleStatus, updatePlan, addTenant, assignBot } = useTenants();
   const [search, setSearch] = useState('');
   const [planFilter, setPlanFilter] = useState('All Plans');
   
-  // Modal State
+  // Modals State
   const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
+  const [botModalTenant, setBotModalTenant] = useState<Tenant | null>(null);
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+
+  // Forms State
   const [editForm, setEditForm] = useState({ plan: 'basic', maxCars: 50, maxLeads: 100, expiryDate: '' });
+  const [botForm, setBotForm] = useState({ phoneNumberId: '', accessToken: '', verifyToken: '' });
   const [addForm, setAddForm] = useState({
-    name: '',
-    email: '',
-    phone: '',
-    password: '',
-    fullName: '',
+    name: '', email: '', phone: '', password: '', fullName: '',
     expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
   });
 
@@ -30,54 +30,47 @@ const TenantList = () => {
   const openEditModal = (tenant: Tenant) => {
     setEditingTenant(tenant);
     setEditForm({
-      plan: String(tenant.plan || 'basic'),
-      maxCars: Number((tenant.limits as { maxCars?: number })?.maxCars || 50),
-      maxLeads: Number((tenant.limits as { maxLeads?: number })?.maxLeads || 100),
+      plan: String(tenant.plan || 'basic').toLowerCase(),
+      maxCars: Number((tenant.limits as any)?.maxCars || 50),
+      maxLeads: Number((tenant.limits as any)?.maxLeads || 100),
       expiryDate: new Date(String(tenant.expiryDate)).toISOString().split('T')[0]
     });
   };
 
-  const closeEditModal = () => {
-    setEditingTenant(null);
-    setEditForm({ plan: 'basic', maxCars: 50, maxLeads: 100, expiryDate: '' });
+  const openBotModal = (tenant: Tenant) => {
+    setBotModalTenant(tenant);
+    setBotForm({
+      phoneNumberId: tenant.whatsappConfig?.phoneNumberId || '',
+      accessToken: tenant.whatsappConfig?.accessToken || '',
+      verifyToken: tenant.whatsappConfig?.verifyToken || ''
+    });
   };
 
   const handleUpdateTenant = async () => {
     if (!editingTenant) return;
     const payload = {
       plan: editForm.plan.toUpperCase(),
-      limits: {
-        maxCars: Number(editForm.maxCars),
-        maxLeads: Number(editForm.maxLeads)
-      },
+      limits: { maxCars: Number(editForm.maxCars), maxLeads: Number(editForm.maxLeads) },
       expiryDate: new Date(editForm.expiryDate).toISOString()
     };
     await updatePlan(String(editingTenant._id || editingTenant.id), payload);
-    closeEditModal();
+    setEditingTenant(null);
+  };
+
+  const handleAssignBot = async () => {
+    if (!botModalTenant) return;
+    await assignBot(String(botModalTenant._id || botModalTenant.id), botForm);
+    setBotModalTenant(null);
   };
 
   const handleAddTenant = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      tenantData: {
-        name: addForm.name,
-        expiryDate: new Date(addForm.expiryDate).toISOString()
-      },
-      adminData: {
-        fullName: addForm.fullName,
-        email: addForm.email,
-        phone: addForm.phone,
-        password: addForm.password
-      }
+      tenantData: { name: addForm.name, expiryDate: new Date(addForm.expiryDate).toISOString() },
+      adminData: { fullName: addForm.fullName, email: addForm.email, phone: addForm.phone, password: addForm.password }
     };
     const success = await addTenant(payload);
-    if (success) {
-      setIsAddModalOpen(false);
-      setAddForm({
-        name: '', email: '', phone: '', password: '', fullName: '',
-        expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
-      });
-    }
+    if (success) setIsAddModalOpen(false);
   };
 
   const filteredTenants = tenants.filter(t => {
@@ -89,124 +82,82 @@ const TenantList = () => {
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-black text-slate-900 tracking-tight">Showrooms</h1>
-          <p className="text-slate-500 font-medium mt-1">Manage partner dealerships and their active subscriptions.</p>
+          <h1 className="text-3xl font-black text-slate-900 tracking-tight text-[#0f172a]">Partner Showrooms</h1>
+          <p className="text-slate-500 font-medium mt-1">Onboard dealerships and manage their AI bot deployments.</p>
         </div>
         <button 
           onClick={() => setIsAddModalOpen(true)}
-          className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100 transform hover:-translate-y-0.5 active:translate-y-0 text-sm"
+          className="bg-indigo-600 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-lg text-sm"
         >
-          <Plus size={18} />
-          Add Showroom
+          <Plus size={18} /> Add Showroom
         </button>
       </div>
 
-      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl shadow-slate-200/50 overflow-hidden">
+      {/* Registry Table */}
+      <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden">
         <div className="p-6 border-b border-slate-50 flex flex-col md:flex-row items-center gap-4 bg-slate-50/30">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={18} />
             <input 
               type="text" 
-              placeholder="Search by name or slug..." 
+              placeholder="Search by name..." 
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all text-sm font-medium"
+              className="w-full pl-12 pr-4 py-3 bg-white border border-slate-200 rounded-2xl text-sm"
             />
           </div>
           <select 
             value={planFilter}
             onChange={(e) => setPlanFilter(e.target.value)}
-            className="bg-white border border-slate-200 rounded-2xl px-6 py-3 focus:outline-none focus:ring-4 focus:ring-indigo-500/5 focus:border-indigo-500 transition-all text-sm font-bold text-slate-600"
+            className="bg-white border border-slate-200 rounded-2xl px-6 py-3 text-sm font-bold text-slate-600"
           >
             <option>All Plans</option>
-            <option>Basic</option>
-            <option>Pro</option>
-            <option>Enterprise</option>
+            <option>Basic</option><option>Pro</option><option>Enterprise</option>
           </select>
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-left border-collapse">
+          <table className="w-full text-left">
             <thead>
               <tr className="bg-slate-50/50 border-b border-slate-50">
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Showroom</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Plan Details</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Plan</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Expiry</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-50">
               {loading ? (
-                <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center">
-                    <Loader2 className="w-8 h-8 animate-spin text-indigo-600 mx-auto" />
-                    <p className="text-slate-500 font-medium mt-4">Syncing with global registry...</p>
-                  </td>
-                </tr>
-              ) : filteredTenants.length === 0 ? (
-                <tr>
-                  <td colSpan={5} className="px-8 py-20 text-center text-slate-400 font-medium">
-                    No showrooms matched your search.
-                  </td>
-                </tr>
+                <tr><td colSpan={5} className="px-8 py-20 text-center text-slate-400">Loading...</td></tr>
               ) : filteredTenants.map((tenant) => (
                 <tr key={tenant._id} className="hover:bg-slate-50/50 transition-colors group">
                   <td className="px-8 py-5">
                     <div className="flex flex-col">
                       <span className="font-bold text-slate-900">{tenant.name}</span>
-                      <span className="text-xs font-bold text-indigo-600 mt-0.5 tracking-tight group-hover:underline cursor-pointer">
-                        automoto.ai/{tenant.slug || 'slug-pending'}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-2">
-                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest ${
-                        tenant.plan === 'ENTERPRISE' ? 'bg-purple-100 text-purple-700' :
-                        tenant.plan === 'PRO' ? 'bg-blue-100 text-blue-700' : 'bg-slate-100 text-slate-600'
-                        }`}>
-                        {tenant.plan}
-                        </span>
-                        <div className="h-1 w-1 bg-slate-300 rounded-full"></div>
-                        <span className="text-xs font-bold text-slate-400">{tenant.limits?.maxCars || 50} Cars • {tenant.limits?.maxLeads || 100} Leads</span>
+                      <span className="text-xs text-indigo-600 font-bold">{tenant.slug}.carbot.ai</span>
                     </div>
                   </td>
                   <td className="px-8 py-5">
                     <button 
-                        onClick={() => handleToggleStatus(tenant._id || tenant.id, tenant.isActive)}
-                        className={`flex items-center gap-2 px-3 py-1.5 rounded-xl transition-all font-bold text-xs ${
-                        tenant.isActive 
-                            ? 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100' 
-                            : 'text-rose-600 bg-rose-50 hover:bg-rose-100'
-                        }`}
+                      onClick={() => handleToggleStatus(String(tenant._id || tenant.id), tenant.isActive)}
+                      className={`text-xs font-bold px-3 py-1.5 rounded-xl ${tenant.isActive ? 'bg-emerald-50 text-emerald-600' : 'bg-rose-50 text-rose-600'}`}
                     >
-                        {tenant.isActive ? <ToggleRight size={18} /> : <ToggleLeft size={18} />}
-                        {tenant.isActive ? 'Active' : 'Halted'}
+                      {tenant.isActive ? 'Active' : 'Disabled'}
                     </button>
                   </td>
                   <td className="px-8 py-5">
-                    <div className="flex items-center gap-2 text-slate-600">
-                      <Calendar size={14} className="text-slate-400" />
-                      <span className={`text-xs font-bold ${new Date(tenant.expiryDate) < new Date() ? 'text-rose-600' : ''}`}>
-                          {new Date(tenant.expiryDate).toLocaleDateString()}
-                      </span>
-                    </div>
+                    <span className="text-xs font-black uppercase text-slate-500 tracking-tighter bg-slate-100 px-2 py-1 rounded">{tenant.plan}</span>
                   </td>
-                  <td className="px-8 py-5 text-right">
-                    <div className="flex items-center justify-end gap-2">
-                        <button 
-                            onClick={() => openEditModal(tenant)}
-                            className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
-                        >
-                            <Edit2 size={16} />
-                        </button>
-                        <button className="p-2 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all">
-                            <Trash2 size={16} />
-                        </button>
-                    </div>
+                  <td className="px-8 py-5 text-xs font-bold text-slate-600">
+                    {new Date(tenant.expiryDate).toLocaleDateString()}
+                  </td>
+                  <td className="px-8 py-5 text-right space-x-2">
+                    <button onClick={() => openBotModal(tenant)} className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg"><MessageSquare size={16} /></button>
+                    <button onClick={() => openEditModal(tenant)} className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"><Edit2 size={16} /></button>
                   </td>
                 </tr>
               ))}
@@ -217,192 +168,59 @@ const TenantList = () => {
 
       {/* Edit Modal */}
       {editingTenant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-xl font-black text-slate-900">Manage Subscription</h2>
-              <button onClick={closeEditModal} className="p-2 text-slate-400 hover:bg-slate-50 rounded-full transition-colors">
-                <X size={20} />
-              </button>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl p-8 space-y-6">
+            <h2 className="text-xl font-black">Plan Management</h2>
+            <div className="space-y-4">
+              <select value={editForm.plan} onChange={(e)=>setEditForm({...editForm, plan: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl font-bold">
+                <option value="basic">Basic</option><option value="pro">Pro</option><option value="enterprise">Enterprise</option>
+              </select>
+              <input type="date" value={editForm.expiryDate} onChange={(e)=>setEditForm({...editForm, expiryDate: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl font-bold" />
             </div>
-            
-            <div className="p-6 space-y-6">
-                <div>
-                    <span className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Showroom Name</span>
-                    <p className="font-bold text-slate-900">{editingTenant.name}</p>
-                </div>
-
-                <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Plan Tier</label>
-                    <select 
-                        value={editForm.plan.toLowerCase()}
-                        onChange={(e) => setEditForm((prev) => ({ ...prev, plan: e.target.value }))}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    >
-                        <option value="basic">Basic Plan</option>
-                        <option value="pro">Pro Plan</option>
-                        <option value="enterprise">Enterprise Plan</option>
-                    </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                    <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Max Cars</label>
-                        <input 
-                            type="number" 
-                            min="1"
-                            value={editForm.maxCars}
-                            onChange={(e) => setEditForm((prev) => ({ ...prev, maxCars: Number(e.target.value) }))}
-                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        />
-                    </div>
-                    <div>
-                        <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Max Leads</label>
-                        <input 
-                            type="number" 
-                            min="1"
-                            value={editForm.maxLeads}
-                            onChange={(e) => setEditForm((prev) => ({ ...prev, maxLeads: Number(e.target.value) }))}
-                            className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        />
-                    </div>
-                </div>
-
-                <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Expiry Date</label>
-                    <input 
-                        type="date" 
-                        value={editForm.expiryDate}
-                        onChange={(e) => setEditForm((prev) => ({ ...prev, expiryDate: e.target.value }))}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                </div>
-            </div>
-
-            <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-              <button 
-                onClick={closeEditModal}
-                className="px-6 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors"
-              >
-                Cancel
-              </button>
-              <button 
-                onClick={handleUpdateTenant}
-                disabled={saving}
-                className="bg-indigo-600 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 disabled:opacity-50"
-              >
-                {saving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
-                Save Plan Details
-              </button>
+            <div className="flex gap-2 justify-end">
+                <button onClick={()=>setEditingTenant(null)} className="px-4 py-2 font-bold text-slate-400">Cancel</button>
+                <button onClick={handleUpdateTenant} className="bg-indigo-600 text-white px-6 py-2 rounded-xl font-bold">Update Plan</button>
             </div>
           </div>
         </div>
       )}
-      {/* Add Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            <div className="p-6 border-b border-slate-100 flex items-center justify-between">
-              <h2 className="text-xl font-black text-slate-900">Add New Showroom</h2>
-              <button onClick={() => setIsAddModalOpen(false)} className="p-2 text-slate-400 hover:bg-slate-50 rounded-full transition-colors">
-                <X size={20} />
-              </button>
+
+      {/* Bot Assignment Modal */}
+      {botModalTenant && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl p-8 space-y-6 animate-in zoom-in-95 duration-200">
+            <div>
+                <h2 className="text-xl font-black">WhatsApp Setup</h2>
+                <p className="text-xs font-bold text-slate-400">Linking Meta API for {botModalTenant.name}</p>
             </div>
-            
-            <form onSubmit={handleAddTenant}>
-              <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Showroom Name</label>
-                    <input 
-                        type="text" 
-                        required
-                        value={addForm.name}
-                        onChange={(e) => setAddForm((prev) => ({ ...prev, name: e.target.value }))}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        placeholder="e.g. Royal Motors"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Admin Full Name</label>
-                    <input 
-                        type="text" 
-                        required
-                        value={addForm.fullName}
-                        onChange={(e) => setAddForm((prev) => ({ ...prev, fullName: e.target.value }))}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        placeholder="e.g. John Doe"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Admin Email</label>
-                    <input 
-                        type="email" 
-                        required
-                        value={addForm.email}
-                        onChange={(e) => setAddForm((prev) => ({ ...prev, email: e.target.value }))}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        placeholder="admin@example.com"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Admin Phone</label>
-                    <input 
-                        type="text" 
-                        required
-                        value={addForm.phone}
-                        onChange={(e) => setAddForm((prev) => ({ ...prev, phone: e.target.value }))}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        placeholder="+91 9999999999"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Password</label>
-                    <input 
-                        type="password" 
-                        required
-                        minLength={8}
-                        value={addForm.password}
-                        onChange={(e) => setAddForm((prev) => ({ ...prev, password: e.target.value }))}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                        placeholder="Min 8 characters"
-                    />
-                </div>
-
-                <div>
-                    <label className="block text-xs font-black text-slate-400 uppercase tracking-widest mb-2">Initial Expiry</label>
-                    <input 
-                        type="date" 
-                        required
-                        value={addForm.expiryDate}
-                        onChange={(e) => setAddForm((prev) => ({ ...prev, expiryDate: e.target.value }))}
-                        className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-slate-900 focus:outline-none focus:ring-2 focus:ring-indigo-500/20"
-                    />
-                </div>
-              </div>
-
-              <div className="p-6 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
-                <button 
-                  type="button"
-                  onClick={() => setIsAddModalOpen(false)}
-                  className="px-6 py-2.5 rounded-xl font-bold text-slate-600 hover:bg-slate-200 transition-colors"
-                >
-                  Cancel
-                </button>
-                <button 
-                  type="submit"
-                  disabled={saving}
-                  className="bg-indigo-600 text-white px-8 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 transition-all shadow-md shadow-indigo-100 disabled:opacity-50"
-                >
-                  {saving ? <Loader2 size={16} className="animate-spin" /> : <Plus size={16} />}
-                  Create Showroom
-                </button>
-              </div>
-            </form>
+            <div className="space-y-4">
+              <input placeholder="Phone Number ID" value={botForm.phoneNumberId} onChange={(e)=>setBotForm({...botForm, phoneNumberId: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl font-bold" />
+              <textarea placeholder="Access Token" rows={4} value={botForm.accessToken} onChange={(e)=>setBotForm({...botForm, accessToken: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl font-mono text-[10px]" />
+              <input placeholder="Verify Token" value={botForm.verifyToken} onChange={(e)=>setBotForm({...botForm, verifyToken: e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl font-bold" />
+            </div>
+            <div className="flex gap-2 justify-end">
+                <button onClick={()=>setBotModalTenant(null)} className="px-4 py-2 font-bold text-slate-400">Cancel</button>
+                <button onClick={handleAssignBot} className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold">Sync Bot</button>
+            </div>
           </div>
+        </div>
+      )}
+
+      {/* Add Modal Placeholder */}
+      {isAddModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
+             <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl p-8">
+                <h2 className="text-xl font-black mb-6">New Showroom</h2>
+                <form onSubmit={handleAddTenant} className="space-y-4">
+                    <input placeholder="Name" value={addForm.name} onChange={(e)=>setAddForm({...addForm, name:e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl font-bold" />
+                    <input placeholder="Email" value={addForm.email} onChange={(e)=>setAddForm({...addForm, email:e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl font-bold" />
+                    <input placeholder="Password" type="password" value={addForm.password} onChange={(e)=>setAddForm({...addForm, password:e.target.value})} className="w-full p-3 bg-slate-50 border rounded-xl font-bold" />
+                    <div className="flex gap-2">
+                        <button type="button" onClick={()=>setIsAddModalOpen(false)} className="flex-1 font-bold text-slate-400">Cancel</button>
+                        <button type="submit" className="flex-1 bg-indigo-600 text-white p-3 rounded-xl font-bold">Onboard</button>
+                    </div>
+                </form>
+             </div>
         </div>
       )}
     </div>

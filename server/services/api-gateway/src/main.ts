@@ -42,9 +42,7 @@ class Application {
         // Rate limiting
         this._app.use(generalLimiter);
 
-        // Body parsing middleware
-        this._app.use(express.json({ limit: config.maxSizeLimit }));
-        this._app.use(express.urlencoded({ extended: true, limit: config.maxSizeLimit }));
+        // Required for reading auth cookies if applicable
         this._app.use(cookieParser());
 
         logger.info('Middlewares initialized');

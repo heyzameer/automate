@@ -28,6 +28,9 @@ export interface Tenant {
     maxLeads: number;
   };
   whatsappConfig?: {
+    phoneNumberId?: string;
+    accessToken?: string;
+    verifyToken?: string;
     botEnabled: boolean;
     greetingMessage: string;
     includeGallery: boolean;

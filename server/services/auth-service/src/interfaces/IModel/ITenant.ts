@@ -25,6 +25,8 @@ export interface ITenant extends Document {
     expiryDate: Date;
     whatsappConfig: IWhatsAppConfig;
     limits: IPlanLimits;
+    address?: string;
+    locationUrl?: string;
     paymentNotes?: string;
     createdAt: Date;
     updatedAt: Date;

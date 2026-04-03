@@ -63,4 +63,5 @@ export enum ResponseMessages {
   RESOURCE_DELETED = 'Resource deleted successfully',
   INTERNAL_SERVER_ERROR = 'Internal server error',
   SERVICE_UNAVAILABLE = 'The service is temporarily unavailable',
+  BOTH_PASSWORDS_REQUIRED = 'Both current and new passwords are required',
 }

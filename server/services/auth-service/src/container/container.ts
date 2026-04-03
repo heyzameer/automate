@@ -22,6 +22,8 @@ import { EmailService } from '../services/EmailService';
 // Controllers
 import { AuthController } from '../controllers/AuthController';
 import { SuperAdminController } from '../controllers/SuperAdminController';
+import { CampaignController } from '../controllers/CampaignController';
+import { BillingController } from '../controllers/BillingController';
 
 // Register repositories
 container.registerSingleton<IUserRepository>('UserRepository', UserRepository);
@@ -36,5 +38,7 @@ container.registerSingleton<IEmailService>('EmailService', EmailService);
 // Register controllers
 container.registerSingleton(AuthController);
 container.registerSingleton(SuperAdminController);
+container.registerSingleton(CampaignController);
+container.registerSingleton(BillingController);
 
 export { container };

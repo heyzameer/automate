@@ -1,0 +1,44 @@
+🏛️ 1. Architecture: Monorepo Microservices
+We are using a Monorepo (all services in one place). This is a industry best practice because:
+
+Shared Code: All services use the @carbot/common package for things like Loggers and Middlewares. This prevents "Code Duplication."
+API Gateway: Every external request first hits the api-gateway, which then proxies it to the right service. This keeps your internal services private and secure.
+🗄️ 2. Database Pattern: "Database-per-Service"
+We are following a distributed database pattern to ensure data isolation:
+
+carbot_auth: This is your "Source of Truth" for tenants (showrooms), users, and leads.
+carbot_inventory: This handles the massive amount of vehicle data. By keeping it separate, we can scale the inventory storage without affecting the login system.
+Multi-Tenancy: Every record includes a tenantId. This is the Shared Database / Shared Schema pattern with a Discriminator Column (tenantId) for multi-tenancy.
+🔄 3. Communication: Gateway & Persistence
+Service-to-Service: Right now, the WhatsApp Bot directly reads from both databases because it needs high speed for conversations. This is called the Read-Only Cross-Service Connection pattern.
+Gateway Proxying: External webhooks (from Meta) are proxied through the Gateway to the Bot Service. This allows us to add Security / Rate-Limiting at the Gateway level later without touching the Bot logic.
+✅ 4. Best Practices We Follow:
+Dependency Injection: Using tsyringe in your services to keep code modular and testable.
+Centralized Logging: Using a shared Winston logger to pipe all service logs into a single root folder for monitoring.
+Conversational State Management: Using a Session model in the bot to handle multiple users simultaneously without the bot getting "confused."
+Lazy Model Loading: We use a custom pattern to ensure database connections are "Ready" before your Mongoose models try to run queries.
+
+
+
+
+
+ 1. CQRS (Command Query Responsibility Segregation)
+Currently, we are following a "CQRS-Lite" approach. We don't have separate physical databases for Reads and Writes (like Event Sourcing), but we separate the responsibility:
+
+Commands (Writes): The inventory-service is the only service allowed to Create/Update/Delete vehicles. It owns the "Write" logic.
+Queries (Reads): The whatsapp-bot-service handles complex "Read" queries to serve customers.
+The Benefit: If your bot gets massive traffic, we can scale the Bot's Read-Only connection differently than the Admin's Write-Only dashboard.
+🏛️ 2. Polyglot Persistence
+While we are using MongoDB for both Auth and Inventory right now, our architecture is "Polyglot-Ready":
+
+Independence: Because each service has its own DatabaseConnection singleton, we could easily move your Vehicle Inventory to PostgreSQL/Elasticsearch (for better search) while keeping your Sessions/Leads in MongoDB/Redis without breaking the rest of the application.
+Current Choice: We chose MongoDB for its "Schema-less" speed (perfect for car attributes like sunroof, mileage, alloy_wheels), but the structure is ready to support any engine per service.
+🔄 3. Event-Driven Communication (The Next Step)
+Right now, the communication is mostly through Direct Queries (Bot reads from both DBs). The next level for your platform would be:
+
+Pub/Sub (Redis or RabbitMQ): When the inventory-service adds a new car, it emits an event (CAR_ADDED).
+Bot Listeners: The Bot Service listens for this event and automatically sends a notification to customers interested in that brand.
+✅ Summary of Current Best Practices:
+Service Isolation: If the whatsapp-bot-service crashes, the inventory-service and admin dashboard stay 100% online.
+Stateless API: All services (Auth, Inventory, Bot) are stateless—the data is in the DB. This means we can run 50 copies of your Bot behind a balancer during a sale.
+Cross-Database Singleton: Our DatabaseConnection pattern handles multiple DB connections within a single service—this is a very robust way to handle multi-database microservices.

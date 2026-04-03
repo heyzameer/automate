@@ -1,25 +1,30 @@
 import api from '../lib/api';
-import { API_ENDPOINTS } from '../constants/endpoints';
 
 export interface Lead {
-  _id?: string;
-  id?: string;
-  name: string;
-  phone: string;
-  vehicle: string;
-  date: string;
-  status: 'New' | 'Follow Up' | 'Closed' | 'Lost';
-  source: 'WhatsApp' | 'Website' | 'Call';
+    id: string;
+    _id?: string;
+    name: string;
+    phone: string;
+    vehicleId: string;
+    preferredDateTime: string;
+    status: 'new' | 'contacted' | 'booked' | 'lost' | 'cancelled' | 'rescheduled';
+    source: string;
+    createdAt?: string;
 }
 
 export const leadsService = {
-  getAll: async (): Promise<Lead[]> => {
-    const { data } = await api.get(API_ENDPOINTS.LEADS.BASE);
-    return data.data;
-  },
+    getLeads: async (tenantId?: string): Promise<Lead[]> => {
+        // If tenantId is provided, it's super admin view. Otherwise, it's showroom view (id in token)
+        const url = tenantId ? `/super/leads?tenantId=${tenantId}` : '/leads';
+        const { data } = await api.get(url);
+        return data.data;
+    },
 
-  updateStatus: async (id: string, status: Lead['status']): Promise<Lead> => {
-    const { data } = await api.patch(`${API_ENDPOINTS.LEADS.BASE}/${id}`, { status });
-    return data.data;
-  },
+    updateLeadStatus: async (leadId: string, status: Lead['status']): Promise<void> => {
+        await api.patch(`/leads/${leadId}/status`, { status });
+    },
+
+    rescheduleLead: async (leadId: string, newDateTime: string): Promise<void> => {
+        await api.patch(`/leads/${leadId}/reschedule`, { preferredDateTime: newDateTime });
+    }
 };

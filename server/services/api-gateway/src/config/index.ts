@@ -32,7 +32,7 @@ const getBool = (key: string, fallback = false): boolean => {
 const config: AppConfig = {
     port: getInt('PORT', true, 5000),
     env: get('NODE_ENV', true, 'development')!,
-    maxSizeLimit: get('MAX_SIZE_LIMIT', false, '10mb')!,
+    maxSizeLimit: get('MAX_SIZE_LIMIT', false, '50mb')!,
     cors: {
         origin: get('CORS_ORIGIN', false, 'http://localhost:5173')!,
         credentials: getBool('CORS_CREDENTIALS', true),
@@ -49,6 +49,8 @@ const config: AppConfig = {
     },
     services: {
         auth: get('AUTH_SERVICE_URL', false, 'http://localhost:5001')!,
+        inventory: get('INVENTORY_SERVICE_URL', false, 'http://localhost:5002')!,
+        bot: get('BOT_SERVICE_URL', false, 'http://localhost:3003')!,
     },
     jwtSecret: get('JWT_SECRET', true, 'supersecretjwtkeyforcarbotai2024')!,
 };
