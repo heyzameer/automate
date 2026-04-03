@@ -20,6 +20,9 @@ importers:
 
   packages/common:
     dependencies:
+      '@carbot/logger':
+        specifier: workspace:*
+        version: link:../logger
       chalk:
         specifier: ^4.1.2
         version: 4.1.2
@@ -29,12 +32,6 @@ importers:
       joi:
         specifier: ^17.11.0
         version: 17.13.3
-      winston:
-        specifier: ^3.10.0
-        version: 3.19.0
-      winston-daily-rotate-file:
-        specifier: ^5.0.0
-        version: 5.0.0(winston@3.19.0)
     devDependencies:
       '@types/express':
         specifier: ^4.17.20

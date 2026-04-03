@@ -1,6 +1,4 @@
 import { Router } from 'express';
-import { container } from '../container';
-import { TenantController } from '../controllers/TenantController';
 import { Tenant } from '../models/Tenant';
 
 const router = Router();
@@ -22,7 +20,7 @@ router.get('/tenants/whatsapp/:phoneNumberId', async (req, res) => {
             'whatsappConfig.phoneNumberId': phoneNumberId,
             isActive: true
         });
-        
+
         if (!tenant) {
             return res.status(404).json({ success: false, message: 'Tenant not found' });
         }
