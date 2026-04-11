@@ -5,3 +5,5 @@ export * from './utils/asyncHandler';
 export * from './utils/response';
 export * from './middleware/errorHandler';
 export * from './utils/mongooseTenantPlugin';
+export * from './repositories/BaseRepository';
+

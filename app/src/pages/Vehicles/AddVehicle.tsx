@@ -9,6 +9,7 @@ import {
     ArrowLeft,
     Loader2,
     CheckCircle2,
+    RotateCw,
 } from 'lucide-react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { cn } from '../../lib/utils';
@@ -40,7 +41,8 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
     const [brands, setBrands] = useState<any[]>([]);
     const [models, setModels] = useState<any[]>([]);
     const [files, setFiles] = useState<(File & { preview: string })[]>([]);
-    const [formData, setFormData] = useState<Record<string, any>>({});
+    const [spinFiles, setSpinFiles] = useState<(File & { preview: string })[]>([]);
+    const [formData, setFormData] = useState<Record<string, any>>({ service_history: [] });
     const [errors, setErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
@@ -65,6 +67,22 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                             placeholder: 'Auto-generated or custom code'
                         });
                     }
+
+                    // Inject Financial & Core Fields if not present
+                    const financialFields = [
+                        { name: 'purchasePrice', label: 'Purchase Price', type: 'number', required: false, category: 'pricing', placeholder: 'Price paid to buy this car' },
+                        { name: 'refurbishmentCost', label: 'Refurbishment Cost', type: 'number', required: false, category: 'pricing', placeholder: 'Money spent on repairs/cleaning' },
+                        { name: 'otherExpenses', label: 'Other Expenses', type: 'number', required: false, category: 'pricing', placeholder: 'Taxes, transport, etc.' },
+                        { name: 'rcNumber', label: 'RC Number', type: 'text', required: false, category: 'other', placeholder: 'Registration Number' },
+                        { name: 'rcExpiry', label: 'RC Expiry Date', type: 'date', required: false, category: 'other' },
+                        { name: 'insuranceExpiry', label: 'Insurance Expiry Date', type: 'date', required: false, category: 'other' }
+                    ];
+
+                    financialFields.forEach(ff => {
+                        if (!formFields.some((f: any) => f.name === ff.name)) {
+                            formFields.push(ff);
+                        }
+                    });
                     
                     setFields(formFields);
                     
@@ -83,7 +101,15 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                 if (isEdit && id) {
                     const vehicle = await vehicleService.getById(id);
                     if (vehicle) {
-                        const attrs = vehicle.attributes || {};
+                        const attrs: Record<string, any> = {
+                            ...(vehicle.attributes || {}),
+                            purchasePrice: vehicle.purchasePrice,
+                            refurbishmentCost: vehicle.refurbishmentCost,
+                            otherExpenses: vehicle.otherExpenses,
+                            rcNumber: vehicle.rcNumber,
+                            insuranceExpiry: vehicle.insuranceExpiry ? new Date(vehicle.insuranceExpiry).toISOString().split('T')[0] : '',
+                            status: vehicle.status
+                        };
                         // Ensure legacy vehicles without an ID get an auto-generated one
                         if (!attrs.car_code) {
                             attrs.car_code = `car${Math.floor(Math.random() * 10000).toString().padStart(3, '0')}`;
@@ -120,8 +146,22 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
         maxFiles: 10
     });
 
-    const removeFile = (name: string) => {
-        setFiles(files.filter(f => f.name !== name));
+    const { getRootProps: getSpinRootProps, getInputProps: getSpinInputProps, isDragActive: isSpinDragActive } = useDropzone({
+        onDrop: (acceptedFiles) => {
+            setSpinFiles(prev => [...prev, ...acceptedFiles.map(file => Object.assign(file, {
+                preview: URL.createObjectURL(file)
+            }))]);
+        },
+        accept: { 'image/*': [] },
+        maxFiles: 36 // Recommended for smooth 360 spin
+    });
+
+    const removeFile = (name: string, isSpin = false) => {
+        if (isSpin) {
+            setSpinFiles(spinFiles.filter(f => f.name !== name));
+        } else {
+            setFiles(files.filter(f => f.name !== name));
+        }
     };
 
     const [loadingModels, setLoadingModels] = useState(false);
@@ -223,6 +263,7 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
         try {
             setIsSubmitting(true);
             let imageUrls: string[] = [];
+            let spinUrls: string[] = [];
             
             // 1. Upload images to Cloudinary if any
             if (files.length > 0) {
@@ -237,11 +278,25 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                 }
             }
 
+            // 1b. Upload spin images
+            if (spinFiles.length > 0) {
+                const toastId = toast.loading('Uploading 360 images...');
+                try {
+                    spinUrls = await vehicleService.uploadImages(spinFiles);
+                    toast.success('360 images uploaded!', { id: toastId });
+                } catch (err) {
+                    toast.error('360 upload failed', { id: toastId });
+                    setIsSubmitting(false);
+                    return;
+                }
+            }
+
             // 2. Create or Update vehicle
             let success = false;
             const payload = {
                 ...formData,
                 images: imageUrls.length > 0 ? imageUrls : (isEdit ? undefined : []),
+                spin_images: spinUrls.length > 0 ? spinUrls : (isEdit ? undefined : []),
             };
 
             if (isEdit && id) {
@@ -404,6 +459,107 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                             </section>
                         );
                     })}
+
+                    {/* Service History Section */}
+                    <section className="bg-white rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden group hover:border-indigo-200 transition-all duration-300">
+                        <div className="p-6 sm:p-8">
+                            <div className="flex items-center justify-between mb-6">
+                                <h3 className="text-lg font-bold text-gray-900 flex items-center gap-3">
+                                    <div className="w-2 h-6 bg-rose-500 rounded-full" />
+                                    Service & Repair History
+                                </h3>
+                                <button 
+                                    type="button"
+                                    onClick={() => {
+                                        const history = [...(formData.service_history || [])];
+                                        history.push({ date: new Date().toISOString().split('T')[0], type: '', cost: 0, notes: '' });
+                                        setFormData(prev => ({ ...prev, service_history: history }));
+                                    }}
+                                    className="text-xs font-black text-indigo-600 uppercase tracking-widest px-4 py-2 bg-indigo-50 rounded-xl hover:bg-indigo-100 transition-all"
+                                >
+                                    + Add Record
+                                </button>
+                            </div>
+
+                            <div className="space-y-4">
+                                {(formData.service_history || []).map((record: any, idx: number) => (
+                                    <div key={idx} className="p-6 bg-gray-50/50 rounded-2xl border border-gray-100 grid grid-cols-1 sm:grid-cols-4 gap-4 relative group/item">
+                                        <div className="sm:col-span-1">
+                                            <label className="text-[10px] font-black text-gray-400 mb-1 block uppercase">Date</label>
+                                            <input 
+                                                type="date" 
+                                                value={record.date} 
+                                                onChange={(e) => {
+                                                    const history = [...formData.service_history];
+                                                    history[idx].date = e.target.value;
+                                                    setFormData(prev => ({ ...prev, service_history: history }));
+                                                }}
+                                                className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-indigo-500 outline-none text-sm"
+                                            />
+                                        </div>
+                                        <div className="sm:col-span-1">
+                                            <label className="text-[10px] font-black text-gray-400 mb-1 block uppercase">Type</label>
+                                            <input 
+                                                type="text" 
+                                                placeholder="e.g. Oil Change"
+                                                value={record.type} 
+                                                onChange={(e) => {
+                                                    const history = [...formData.service_history];
+                                                    history[idx].type = e.target.value;
+                                                    setFormData(prev => ({ ...prev, service_history: history }));
+                                                }}
+                                                className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-indigo-500 outline-none text-sm"
+                                            />
+                                        </div>
+                                        <div className="sm:col-span-1">
+                                            <label className="text-[10px] font-black text-gray-400 mb-1 block uppercase">Cost (INR)</label>
+                                            <input 
+                                                type="number" 
+                                                value={record.cost} 
+                                                onChange={(e) => {
+                                                    const history = [...formData.service_history];
+                                                    history[idx].cost = Number(e.target.value);
+                                                    setFormData(prev => ({ ...prev, service_history: history }));
+                                                }}
+                                                className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-indigo-500 outline-none text-sm"
+                                            />
+                                        </div>
+                                        <div className="sm:col-span-1 flex items-end gap-2">
+                                            <div className="flex-1">
+                                                <label className="text-[10px] font-black text-gray-400 mb-1 block uppercase">Notes</label>
+                                                <input 
+                                                    type="text" 
+                                                    placeholder="Optional"
+                                                    value={record.notes} 
+                                                    onChange={(e) => {
+                                                        const history = [...formData.service_history];
+                                                        history[idx].notes = e.target.value;
+                                                        setFormData(prev => ({ ...prev, service_history: history }));
+                                                    }}
+                                                    className="w-full px-3 py-2 rounded-xl border border-gray-200 focus:border-indigo-500 outline-none text-sm"
+                                                />
+                                            </div>
+                                            <button 
+                                                type="button"
+                                                onClick={() => {
+                                                    const history = formData.service_history.filter((_: any, i: number) => i !== idx);
+                                                    setFormData(prev => ({ ...prev, service_history: history }));
+                                                }}
+                                                className="p-2 text-rose-400 hover:text-rose-600 opacity-0 group-hover/item:opacity-100 transition-opacity"
+                                            >
+                                                <X size={16} />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {(!formData.service_history || formData.service_history.length === 0) && (
+                                    <div className="py-8 text-center bg-gray-50/30 rounded-2xl border border-dashed border-gray-200">
+                                        <p className="text-xs font-bold text-gray-400 uppercase tracking-widest">No records added yet</p>
+                                    </div>
+                                )}
+                            </div>
+                        </div>
+                    </section>
                 </div>
 
                 {/* Sidebar: Media & Actions */}
@@ -436,6 +592,7 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                                         <img src={file.preview} className="w-full h-full object-cover" alt="" />
                                         <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                             <button 
+                                                type="button"
                                                 onClick={(e) => { e.stopPropagation(); removeFile(file.name); }}
                                                 className="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white hover:text-red-600 transition-all"
                                             >
@@ -447,6 +604,42 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                             </div>
                         )}
                     </div>
+
+                    {/* 360 Spin View Section */}
+                    <div className="bg-white p-8 rounded-[2rem] shadow-xl shadow-gray-200/50 border border-gray-100 overflow-hidden">
+                        <h3 className="text-lg font-bold text-gray-900 mb-6 flex items-center gap-3">
+                            <RotateCw className="w-5 h-5 text-indigo-600" />
+                            360° Spin View
+                        </h3>
+                        
+                        <div {...getSpinRootProps()} className={cn(
+                            "group cursor-pointer p-6 border-2 border-dashed rounded-3xl transition-all duration-300",
+                            isSpinDragActive ? "border-indigo-500 bg-indigo-50/50" : "border-gray-200 hover:border-indigo-400 hover:bg-gray-50"
+                        )}>
+                            <input {...getSpinInputProps()} />
+                            <div className="flex flex-col items-center text-center">
+                                <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
+                                    <RotateCw className="w-6 h-6" />
+                                </div>
+                                <p className="text-sm font-semibold text-gray-700">Add 360° Sequence</p>
+                                <p className="text-xs text-gray-400 mt-1">Select 24-36 sequence photos</p>
+                            </div>
+                        </div>
+
+                        {spinFiles.length > 0 && (
+                            <div className="mt-4 flex items-center justify-between p-3 bg-indigo-50 rounded-2xl border border-indigo-100">
+                                <span className="text-xs font-bold text-indigo-600">{spinFiles.length} photos ready for spin</span>
+                                <button 
+                                    type="button" 
+                                    onClick={() => setSpinFiles([])}
+                                    className="text-[10px] font-bold text-indigo-400 hover:text-indigo-600 uppercase tracking-widest"
+                                >
+                                    Clear all
+                                </button>
+                            </div>
+                        )}
+                    </div>
+
 
                     {/* Quick Tips */}
                     <div className="bg-indigo-600 p-8 rounded-[2rem] text-white shadow-xl shadow-indigo-200/50">

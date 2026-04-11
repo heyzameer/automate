@@ -125,4 +125,18 @@ export class WhatsAppService {
             });
         }
     }
+
+    async sendBulkText(recipients: string[], message: string, phoneNumberId: string, accessToken: string) {
+        const results = { sent: 0, failed: 0 };
+        for (const to of recipients) {
+            try {
+                await this.sendTextMessage(to, message, phoneNumberId, accessToken);
+                results.sent++;
+            } catch (error) {
+                results.failed++;
+                logger.error(`Failed to send broadcast to ${to}:`, error);
+            }
+        }
+        return results;
+    }
 }

@@ -75,11 +75,24 @@ export class BotService {
                 return this.sendMenu(tenant, from);
             }
 
-            // 4. Stock Code Detection (car01, car02, etc.)
-            const stockCodeMatch = lowerMessage.match(/^car\d+$/i);
-            if (stockCodeMatch) {
-                console.log(`🏷️ MATCHED CODE: ${stockCodeMatch[0]}`);
-                await this.sendVehicleDetailByCode(tenant, session, from, stockCodeMatch[0].toLowerCase());
+            // 4. Stock Code Detection (car01, car02, etc.) or QR Scan
+            const stockCodeMatch = lowerMessage.match(/(car\d+)/i);
+            const qrScanMatch = lowerMessage.match(/scan_(car\d+)/i);
+            
+            if (stockCodeMatch || qrScanMatch) {
+                const code = stockCodeMatch ? stockCodeMatch[1] : qrScanMatch![1];
+                console.log(`🏷️ MATCHED CODE/QR: ${code}`);
+                
+                // If this is a QR scan (explicit or new session with code), track it in leads
+                if (qrScanMatch || !sessionData) {
+                    await botServiceClient.post('/internal/qr-scan', {
+                        tenantId,
+                        phone: from,
+                        carCode: code.toLowerCase()
+                    });
+                }
+
+                await this.sendVehicleDetailByCode(tenant, session, from, code.toLowerCase());
                 await saveSession();
                 return;
             }
@@ -94,6 +107,37 @@ export class BotService {
                     tenant.whatsappConfig.phoneNumberId,
                     tenant.whatsappConfig.accessToken
                 );
+            }
+
+            // 5.5 Global Interactive Menu Action Intercept
+            // Handles cases where users click buttons while in IDLE state, or copy-paste button text.
+            let actionToken = messageBody;
+            
+            // Hard mapping for WhatsApp UI List copy-pasting
+            const textMap: Record<string, string> = {
+                'browse inventory': 'MENU_INVENTORY',
+                'available cars': 'MENU_INVENTORY',
+                'search by nlp': 'MENU_SEARCH',
+                'suv, petrol': 'MENU_SEARCH',
+                'search by budget': 'MENU_BUDGET',
+                'price range': 'MENU_BUDGET',
+                'my bookings': 'MENU_BOOKINGS',
+                'view, change or cancel': 'MENU_BOOKINGS',
+                'showroom location': 'MENU_LOCATION',
+                'address & map': 'MENU_LOCATION'
+            };
+
+            for (const [key, token] of Object.entries(textMap)) {
+                if (lowerMessage.includes(key)) {
+                    actionToken = token;
+                    break;
+                }
+            }
+
+            if (actionToken.startsWith('MENU_') || actionToken.startsWith('CANCEL_LEAD_') || actionToken.startsWith('RESCHEDULE_LEAD_')) {
+                await this.handleMenuSelection(tenant, session, from, actionToken);
+                await saveSession();
+                return;
             }
 
             // 6. State-Based Logic
@@ -157,6 +201,9 @@ export class BotService {
     }
 
     private async handleMenuSelection(tenant: any, session: ISessionData, to: string, selection: string) {
+        // Score for browsing menu
+        await botServiceClient.post('/internal/leads/score', { tenantId: session.tenantId, phone: to, points: 5 });
+
         switch (selection) {
             case 'MENU_INVENTORY':
                 await this.sendLatestVehicles(tenant, to);
@@ -169,6 +216,8 @@ export class BotService {
                 await this.whatsappService.sendTextMessage(to, "💰 What is your budget? (e.g. 10 lakh or 500000)", tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
                 break;
             case 'MENU_LOCATION':
+                // Higher score for location intent
+                await botServiceClient.post('/internal/leads/score', { tenantId: session.tenantId, phone: to, points: 10 });
                 const locationMsg = `📍 *Showroom Location*\n\n*${tenant.name}*\n${tenant.address || 'Location details shared above.'}${tenant.locationUrl ? `\n\n📌 Map: ${tenant.locationUrl}` : ''}`;
                 await this.whatsappService.sendTextMessage(to, locationMsg, tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
                 break;
@@ -189,21 +238,25 @@ export class BotService {
         const res = await botServiceClient.get('/internal/leads', {
             params: { tenantId: session.tenantId, phone: to }
         });
-        const leads = res.data?.data || [];
+        
+        // Filter out leads that don't actually have a test drive booking scheduled
+        const leads = (res.data?.data || []).filter((l: any) => l.preferredDateTime);
 
         if (leads.length === 0) {
-            return this.whatsappService.sendTextMessage(to, "🔍 You don't have any active test drive bookings. Type MENU to browse cars!", tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+            return this.whatsappService.sendTextMessage(to, "🔍 You don't have any active test drive bookings. Type MENU to browse cars or start a new booking!", tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
         }
 
         for (const lead of leads) {
             // Fetch vehicle info for display
             let vehicleLabel = 'Vehicle';
             try {
-                const vRes = await inventoryServiceClient.get('/internal/vehicles', {
-                    params: { tenantId: session.tenantId, car_code: lead.vehicleId }
-                });
-                const v = vRes.data?.data?.[0];
-                if (v) vehicleLabel = `${v.attributes?.brand || ''} ${v.attributes?.model || ''}`.trim();
+                if (lead.vehicleId) {
+                    const vRes = await inventoryServiceClient.get('/internal/vehicles', {
+                        params: { tenantId: session.tenantId, car_code: lead.vehicleId }
+                    });
+                    const v = vRes.data?.data?.[0];
+                    if (v) vehicleLabel = `${v.attributes?.brand || ''} ${v.attributes?.model || ''}`.trim();
+                }
             } catch (_) {}
 
             const msg = `🚗 *${vehicleLabel}*\n🗓️ ${lead.preferredDateTime}`;
@@ -234,6 +287,9 @@ export class BotService {
     }
 
     private async processNaturalQuery(tenant: any, session: ISessionData, to: string, query: string) {
+        // Score for asking questions
+        await botServiceClient.post('/internal/leads/score', { tenantId: session.tenantId, phone: to, points: 10 });
+
         const nlpResult = await this.geminiService.parseCarQuery(query);
 
         if (!nlpResult || nlpResult.intent === 'greeting') return this.sendMenu(tenant, to);
@@ -317,19 +373,22 @@ export class BotService {
     private async handleBookingDate(tenant: any, session: ISessionData, to: string, input: string) {
         if (!session.context) session.context = {};
 
+        // Parse natural language date
+        const parsedDate = await this.geminiService.parseDateTime(input);
+
         // ✅ HTTP POST to bot-service internal leads endpoint
         await botServiceClient.post('/internal/leads', {
             tenantId: session.tenantId,
             phone: to,
             name: session.context.lead_name,
             vehicleId: session.context.current_car_id,
-            preferredDateTime: input,
+            preferredDateTime: parsedDate,
             status: 'new'
         });
 
         await this.whatsappService.sendTextMessage(
             to,
-            `✅ *Test Drive Requested!*\n\nYour booking is confirmed. Our team will call you at ${to} to confirm the appointment.\n\nType MENU for more options.`,
+            `✅ *Test Drive Requested!*\n\nYour booking for *${parsedDate}* is confirmed. Our team will call you at ${to} to finalize the details.\n\nType MENU for more options.`,
             tenant.whatsappConfig.phoneNumberId,
             tenant.whatsappConfig.accessToken
         );
@@ -344,15 +403,18 @@ export class BotService {
             return;
         }
 
+        // Parse natural language date
+        const parsedDate = await this.geminiService.parseDateTime(input);
+
         // ✅ HTTP PATCH to bot-service internal leads endpoint
         await botServiceClient.patch(`/internal/leads/${session.context.rescheduling_id}`, {
-            preferredDateTime: input,
+            preferredDateTime: parsedDate,
             status: 'rescheduled'
         });
 
         await this.whatsappService.sendTextMessage(
             to,
-            `🗓️ *Booking Rescheduled!*\n\nYour test drive has been updated to *${input}*. We look forward to seeing you!\n\nType MENU for more options.`,
+            `🗓️ *Booking Rescheduled!*\n\nYour test drive has been updated to *${parsedDate}*. We look forward to seeing you!\n\nType MENU for more options.`,
             tenant.whatsappConfig.phoneNumberId,
             tenant.whatsappConfig.accessToken
         );

@@ -1,13 +1,17 @@
 import { injectable, inject } from 'tsyringe';
-import Vehicle from '../models/Vehicle';
+import axios from 'axios';
+import Vehicle, { IVehicleDocument } from '../models/Vehicle';
 import FormConfig from '../models/FormConfig';
 import { logger } from '../utils/logger';
 import { Brand } from '../models/Brand';
 import { Model } from '../models/Model';
 import { DropdownOption } from '../models/DropdownOption';
+import { AIService } from './AIService';
 
 @injectable()
 export class InventoryService {
+    constructor(private aiService: AIService) {}
+
     async getBrands() {
         return await Brand.find({}).sort({ name: 1 });
     }
@@ -28,12 +32,36 @@ export class InventoryService {
     async getVehicles(tenantId: string, filters: any = {}) {
         const query: any = { tenantId };
         
-        // Handle attribute filters (e.g., brand, fuel_type)
-        if (filters.brand) query['attributes.brand'] = filters.brand;
-        if (filters.model) query['attributes.model'] = filters.model;
-        if (filters.status) query.status = filters.status;
+        // Handle dynamic filtering for all vehicle attributes
+        Object.keys(filters).forEach(key => {
+            if (['brand', 'model', 'fuel_type', 'transmission', 'ownership', 'body_type'].includes(key)) {
+                query[`attributes.${key}`] = new RegExp(filters[key], 'i');
+            } else if (key === 'max_price') {
+                query['attributes.price'] = { $lte: Number(filters[key]) };
+            } else if (key === 'min_price') {
+                query['attributes.price'] = { ...query['attributes.price'], $gte: Number(filters[key]) };
+            } else if (key === 'year') {
+                query['attributes.year_of_manufacture'] = Number(filters[key]);
+            } else if (key === 'status') {
+                query.status = filters[key];
+            }
+        });
 
-        return await Vehicle.find(query).sort({ createdAt: -1 });
+        // Handle sorting
+        let sort: any = { createdAt: -1 };
+        if (filters.sortBy) {
+            const order = filters.sortOrder === 'desc' ? -1 : 1;
+            if (filters.sortBy === 'price') sort = { 'attributes.price': order };
+            else if (filters.sortBy === 'year') sort = { 'attributes.year_of_manufacture': order };
+        }
+
+        return await Vehicle.find(query).sort(sort).lean();
+    }
+
+    async createSellRequest(data: any) {
+        const { SellRequest } = require('../models/SellRequest');
+        const request = new SellRequest(data);
+        return await request.save();
     }
 
     async getVehicleById(id: string, tenantId: string) {
@@ -44,16 +72,50 @@ export class InventoryService {
         // Validate against FormConfig
         await this.validateVehicleData(data);
 
+        // Fetch AI Price Suggestion
+        const aiPrice = await this.aiService.suggestPrice(data);
+
         const vehicle = new Vehicle({
             tenantId,
             status: 'available',
             images,
-            attributes: data,
+            spin_images: data.spin_images || [],
+            purchasePrice: data.purchasePrice || 0,
+            refurbishmentCost: data.refurbishmentCost || 0,
+            service_history: data.service_history || [],
+            otherExpenses: data.otherExpenses || 0,
+            rcNumber: data.rcNumber,
+            rcExpiry: data.rcExpiry ? new Date(data.rcExpiry) : undefined,
+            insuranceExpiry: data.insuranceExpiry ? new Date(data.insuranceExpiry) : undefined,
+            aiSuggestedPrice: aiPrice,
+            attributes: {}, // Will be populated below
             createdBy: userId
         });
 
+        // Sync remaining dynamic data into attributes Map, excluding top-level fields
+        const topLevelFields = [
+            'purchasePrice', 'refurbishmentCost', 'otherExpenses', 'rcNumber', 
+            'rcExpiry', 'insuranceExpiry', 'spin_images', 'service_history'
+        ];
+        
+        for (const [key, value] of Object.entries(data)) {
+            if (!topLevelFields.includes(key)) {
+                vehicle.attributes.set(key, value);
+            }
+        }
+
         await vehicle.save();
         logger.info(`Vehicle created for tenant ${tenantId} by user ${userId}`);
+
+        // Notify Campaign Service for New Arrival drafting (Async, don't block)
+        const campaignUrl = process.env.CAMPAIGN_SERVICE_URL || 'http://localhost:5005';
+        axios.post(`${campaignUrl}/api/v1/campaigns/internal/new-arrival`, {
+            tenantId,
+            vehicle
+        }, {
+            headers: { 'x-internal-secret': 'carbot-internal-super-secret' }
+        }).catch(err => logger.error(`Failed to notify Campaign Service: ${err.message}`));
+
         return vehicle;
     }
 
@@ -68,10 +130,22 @@ export class InventoryService {
                 
                 // Handle top-level fields
                 if (updates.status) vehicle.status = updates.status;
+                if (updates.purchasePrice !== undefined) vehicle.purchasePrice = Number(updates.purchasePrice);
+                if (updates.refurbishmentCost !== undefined) vehicle.refurbishmentCost = Number(updates.refurbishmentCost);
+                if (updates.otherExpenses !== undefined) vehicle.otherExpenses = Number(updates.otherExpenses);
+                if (updates.rcNumber !== undefined) vehicle.rcNumber = updates.rcNumber;
+                if (updates.rcExpiry !== undefined) vehicle.rcExpiry = updates.rcExpiry ? new Date(updates.rcExpiry) : undefined;
+                if (updates.insuranceExpiry !== undefined) vehicle.insuranceExpiry = updates.insuranceExpiry ? new Date(updates.insuranceExpiry) : undefined;
+                if (updates.spin_images !== undefined) vehicle.spin_images = updates.spin_images;
+                if (updates.service_history !== undefined) vehicle.service_history = updates.service_history;
 
                 // Sync updates into attributes Map
                 for (const [key, value] of Object.entries(updates)) {
-                    if (key !== 'status') {
+                    const topLevelFields = [
+                        'status', 'purchasePrice', 'refurbishmentCost', 'otherExpenses', 
+                        'rcNumber', 'rcExpiry', 'insuranceExpiry', 'spin_images', 'service_history'
+                    ];
+                    if (!topLevelFields.includes(key)) {
                         vehicle.attributes.set(key, value);
                     }
                 }
@@ -80,6 +154,9 @@ export class InventoryService {
             if (newImages && newImages.length > 0) {
                 vehicle.images.push(...newImages);
             }
+            
+            // Handle spin images separately if passed in newImages
+            // (In this app, we usually send the full list in the updates object)
 
             if (removedImages && removedImages.length > 0) {
                 vehicle.images = vehicle.images.filter(img => !removedImages.includes(img));

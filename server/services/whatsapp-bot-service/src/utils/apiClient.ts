@@ -14,9 +14,8 @@ export const inventoryServiceClient = axios.create({
     headers: { 'x-internal-secret': INTERNAL_SECRET }
 });
 
-// Client for calling self (bot-service) internal routes for leads
 export const botServiceClient = axios.create({
-    baseURL: process.env.BOT_SERVICE_URL || 'http://localhost:5003',
+    baseURL: (process.env.BOT_SERVICE_URL || 'http://localhost:5003') + '/api/v1/bot',
     headers: { 'x-internal-secret': INTERNAL_SECRET }
 });
 

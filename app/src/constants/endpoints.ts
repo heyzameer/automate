@@ -7,6 +7,7 @@ export const API_ENDPOINTS = {
     PROFILE: '/auth/profile',
     FORGOT_PASSWORD: '/auth/forgot-password',
     RESET_PASSWORD: '/auth/reset-password',
+    CHANGE_PASSWORD: '/auth/change-password',
   },
   SUPER: {
     TENANTS: '/super/tenants',
@@ -31,6 +32,10 @@ export const API_ENDPOINTS = {
   SETTINGS: {
     SHOWROOM: '/settings/showroom',
     WA: '/settings/whatsapp',
+  },
+  NOTIFICATIONS: {
+    BASE: '/notifications',
+    MARK_READ: (id: string) => `/notifications/${id}/read`,
   },
 } as const;
 

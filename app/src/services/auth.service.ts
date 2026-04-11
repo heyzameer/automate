@@ -49,5 +49,17 @@ export const authService = {
   getMyTenant: async (): Promise<{ tenant?: AuthTenant }> => {
     const { data } = await api.get(API_ENDPOINTS.AUTH.MY_TENANT);
     return data.data;
-  }
+  },
+
+  updateProfile: async (payload: Partial<User>): Promise<User> => {
+    const { data } = await api.patch(API_ENDPOINTS.AUTH.PROFILE, payload);
+    if (data.data?.user) {
+        localStorage.setItem('user', JSON.stringify(data.data.user));
+    }
+    return data.data?.user || data.data;
+  },
+
+  changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
+    await api.post(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, { currentPassword, newPassword });
+  },
 };

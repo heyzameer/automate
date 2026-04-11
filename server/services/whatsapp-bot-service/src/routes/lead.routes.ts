@@ -6,7 +6,9 @@ const router = Router();
 const leadController = container.resolve(LeadController);
 
 router.get('/', leadController.getLeads.bind(leadController));
-router.patch('/:id/status', leadController.updateStatus.bind(leadController));
-router.patch('/:id/reschedule', leadController.reschedule.bind(leadController));
+router.patch('/:id', leadController.updateLead.bind(leadController));
+router.post('/:id/call-log', leadController.addCallLog.bind(leadController));
+router.get('/vehicle/:vehicleId', leadController.getLeadsByVehicle.bind(leadController));
+router.get('/qr/:carCode', leadController.getQRCode.bind(leadController));
 
 export default router;

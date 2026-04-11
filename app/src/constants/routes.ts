@@ -1,5 +1,8 @@
 export const ROUTES = {
-  HOME: '/',
+  LANDING: '/',
+  ADMIN_LANDING: '/admin',
+  ADMIN_LOGIN: '/admin-login',
+  HOME: '/app',
   LOGIN: '/login',
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
@@ -8,6 +11,7 @@ export const ROUTES = {
     HOME: '/dashboard',
     SUBSCRIPTION: '/subscription',
     SETTINGS: '/settings',
+    NOTIFICATIONS: '/notifications',
   },
   
   VEHICLES: {
@@ -22,6 +26,10 @@ export const ROUTES = {
   
   AUTOMATION: {
     WHATSAPP: '/automation',
+  },
+
+  MARKETING: {
+    CAMPAIGNS: '/campaigns',
   },
   
   SUPER_ADMIN: {

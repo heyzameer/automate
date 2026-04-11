@@ -66,7 +66,10 @@ export class WebhookController {
                 }
             }
         } catch (error) {
-            logger.error('Error handling WhatsApp webhook:', error);
+            logger.error('Error handling WhatsApp webhook:', error instanceof Error ? error.message : String(error));
+            if ((error as any).response?.data) {
+                logger.error('WhatsApp webhook API data:', JSON.stringify((error as any).response.data));
+            }
         }
     }
 }

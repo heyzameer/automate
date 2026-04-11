@@ -185,6 +185,7 @@ export class AuthController {
             return sendError(res, 'No tenant assigned', HttpStatus.FORBIDDEN);
         }
         const updateData = req.body;
+        console.log("UPDATE TENANT REQUEST:", updateData);
         
         const safeUpdateData: Record<string, any> = {};
         if (updateData.whatsappConfig) {
@@ -193,6 +194,15 @@ export class AuthController {
              if (updateData.whatsappConfig.includeGallery !== undefined) safeUpdateData['whatsappConfig.includeGallery'] = updateData.whatsappConfig.includeGallery;
              if (updateData.whatsappConfig.includeSpecs !== undefined) safeUpdateData['whatsappConfig.includeSpecs'] = updateData.whatsappConfig.includeSpecs;
              if (updateData.whatsappConfig.includeLocation !== undefined) safeUpdateData['whatsappConfig.includeLocation'] = updateData.whatsappConfig.includeLocation;
+        }
+        if (updateData.address !== undefined) {
+             safeUpdateData['address'] = updateData.address;
+        }
+        if (updateData.locationUrl !== undefined) {
+             safeUpdateData['locationUrl'] = updateData.locationUrl;
+        }
+        if (updateData.name !== undefined && updateData.name.trim()) {
+             safeUpdateData['name'] = updateData.name.trim();
         }
 
         const tenant = await Tenant.findByIdAndUpdate(
@@ -239,4 +249,29 @@ export class AuthController {
             next(error);
         }
     };
+
+    getMyPaymentRequests = asyncHandler(async (req: Request, res: Response) => {
+        const tenantId = req.user?.tenantId;
+        if (!tenantId) return sendError(res, 'No showroom associated', 400);
+        const tenant = await Tenant.findById(tenantId).select('paymentRequests name');
+        sendSuccess(res, 'Payment requests retrieved', tenant?.paymentRequests || []);
+    });
+
+    confirmPayment = asyncHandler(async (req: Request, res: Response) => {
+        const tenantId = req.user?.tenantId;
+        const { reqId } = req.params;
+        const { screenshotUrl, note } = req.body;
+        if (!tenantId) return sendError(res, 'No showroom associated', 400);
+
+        await Tenant.updateOne(
+            { _id: tenantId, 'paymentRequests._id': reqId },
+            { $set: { 
+                'paymentRequests.$.status': 'paid', 
+                'paymentRequests.$.screenshotUrl': screenshotUrl,
+                'paymentRequests.$.paidAt': new Date(),
+                'paymentRequests.$.note': note 
+            }}
+        );
+        sendSuccess(res, 'Payment confirmation submitted');
+    });
 }

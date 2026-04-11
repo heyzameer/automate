@@ -11,13 +11,15 @@ import {
     LogOut,
     Bell,
     Car,
-    CreditCard
+    CreditCard,
+    Megaphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
 import { authService } from '../../services/auth.service';
 import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../constants/routes';
+import NotificationDropdown from '../Dashboard/NotificationDropdown';
 
 interface SidebarLinkProps {
     to: string;
@@ -118,7 +120,7 @@ export default function DashboardLayout() {
                             <Car className="text-white w-6 h-6" />
                         </div>
                         <span className="text-xl font-black tracking-tight text-slate-900 uppercase">
-                            AutoMoto
+                            Orbix
                         </span>
                     </div>
                 </div>
@@ -164,6 +166,13 @@ export default function DashboardLayout() {
                         </SidebarLink>
                         <SidebarLink to={ROUTES.AUTOMATION.WHATSAPP} icon={MessageSquare} onClick={() => setSidebarOpen(false)}>
                             WhatsApp Bot
+                        </SidebarLink>
+
+                        <div className="px-4 mt-6 mb-2 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
+                            Marketing
+                        </div>
+                        <SidebarLink to={ROUTES.MARKETING.CAMPAIGNS} icon={Megaphone} onClick={() => setSidebarOpen(false)}>
+                            Campaigns
                         </SidebarLink>
 
                         <div className="px-4 mt-6 mb-2 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">
@@ -217,10 +226,7 @@ export default function DashboardLayout() {
                         
                         <div className="h-8 w-px bg-slate-100 mx-2 hidden md:block"></div>
                         
-                        <button className="p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl relative transition-all duration-300 group">
-                            <Bell className="w-5 h-5 transition-transform group-hover:rotate-12" />
-                            <span className="absolute top-2.5 right-2.5 w-2 h-2 bg-rose-500 rounded-full border-2 border-white"></span>
-                        </button>
+                        <NotificationDropdown tenantId={user.tenantId!} />
                         
                         {/* Quick Action Profile for mobile/tablet top header */}
                         <div className="md:hidden w-10 h-10 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[10px] font-black text-slate-600">

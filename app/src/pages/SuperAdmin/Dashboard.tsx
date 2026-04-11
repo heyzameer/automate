@@ -4,7 +4,6 @@ import {
     Activity, 
     CreditCard, 
     Clock, 
-    TrendingUp, 
     MoreHorizontal,
     Plus,
     LayoutGrid,
@@ -23,9 +22,12 @@ interface Stats {
     activeShowrooms: number;
     totalRevenue: number;
     upcomingExpiries: number;
+    recentActivity?: Array<{ msg: string; time: string; level: string }>;
+    systemHealth?: Array<{ name: string; status: string; latency: string; load: string }>;
+    securityAudit?: { message: string; status: string };
 }
 
-const StatCard = ({ title, value, icon: Icon, trend, color, delay }: { title: string, value: string | number, icon: React.ElementType, trend: string, color: string, delay?: number }) => (
+const StatCard = ({ title, value, icon: Icon, color, delay }: { title: string, value: string | number, icon: React.ElementType, color: string, delay?: number }) => (
     <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -43,13 +45,6 @@ const StatCard = ({ title, value, icon: Icon, trend, color, delay }: { title: st
             <div className={`p-4 rounded-2xl shadow-lg ${color} text-white transform group-hover:scale-110 transition-transform duration-500`}>
                 <Icon className="w-6 h-6" />
             </div>
-        </div>
-        <div className="mt-6 flex items-center text-xs relative z-10">
-            <span className="text-emerald-600 flex items-center font-bold px-2 py-1 bg-emerald-50 rounded-lg">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                {trend}
-            </span>
-            <span className="text-slate-400 ml-3 font-semibold">vs last month</span>
         </div>
     </motion.div>
 );
@@ -130,7 +125,6 @@ const SuperAdminDashboard = () => {
                     title="Total Tenants" 
                     value={stats?.totalShowrooms || 0} 
                     icon={Users} 
-                    trend="+4%"
                     color="bg-indigo-600"
                     delay={0.1}
                 />
@@ -138,15 +132,13 @@ const SuperAdminDashboard = () => {
                     title="Active Sessions" 
                     value={stats?.activeShowrooms || 0} 
                     icon={Activity} 
-                    trend="+12%"
                     color="bg-emerald-600"
                     delay={0.2}
                 />
                 <StatCard 
-                    title="Platform Revenue" 
-                    value={`$${stats?.totalRevenue ? stats.totalRevenue.toLocaleString() : '0'}`} 
+                    title="Estimated MRR" 
+                    value={`$${stats?.totalRevenue ? stats.totalRevenue.toFixed(2) : '0.00'}`} 
                     icon={CreditCard} 
-                    trend="+18%"
                     color="bg-slate-900"
                     delay={0.3}
                 />
@@ -154,7 +146,6 @@ const SuperAdminDashboard = () => {
                     title="Action Required" 
                     value={stats?.upcomingExpiries || 0} 
                     icon={Clock} 
-                    trend="-2%"
                     color="bg-rose-500"
                     delay={0.4}
                 />
@@ -177,12 +168,9 @@ const SuperAdminDashboard = () => {
                     </div>
                     
                     <div className="space-y-4">
-                        {[
-                            { name: 'API Gateway', status: 'Operational', latency: '24ms', load: '12%' },
-                            { name: 'Auth Service', status: 'Operational', latency: '48ms', load: '8%' },
-                            { name: 'Vehicle Service', status: 'Operational', latency: '156ms', load: '45%' },
-                            { name: 'Media Storage', status: 'Operational', latency: '12ms', load: '2%' },
-                        ].map((service, idx) => (
+                        {(stats?.systemHealth || [
+                            { name: 'API Gateway', status: 'Connecting...', latency: '--ms', load: '--%' },
+                        ]).map((service, idx) => (
                             <div key={idx} className="flex items-center justify-between p-5 rounded-2xl border border-slate-50 hover:bg-slate-50/50 transition-colors group">
                                 <div className="flex items-center gap-4">
                                     <div className="w-12 h-12 rounded-xl bg-slate-50 flex items-center justify-center group-hover:bg-white group-hover:shadow-md transition-all">
@@ -220,7 +208,7 @@ const SuperAdminDashboard = () => {
                                 <ShieldCheck className="text-indigo-400 w-6 h-6" />
                             </div>
                             <h3 className="font-black text-2xl mb-3 tracking-tight">Security Audit</h3>
-                            <p className="text-slate-400 text-sm mb-8 leading-relaxed font-medium">No security vulnerabilities detected in the last <span className="text-white font-bold">24 hours</span>. Core systems are running latest patches.</p>
+                            <p className="text-slate-400 text-sm mb-8 leading-relaxed font-medium">{stats?.securityAudit?.message || 'Syncing global security nodes...'}</p>
                             <button className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-white text-slate-900 rounded-2xl text-sm font-black transition transform hover:scale-[1.02] active:scale-[0.98]">
                                 Global Security Settings <Settings className="w-4 h-4 ml-2" />
                             </button>
@@ -233,11 +221,9 @@ const SuperAdminDashboard = () => {
                             <Bell className="w-4 h-4 text-slate-400" />
                         </div>
                         <div className="space-y-6">
-                            {[
-                                { msg: 'New tenant registration: "Skyline Motors"', time: '12m ago', level: 'info' },
-                                { msg: 'Unusual login attempt from IP 192.168.1.1', time: '1h ago', level: 'warning' },
-                                { msg: 'Server instance SA-01 restarted', time: '3h ago', level: 'info' },
-                            ].map((alert, i) => (
+                            {(stats?.recentActivity || [
+                                { msg: 'New tenant registration waiting...', time: 'Just now', level: 'info' }
+                            ]).map((alert, i) => (
                                 <div key={i} className="flex gap-4">
                                     <div className={`w-1 h-8 rounded-full ${alert.level === 'warning' ? 'bg-rose-500' : 'bg-indigo-500'}`}></div>
                                     <div>

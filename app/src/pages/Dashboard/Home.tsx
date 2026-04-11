@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
     Car, 
@@ -9,10 +9,13 @@ import {
     Plus, 
     ExternalLink,
     Zap,
-    Users
+    Users,
+    Loader2
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../constants/routes';
+import { analyticsService, DashboardStats } from '../../services/analytics.service';
+import { formatDistanceToNow } from 'date-fns';
 
 interface StatCardProps {
     title: string;
@@ -76,6 +79,40 @@ const ActivityItem = ({ title, time, type }: ActivityItemProps) => (
 )
 
 export default function DashboardHome() {
+    const [stats, setStats] = useState<DashboardStats | null>(null);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        const fetchStats = async () => {
+            try {
+                const data = await analyticsService.getDashboardStats();
+                setStats(data);
+            } catch (err) {
+                console.error("Failed to load dashboard stats", err);
+            } finally {
+                setLoading(false);
+            }
+        };
+        fetchStats();
+    }, []);
+
+    const formatCurrency = (val: number) => {
+        if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
+        if (val >= 100000) return `₹${(val / 100000).toFixed(1)}L`;
+        return `₹${val.toLocaleString()}`;
+    };
+
+    if (loading) return (
+        <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
+            <Loader2 className="animate-spin text-indigo-600" size={40} />
+            <p className="text-slate-400 font-bold animate-pulse uppercase tracking-widest text-xs text-center">Crunching Dealer Intelligence...</p>
+        </div>
+    );
+
+    const totalLeads = stats?.funnel.stages.reduce((acc, s) => acc + s.count, 0) || 0;
+    const inventoryDist = stats?.inventory.brandDistribution || [];
+    const totalVehicles = stats?.inventory.totalStock || 0;
+
     return (
         <div className="space-y-10 pb-20">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
@@ -97,15 +134,15 @@ export default function DashboardHome() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                 <StatCard
                     title="Active Stock"
-                    value="42"
+                    value={totalVehicles}
                     icon={Car}
                     color="bg-indigo-600"
                     trend="+12%"
                     delay={0.1}
                 />
                 <StatCard
-                    title="Available Now"
-                    value="28"
+                    title="Conversion Rate"
+                    value={`${stats?.funnel.conversionRate || 0}%`}
                     icon={CheckCircle}
                     color="bg-emerald-600"
                     trend="+5%"
@@ -113,15 +150,15 @@ export default function DashboardHome() {
                 />
                 <StatCard
                     title="Total Revenue"
-                    value="₹1.4Cr"
+                    value={formatCurrency(stats?.revenue.totalRevenue || 0)}
                     icon={TrendingUp}
                     color="bg-slate-900"
-                    trend="+18%"
+                    trend={`${stats?.revenue.monthlyGrowth || 0}%`}
                     delay={0.3}
                 />
                 <StatCard
                     title="Monthly Leads"
-                    value="156"
+                    value={totalLeads}
                     icon={MessageCircle}
                     color="bg-indigo-600"
                     trend="+42%"
@@ -142,11 +179,16 @@ export default function DashboardHome() {
                         </button>
                     </div>
                     <div className="space-y-2">
-                        <ActivityItem title="New enquiry for Yamaha R15 via WhatsApp" time="2 mins ago" type="lead" />
-                        <ActivityItem title="Honda City 2020 marked as Sold" time="2 hours ago" type="sold" />
-                        <ActivityItem title="Added new listing: Royal Enfield Classic 350" time="5 hours ago" type="listing" />
-                        <ActivityItem title="Price updated for Hyundai Creta" time="1 day ago" type="listing" />
-                        <ActivityItem title="New enquiry for Maruti Swift via WhatsApp" time="1 day ago" type="lead" />
+                        {stats?.recentActivity?.length ? stats.recentActivity.map((activity) => (
+                            <ActivityItem 
+                                key={activity.id}
+                                title={activity.title} 
+                                time={formatDistanceToNow(new Date(activity.time), { addSuffix: true })} 
+                                type={activity.type} 
+                            />
+                        )) : (
+                            <p className="text-center py-20 text-slate-400 font-bold uppercase tracking-widest text-xs">No recent activity detected</p>
+                        )}
                     </div>
                 </div>
 
@@ -169,34 +211,29 @@ export default function DashboardHome() {
                     <div className="bg-white rounded-[2.5rem] shadow-xl shadow-slate-200/50 border border-slate-50 p-10">
                         <h3 className="font-black text-slate-900 mb-8 uppercase text-sm tracking-widest text-center">Inventory Health</h3>
                         <div className="space-y-8">
-                            <div>
-                                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
-                                    <span className="text-slate-400">Motorbikes</span>
-                                    <span className="text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">65%</span>
-                                </div>
-                                <div className="h-4 bg-slate-50 rounded-full overflow-hidden p-1 shadow-inner border border-slate-100">
-                                    <motion.div 
-                                        initial={{ width: 0 }}
-                                        animate={{ width: '65%' }}
-                                        transition={{ duration: 1.5, ease: "easeOut" }}
-                                        className="h-full bg-indigo-600 rounded-full shadow-lg shadow-indigo-200"
-                                    ></motion.div>
-                                </div>
-                            </div>
-                            <div>
-                                <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
-                                    <span className="text-slate-400">Premium Cars</span>
-                                    <span className="text-slate-900 bg-slate-100 px-2 py-0.5 rounded-md">35%</span>
-                                </div>
-                                <div className="h-4 bg-slate-50 rounded-full overflow-hidden p-1 shadow-inner border border-slate-100">
-                                    <motion.div 
-                                        initial={{ width: 0 }}
-                                        animate={{ width: '35%' }}
-                                        transition={{ duration: 1.5, ease: "easeOut" }}
-                                        className="h-full bg-slate-900 rounded-full"
-                                    ></motion.div>
-                                </div>
-                            </div>
+                            {inventoryDist.length ? inventoryDist.slice(0, 3).map((item, idx) => {
+                                const percentage = totalVehicles > 0 ? Math.round((item.count / totalVehicles) * 100) : 0;
+                                return (
+                                    <div key={item.brand}>
+                                        <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
+                                            <span className="text-slate-400">{item.brand}</span>
+                                            <span className={`px-2 py-0.5 rounded-md ${idx === 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-900 bg-slate-100'}`}>
+                                                {percentage}%
+                                            </span>
+                                        </div>
+                                        <div className="h-4 bg-slate-50 rounded-full overflow-hidden p-1 shadow-inner border border-slate-100">
+                                            <motion.div 
+                                                initial={{ width: 0 }}
+                                                animate={{ width: `${percentage}%` }}
+                                                transition={{ duration: 1.5, ease: "easeOut" }}
+                                                className={`h-full rounded-full ${idx === 0 ? 'bg-indigo-600 shadow-lg shadow-indigo-200' : 'bg-slate-900'}`}
+                                            ></motion.div>
+                                        </div>
+                                    </div>
+                                );
+                            }) : (
+                                <p className="text-center py-10 text-slate-300 font-bold uppercase tracking-widest text-[10px]">Stock incoming...</p>
+                            )}
                         </div>
                         
                         <div className="mt-10 p-6 bg-slate-50 rounded-3xl border border-slate-100">

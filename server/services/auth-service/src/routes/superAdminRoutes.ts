@@ -17,11 +17,14 @@ router.use(superAuth);
 // Tenant Management
 router.get(AUTH_ROUTES.SUPER_ADMIN.TENANTS, superAdminController.getTenants);
 router.post(AUTH_ROUTES.SUPER_ADMIN.TENANTS, superAdminController.createTenant);
-router.patch(AUTH_ROUTES.SUPER_ADMIN.TENANT_BY_ID, superAdminController.updateTenant);
 router.delete(AUTH_ROUTES.SUPER_ADMIN.TENANT_BY_ID, superAdminController.deleteTenant);
 
-// Bot Assignment
+// Bot Assignment & Control — must come BEFORE generic PATCH /tenants/:id
 router.post('/tenants/:id/assign-bot', superAdminController.assignBot);
+router.patch('/tenants/:id/bot-status', superAdminController.toggleBotStatus);
+
+// Generic tenant update (catch-all PATCH — must be LAST among PATCH /tenants/:id routes)
+router.patch(AUTH_ROUTES.SUPER_ADMIN.TENANT_BY_ID, superAdminController.updateTenant);
 
 // Global CRM leads for Super Admin
 router.get('/leads', superAdminController.getLeads);
@@ -39,5 +42,10 @@ router.post('/campaigns', campaignController.createCampaign);
 router.get(AUTH_ROUTES.SUPER_ADMIN.TENANT_FORM_FIELDS, superAdminController.getTenantFormFields);
 router.post(AUTH_ROUTES.SUPER_ADMIN.TENANT_FORM_FIELDS, superAdminController.saveFormField);
 router.get(AUTH_ROUTES.SUPER_ADMIN.DASHBOARD_STATS, superAdminController.getDashboardStats);
+
+// Payment Requests (Super Admin sends, Partner confirms, Admin views all)
+router.get('/payment-requests', superAdminController.getAllPaymentRequests);
+router.post('/tenants/:id/payment-request', superAdminController.sendPaymentRequest);
+router.patch('/tenants/:id/payment-request/:reqId', superAdminController.updatePaymentRequest);
 
 export default router;

@@ -6,6 +6,7 @@ import { authLimiter, otpLimiter } from '../middleware/rateLimit';
 import { container } from '../container/container';
 import passport from 'passport';
 import { AUTH_ROUTES } from '../constants/routes';
+import { paymentUpload } from '../middleware/upload';
 
 import {
     registerSchema,
@@ -56,5 +57,18 @@ router.post(AUTH_ROUTES.AUTH.REQUEST_OTP, otpLimiter, validate(requestOTPSchema)
 router.post(AUTH_ROUTES.AUTH.RESEND_OTP, otpLimiter, validate(resendOTPSchema), authController.requestResendOTP);
 router.post(AUTH_ROUTES.AUTH.VERIFY_OTP, validate(verifyOTPSchema), authController.verifyOTP);
 router.post(AUTH_ROUTES.AUTH.LOGOUT, authController.logout);
+router.get('/my-tenant/payment-requests', authController.getMyPaymentRequests);
+router.patch('/my-tenant/payment-requests/:reqId/confirm', authController.confirmPayment);
+
+// Payment proof image upload → Cloudinary
+router.post(
+    '/upload/payment-proof',
+    authenticate,
+    paymentUpload.single('file'),
+    (req: any, res: any) => {
+        if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
+        res.json({ success: true, data: { url: (req.file as any).path } });
+    }
+);
 
 export default router;

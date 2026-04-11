@@ -51,6 +51,10 @@ const config: AppConfig = {
         auth: get('AUTH_SERVICE_URL', false, 'http://localhost:5001')!,
         inventory: get('INVENTORY_SERVICE_URL', false, 'http://localhost:5002')!,
         bot: get('BOT_SERVICE_URL', false, 'http://localhost:3003')!,
+        campaign: get('CAMPAIGN_SERVICE_URL', false, 'http://localhost:5005')!,
+        notification: get('NOTIFICATION_SERVICE_URL', false, 'http://localhost:5006')!,
+        analytics: get('ANALYTICS_SERVICE_URL', false, 'http://localhost:5008')!,
+        billing: get('BILLING_SERVICE_URL', false, 'http://localhost:5008')!,
     },
     jwtSecret: get('JWT_SECRET', true, 'supersecretjwtkeyforcarbotai2024')!,
 };

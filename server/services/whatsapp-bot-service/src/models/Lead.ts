@@ -1,14 +1,33 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export interface ICallLog {
+  date: Date;
+  note: string;
+  agent?: string;
+}
+
 export interface ILeadDocument extends Document {
   tenantId: string;
   phone: string;
   name: string;
   vehicleId: string;
   preferredDateTime: string;
-  source: 'whatsapp';
+  source: string;
+  stage: 'New' | 'Contacted' | 'Test Drive' | 'Negotiation' | 'Closed' | 'Lost';
   status: 'new' | 'contacted' | 'booked' | 'lost' | 'cancelled' | 'rescheduled';
+  score: number;
+  priority: 'Cold' | 'Warm' | 'Hot';
+  assignedTo?: string;
+  followUpDate?: Date;
+  callLogs: ICallLog[];
+  lastActivity: Date;
 }
+
+const callLogSchema = new Schema<ICallLog>({
+  date: { type: Date, default: Date.now },
+  note: { type: String, required: true },
+  agent: { type: String }
+});
 
 const leadSchema = new Schema<ILeadDocument>({
   tenantId: { type: String, required: true, index: true },
@@ -17,7 +36,14 @@ const leadSchema = new Schema<ILeadDocument>({
   vehicleId: { type: String },
   preferredDateTime: { type: String },
   source: { type: String, default: 'whatsapp' },
-  status: { type: String, default: 'new' }
+  stage: { type: String, enum: ['New', 'Contacted', 'Test Drive', 'Negotiation', 'Closed', 'Lost'], default: 'New' },
+  status: { type: String, default: 'new' },
+  score: { type: Number, default: 0 },
+  priority: { type: String, enum: ['Cold', 'Warm', 'Hot'], default: 'Cold' },
+  assignedTo: { type: String },
+  followUpDate: { type: Date },
+  callLogs: [callLogSchema],
+  lastActivity: { type: Date, default: Date.now }
 }, {
   timestamps: true
 });

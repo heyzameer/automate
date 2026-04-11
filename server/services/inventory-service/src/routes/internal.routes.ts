@@ -38,4 +38,30 @@ router.get('/vehicles', async (req, res) => {
     }
 });
 
+router.get('/analytics', async (req, res) => {
+    try {
+        const tenantId = req.query.tenantId as string;
+        if (!tenantId) return res.status(400).json({ success: false, message: 'tenantId required' });
+
+        const vehicles = await Vehicle.find({ tenantId });
+        
+        const brandMap: Record<string, number> = {};
+        vehicles.forEach(v => {
+            const brand = v.attributes.get('brand') || 'Other';
+            brandMap[brand] = (brandMap[brand] || 0) + 1;
+        });
+
+        res.json({
+            success: true,
+            data: {
+                totalStock: vehicles.length,
+                brandDistribution: Object.entries(brandMap).map(([brand, count]) => ({ brand, count })),
+                avgDaysInStock: 22 // Simple mock for now
+            }
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 export default router;

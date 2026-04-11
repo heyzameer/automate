@@ -4,11 +4,15 @@ import { container } from '../container';
 import { authenticate, authorize } from '../middleware/auth';
 import { upload } from '../middleware/upload';
 import { UserRole } from '../types';
+import publicRoutes from './public.routes';
 
 const router = Router();
 const controller = container.resolve(InventoryController);
 
-// Ensure all routes are protected (at least by the Gateway)
+// Publicly accessible routes (Showroom / Kiosk)
+router.use('/public', publicRoutes);
+
+// Protected routes (Showroom Admin / Super Admin)
 router.use(authenticate);
 
 /** 

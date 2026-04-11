@@ -6,11 +6,11 @@ import {
     Settings,
     LogOut,
     Bell,
-    CheckSquare,
     MessageSquare,
     ShieldCheck,
     Menu,
     ChevronRight,
+    CreditCard,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
@@ -99,7 +99,7 @@ export default function SuperAdminLayout() {
                             <ShieldCheck className="w-6 h-6" />
                         </div>
                         <span className="text-xl font-black tracking-tight text-slate-900 uppercase">
-                            AutoMoto <span className="text-slate-400">SA</span>
+                            Orbix <span className="text-slate-400">SA</span>
                         </span>
                     </div>
                 </div>
@@ -132,8 +132,8 @@ export default function SuperAdminLayout() {
                         <SidebarLink to={ROUTES.SUPER_ADMIN.SHOWROOMS} icon={Users} onClick={() => setSidebarOpen(false)}>
                             Manage Showrooms
                         </SidebarLink>
-                        <SidebarLink to={ROUTES.SUPER_ADMIN.FORM_BUILDER} icon={CheckSquare} onClick={() => setSidebarOpen(false)}>
-                            Global Forms
+                        <SidebarLink to="/super/payments" icon={CreditCard} onClick={() => setSidebarOpen(false)}>
+                            Billing & Payments
                         </SidebarLink>
 
                         <div className="px-4 mt-6 mb-2 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">

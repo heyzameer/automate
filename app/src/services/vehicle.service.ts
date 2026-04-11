@@ -1,6 +1,14 @@
 import api from '../lib/api';
 import { API_ENDPOINTS } from '../constants/endpoints';
 
+export interface ServiceRecord {
+  date: string;
+  type: string;
+  cost: number;
+  notes?: string;
+  receipts: string[];
+}
+
 export interface Vehicle {
   _id?: string;
   id?: string;
@@ -14,9 +22,17 @@ export interface Vehicle {
   type: 'bike' | 'car';
   status: 'available' | 'reserved' | 'sold' | 'archived';
   images?: string[];
+  spin_images?: string[]; // 360 view images
   city?: string;
   area?: string;
   isNegotiable?: boolean;
+  purchasePrice?: number;
+  refurbishmentCost?: number;
+  service_history?: ServiceRecord[];
+  otherExpenses?: number;
+  sellingPrice?: number;
+  insuranceExpiry?: string;
+  rcNumber?: string;
   attributes: Record<string, any>;
   createdAt?: string;
 }

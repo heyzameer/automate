@@ -5,7 +5,7 @@
   "private": true,
   "scripts": {
     "build": "turbo run build",
-    "dev": "turbo run dev",
+    "dev": "turbo run dev --concurrency 15",
     "lint": "turbo run lint",
     "test": "turbo run test",
     "kill-port:all": "taskkill /F /IM node.exe /T || exit 0",

@@ -4,6 +4,7 @@ import dotenv from 'dotenv';
 dotenv.config();
 import config from './config';
 import 'reflect-metadata';
+import { container } from 'tsyringe';
 import { DatabaseConnection } from './config/database';
 import { corsMiddleware } from './middleware/cors';
 import { securityMiddleware } from './middleware/security';
@@ -15,6 +16,8 @@ import { maintenanceMiddleware } from './middleware/maintenanceMiddleware';
 import { handleError } from './utils/errorHandler';
 import { logger } from './utils/logger';
 import cookieParser from 'cookie-parser';
+
+import { AlertService } from './services/AlertService';
 
 class Application {
     private _app: express.Application;
@@ -29,6 +32,12 @@ class Application {
         this._initializeMiddlewares();
         this._initializeRoutes();
         this._initializeErrorHandling();
+        this._initializeServices();
+    }
+
+    private _initializeServices(): void {
+        const alertService = container.resolve(AlertService);
+        alertService.initialize();
     }
 
     private _initializeMiddlewares(): void {

@@ -6,9 +6,11 @@ export enum UserRole {
 }
 
 export enum PlanType {
+    TRIAL = 'trial',
     BASIC = 'basic',
     PRO = 'pro',
     ENTERPRISE = 'enterprise',
+    CUSTOM = 'custom',
 }
 
 export enum OTPType {

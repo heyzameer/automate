@@ -47,5 +47,28 @@ export class GeminiService {
             logger.error('Error parsing car query with Gemini 3:', error);
             return null;
         }
+    async parseDateTime(userMessage: string) {
+        try {
+            const now = new Date();
+            const prompt = `
+            Convert the following natural language date/time into a formal human-readable string (e.g., "12th April 10:00 AM"). 
+            The current reference time is: ${now.toISOString()}.
+            If it's relative like "tomorrow", calculate it relative to the current time.
+            If no time is mentioned, assume a default like 11:00 AM.
+            
+            User message: "${userMessage}"
+            
+            Return ONLY the string result.`;
+
+            const response = await this.ai.models.generateContent({
+                model: "gemini-3-flash-preview",
+                contents: prompt,
+            });
+
+            return response.text?.trim() || userMessage;
+        } catch (error) {
+            logger.error('Error parsing date with Gemini 3:', error);
+            return userMessage;
+        }
     }
 }

@@ -1,21 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { 
-  Car, 
-  Mail, 
-  Lock, 
-  ShieldCheck, 
-  ArrowRight, 
-  Loader2,
-  AlertCircle
-} from 'lucide-react';
-import { Toaster } from 'react-hot-toast';
+import { Car, Mail, Lock, ArrowRight, Loader2, AlertCircle, Sparkles, Megaphone } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../constants/routes';
 
 const Login = () => {
-    const [isAdminLogin, setIsAdminLogin] = useState(false);
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
     
@@ -50,149 +40,148 @@ const Login = () => {
         e.preventDefault();
         if (!validate()) return;
         
-        const success = await authenticate(formData, isAdminLogin);
+        const success = await authenticate(formData, false);
         if (!success) {
             setFormData(prev => ({ ...prev, password: '' }));
         }
     };
 
     return (
-        <div className="min-h-screen bg-[#F8FAFC] flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans">
-            <Toaster position="top-right" />
-            
-            <div className="sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="flex justify-center mb-6">
-                    <motion.div 
-                        initial={{ scale: 0.8, opacity: 0 }}
-                        animate={{ scale: 1, opacity: 1 }}
-                        className={`p-3 rounded-2xl shadow-xl transition-colors duration-500 ${
-                            isAdminLogin ? 'bg-slate-900 shadow-slate-200' : 'bg-indigo-600 shadow-indigo-100'
-                        }`}
-                    >
-                        {isAdminLogin ? <ShieldCheck className="text-white h-8 w-8" /> : <Car className="text-white h-8 w-8" />}
-                    </motion.div>
-                </div>
-                
-                <h2 className="text-center text-3xl font-black tracking-tight text-slate-900">
-                    {isAdminLogin ? 'Super Admin Portal' : 'Showroom Partner'}
-                </h2>
-                <p className="mt-2 text-center text-sm text-slate-500 font-medium">
-                    {isAdminLogin 
-                        ? 'System-wide governance & tenant management' 
-                        : 'Manage your dealership inventory and leads'
-                    }
-                </p>
+        <div className="min-h-screen flex flex-col justify-center py-12 px-4 sm:px-6 lg:px-8 font-sans selection:bg-indigo-500/30 relative overflow-hidden bg-slate-950">
+            {/* Elegant Background Gradients */}
+            <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-full pointer-events-none">
+                <div className="absolute top-[-10%] left-[0%] w-[500px] h-[500px] bg-indigo-600/20 blur-[130px] rounded-full"></div>
+                <div className="absolute bottom-[-10%] right-[0%] w-[500px] h-[500px] bg-cyan-600/10 blur-[130px] rounded-full"></div>
             </div>
 
-            <div className="mt-8 sm:mx-auto sm:w-full sm:max-w-md">
-                <div className="bg-white py-10 px-6 shadow-2xl shadow-slate-200 rounded-3xl border border-slate-100 sm:px-12 relative overflow-hidden">
-                    {/* Background decoration */}
-                    <div className="absolute top-0 right-0 -mr-16 -mt-16 w-32 h-32 bg-slate-50 rounded-full blur-3xl opacity-50"></div>
-                    
-                    <form className="space-y-6 relative z-10" onSubmit={handleSubmit}>
+            <div className="sm:mx-auto sm:w-full sm:max-w-2xl relative z-10 text-center mb-10">
+                <motion.div 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    className="flex justify-center mb-6"
+                >
+                    <div className="bg-indigo-600 p-3.5 rounded-2xl shadow-xl shadow-indigo-600/30">
+                        <Car className="text-white h-8 w-8" />
+                    </div>
+                </motion.div>
+
+                <motion.h1 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="text-4xl md:text-6xl font-black text-white leading-[1.1] tracking-tight mb-6"
+                >
+                    Accelerate your <br className="hidden sm:block"/>
+                    <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-cyan-400">
+                        digital showroom.
+                    </span>
+                </motion.h1>
+                <motion.p 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.2 }}
+                    className="text-base text-slate-400 font-medium leading-relaxed max-w-xl mx-auto"
+                >
+                    Join hundreds of dealerships deploying fully autonomous WhatsApp sales agents and dynamic lead routing pipelines on <span className="font-bold text-indigo-400">Orbix</span>.
+                </motion.p>
+            </div>
+
+            <motion.div 
+                initial={{ y: 20, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className="sm:mx-auto sm:w-full sm:max-w-md relative z-10"
+            >
+                <div className="bg-slate-900/80 backdrop-blur-xl py-10 px-6 shadow-2xl shadow-slate-950/50 rounded-3xl border border-slate-800 sm:px-10">
+                    <form className="space-y-6" onSubmit={handleSubmit}>
                         {error && (
                             <motion.div 
                                 initial={{ opacity: 0, scale: 0.95 }}
                                 animate={{ opacity: 1, scale: 1 }}
-                                className="bg-rose-50 border border-rose-100 p-3 rounded-xl flex items-center gap-2 text-rose-600 text-xs font-bold"
+                                className="bg-rose-500/10 border border-rose-500/20 p-4 rounded-2xl flex items-center gap-3 text-rose-400 text-sm font-bold"
                             >
-                                <AlertCircle size={14} />
+                                <AlertCircle size={18} className="flex-shrink-0" />
                                 {error}
                             </motion.div>
                         )}
-                        <div>
-                            <label className="block text-sm font-semibold text-slate-700 mb-1.5">Email Address</label>
-                            <div className="relative group">
-                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
-                                <input
-                                    type="email"
-                                    name="email"
-                                    value={formData.email}
-                                    required
-                                    autoComplete="email"
-                                    placeholder="name@company.com"
-                                    className={`block w-full pl-11 pr-4 py-3 bg-slate-50 border rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all sm:text-sm ${
-                                        fieldErrors.email ? 'border-rose-300 focus:ring-rose-500/20 focus:border-rose-500' : 'border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500'
-                                    }`}
-                                    onChange={handleChange}
-                                />
+                        
+                        <div className="space-y-5">
+                            <div>
+                                <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest mb-2">Dealership Email</label>
+                                <div className="relative group">
+                                    <Mail className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+                                    <input
+                                        type="email"
+                                        name="email"
+                                        value={formData.email}
+                                        required
+                                        autoComplete="email"
+                                        placeholder="partner@showroom.com"
+                                        className={`block w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-slate-800 rounded-2xl text-white font-bold placeholder-slate-600 focus:outline-none transition-all ${
+                                            fieldErrors.email ? 'border-rose-500/50 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10' : 'focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10'
+                                        }`}
+                                        onChange={handleChange}
+                                    />
+                                </div>
+                                {fieldErrors.email && <p className="mt-2 text-xs font-bold text-rose-400">{fieldErrors.email}</p>}
                             </div>
-                            {fieldErrors.email && <p className="mt-1.5 text-xs font-bold text-rose-500">{fieldErrors.email}</p>}
-                        </div>
 
-                        <div>
-                            <div className="flex items-center justify-between mb-1.5">
-                                <label className="block text-sm font-semibold text-slate-700">Password</label>
-                                {!isAdminLogin && (
-                                    <Link to={ROUTES.FORGOT_PASSWORD} className="text-xs font-semibold text-indigo-600 hover:text-indigo-500">
+                            <div>
+                                <div className="flex items-center justify-between mb-2">
+                                    <label className="block text-[11px] font-black text-slate-500 uppercase tracking-widest">Secure Password</label>
+                                    <Link to={ROUTES.FORGOT_PASSWORD} className="text-[11px] font-bold text-indigo-400 hover:text-indigo-300 transition-colors">
                                         Forgot password?
                                     </Link>
-                                )}
+                                </div>
+                                <div className="relative group">
+                                    <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
+                                    <input
+                                        type="password"
+                                        name="password"
+                                        value={formData.password}
+                                        required
+                                        autoComplete="current-password"
+                                        placeholder="••••••••"
+                                        className={`block w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-slate-800 rounded-2xl text-white font-bold placeholder-slate-600 focus:outline-none transition-all ${
+                                            fieldErrors.password ? 'border-rose-500/50 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10' : 'focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10'
+                                        }`}
+                                        onChange={handleChange}
+                                    />
+                                </div>
+                                {fieldErrors.password && <p className="mt-2 text-xs font-bold text-rose-400">{fieldErrors.password}</p>}
                             </div>
-                            <div className="relative group">
-                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors" size={18} />
-                                <input
-                                    type="password"
-                                    name="password"
-                                    value={formData.password}
-                                    required
-                                    autoComplete="current-password"
-                                    placeholder="••••••••"
-                                    className={`block w-full pl-11 pr-4 py-3 bg-slate-50 border rounded-xl text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 transition-all sm:text-sm ${
-                                        fieldErrors.password ? 'border-rose-300 focus:ring-rose-500/20 focus:border-rose-500' : 'border-slate-200 focus:ring-indigo-500/20 focus:border-indigo-500'
-                                    }`}
-                                    onChange={handleChange}
-                                />
-                            </div>
-                            {fieldErrors.password && <p className="mt-1.5 text-xs font-bold text-rose-500">{fieldErrors.password}</p>}
                         </div>
 
                         <button
                             type="submit"
                             disabled={loading}
-                            className={`w-full flex justify-center items-center py-3.5 px-4 rounded-xl shadow-lg text-sm font-bold text-white transition-all duration-300 transform hover:-translate-y-0.5 active:translate-y-0 disabled:opacity-70 ${
-                                isAdminLogin 
-                                    ? 'bg-slate-900 hover:bg-slate-800 shadow-slate-200' 
-                                    : 'bg-indigo-600 hover:bg-indigo-700 shadow-indigo-200'
-                            }`}
+                            className="w-full flex justify-center items-center py-4 px-4 rounded-2xl text-sm font-black text-white transition-all duration-300 transform hover:-translate-y-1 active:translate-y-0 disabled:opacity-70 bg-indigo-600 hover:bg-indigo-500 shadow-xl shadow-indigo-600/20"
                         >
                             {loading ? (
                                 <Loader2 className="animate-spin h-5 w-5" />
                             ) : (
                                 <>
-                                    Sign In
-                                    <ArrowRight className="ml-2 h-4 w-4" />
+                                    Sign In To Dashboard
+                                    <ArrowRight className="ml-2 h-5 w-5" />
                                 </>
                             )}
                         </button>
                     </form>
 
-                    <div className="mt-8 border-t border-slate-100 pt-6">
-                        <div className="flex flex-col gap-4">
-                            {!isAdminLogin && (
-                                <div className="text-center">
-                                    <span className="text-sm text-slate-500 font-medium">New dealership? </span>
-                                    <Link to={ROUTES.REGISTER} className="text-sm font-bold text-indigo-600 hover:text-indigo-500">
-                                        Partner with us
-                                    </Link>
-                                </div>
-                            )}
-                            
-                            <button 
-                                onClick={() => setIsAdminLogin(!isAdminLogin)}
-                                className="flex items-center justify-center gap-2 text-xs font-bold text-slate-400 hover:text-slate-600 uppercase tracking-widest transition-colors"
-                            >
-                                <AlertCircle size={14} />
-                                {isAdminLogin ? 'Switch to Partner Login' : 'Admin Login'}
-                            </button>
+                    <div className="mt-8 pt-8 border-t border-slate-800/50">
+                        <div className="text-center">
+                            <span className="text-sm text-slate-400 font-medium">New to Orbix? </span>
+                            <Link to={ROUTES.REGISTER} className="text-sm font-black text-indigo-400 hover:text-indigo-300 transition-colors">
+                                Apply for Partnership
+                            </Link>
                         </div>
                     </div>
                 </div>
                 
-                <p className="mt-8 text-center text-xs text-slate-400 font-medium uppercase tracking-tighter">
-                    © {new Date().getFullYear()} AutoMoto AI • Advanced Dealership Automation
+                <p className="mt-8 text-center text-xs text-slate-600 font-medium uppercase tracking-tighter">
+                    © {new Date().getFullYear()} Orbix AI • Automotive Operations
                 </p>
-            </div>
+            </motion.div>
         </div>
     );
 };

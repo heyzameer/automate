@@ -27,6 +27,9 @@ export interface AppConfig {
         auth: string;
         inventory: string;
         bot: string;
+        campaign: string;
+        notification: string;
+        analytics: string;
     };
     jwtSecret: string;
 }
