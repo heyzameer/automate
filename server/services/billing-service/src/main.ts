@@ -1,4 +1,6 @@
 import 'reflect-metadata';
+import './types';
+import './container';
 import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
@@ -23,4 +25,3 @@ app.use('/api/v1', routes);
 app.listen(port, () => {
     logger.info(`Billing & Financial Intelligence Service running on port ${port}`);
 });
-

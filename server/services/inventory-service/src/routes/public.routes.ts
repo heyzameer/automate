@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { container } from '../container';
+import { container } from 'tsyringe';
 import { PublicInventoryController } from '../controllers/PublicInventoryController';
 import rateLimit from 'express-rate-limit';
 

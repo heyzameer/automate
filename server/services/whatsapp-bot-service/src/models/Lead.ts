@@ -14,7 +14,7 @@ export interface ILeadDocument extends Document {
   preferredDateTime: string;
   source: string;
   stage: 'New' | 'Contacted' | 'Test Drive' | 'Negotiation' | 'Closed' | 'Lost';
-  status: 'new' | 'contacted' | 'booked' | 'lost' | 'cancelled' | 'rescheduled';
+  status: 'new' | 'contacted' | 'booked' | 'lost' | 'cancelled' | 'rescheduled' | 'test_drive' | 'negotiation' | 'closed';
   score: number;
   priority: 'Cold' | 'Warm' | 'Hot';
   assignedTo?: string;

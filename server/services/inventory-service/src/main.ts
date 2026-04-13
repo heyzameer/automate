@@ -1,9 +1,10 @@
+import 'reflect-metadata';
 import express from 'express';
 import { createServer, Server } from 'http';
 import dotenv from 'dotenv';
 dotenv.config();
 import config from './config';
-import 'reflect-metadata';
+import './container';
 import { container } from 'tsyringe';
 import { DatabaseConnection } from './config/database';
 import { corsMiddleware } from './middleware/cors';

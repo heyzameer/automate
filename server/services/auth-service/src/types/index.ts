@@ -115,6 +115,7 @@ export interface AppConfig {
         clientSecret: string;
         callbackUrl: string;
     };
+    internalSecret: string;
 }
 
 export interface CustomError extends Error {

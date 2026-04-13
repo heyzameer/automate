@@ -179,9 +179,9 @@ export default function DashboardHome() {
                         </button>
                     </div>
                     <div className="space-y-2">
-                        {stats?.recentActivity?.length ? stats.recentActivity.map((activity) => (
+                        {stats?.recentActivity?.length ? stats.recentActivity.map((activity, idx) => (
                             <ActivityItem 
-                                key={activity.id}
+                                key={`activity-${activity.id || idx}`}
                                 title={activity.title} 
                                 time={formatDistanceToNow(new Date(activity.time), { addSuffix: true })} 
                                 type={activity.type} 
@@ -214,7 +214,7 @@ export default function DashboardHome() {
                             {inventoryDist.length ? inventoryDist.slice(0, 3).map((item, idx) => {
                                 const percentage = totalVehicles > 0 ? Math.round((item.count / totalVehicles) * 100) : 0;
                                 return (
-                                    <div key={item.brand}>
+                                    <div key={`brand-${item.brand || idx}`}>
                                         <div className="flex justify-between text-[10px] font-black uppercase tracking-widest mb-3">
                                             <span className="text-slate-400">{item.brand}</span>
                                             <span className={`px-2 py-0.5 rounded-md ${idx === 0 ? 'text-indigo-600 bg-indigo-50' : 'text-slate-900 bg-slate-100'}`}>

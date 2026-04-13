@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { injectable, container } from 'tsyringe';
+import { injectable, container, inject } from 'tsyringe';
 import QRCode from 'qrcode';
 import { Lead } from '../models/Lead';
 import { LeadService } from '../services/LeadService';
@@ -7,6 +7,9 @@ import { logger } from '../utils/logger';
 
 @injectable()
 export class LeadController {
+    constructor(
+        @inject(LeadService) private leadService: LeadService
+    ) {}
     
     getLeads = async (req: Request, res: Response) => {
         try {
@@ -86,8 +89,7 @@ export class LeadController {
                 return res.status(400).json({ success: false, message: 'Missing tenantId or phone' });
             }
 
-            const leadService = container.resolve(LeadService);
-            const lead = await leadService.createLead({
+            const lead = await this.leadService.createLead({
                 tenantId,
                 phone,
                 name,

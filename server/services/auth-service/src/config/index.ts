@@ -97,7 +97,9 @@ const config: AppConfig = {
         callbackUrl: get('GOOGLE_CALLBACK_URL', false, 'http://localhost:5001/api/v1/auth/google/callback')!,
     },
 
+    internalSecret: get('INTERNAL_SECRET', false, 'carbot-internal-super-secret')!,
     cookieMaxAge: getInt('COOKIE_MAX_AGE', false, getInt('COOKIE_EXPIRATION', false, 7) * 24 * 60 * 60 * 1000),
 };
+
 
 export default config;

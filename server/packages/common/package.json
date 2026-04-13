@@ -11,15 +11,19 @@
   },
   "dependencies": {
     "@carbot/logger": "workspace:*",
+    "axios": "^1.15.0",
+    "axios-retry": "^4.5.0",
     "chalk": "^4.1.2",
     "express": "^4.18.2",
     "joi": "^17.11.0",
-    "mongoose": "^7.8.9"
+    "mongoose": "^7.8.9",
+    "opossum": "^9.0.0"
   },
   "devDependencies": {
     "@types/express": "^4.17.20",
     "@types/mongoose": "^5.11.97",
     "@types/node": "^20.8.6",
+    "@types/opossum": "^8.1.9",
     "rimraf": "^5.0.5",
     "typescript": "^5.2.2"
   }

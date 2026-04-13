@@ -47,6 +47,8 @@ export class GeminiService {
             logger.error('Error parsing car query with Gemini 3:', error);
             return null;
         }
+    }
+
     async parseDateTime(userMessage: string) {
         try {
             const now = new Date();

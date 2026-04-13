@@ -1,6 +1,7 @@
 import axios from 'axios';
+import config from '../config';
 
-const INTERNAL_SECRET = 'carbot-internal-super-secret';
+const INTERNAL_SECRET = config.internalSecret;
 
 // Client for calling auth-service directly (internal)
 export const authServiceClient = axios.create({
@@ -18,6 +19,7 @@ export const botServiceClient = axios.create({
     baseURL: (process.env.BOT_SERVICE_URL || 'http://localhost:5003') + '/api/v1/bot',
     headers: { 'x-internal-secret': INTERNAL_SECRET }
 });
+
 
 // Generic API client - defaults to self
 export const apiClient = botServiceClient;

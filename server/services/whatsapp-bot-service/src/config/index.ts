@@ -1,7 +1,10 @@
 import path from 'path';
 import dotenv from 'dotenv';
+import { AppConfig } from '../types';
+
 dotenv.config();
-export default {
+
+const config: AppConfig = {
     port: process.env.PORT || 3003,
     env: process.env.NODE_ENV || 'development',
     database: {
@@ -22,5 +25,9 @@ export default {
         directory: path.join(process.cwd(), '../../logs'),
         maxSize: '20m',
         maxFiles: '7d'
-    }
+    },
+    internalSecret: process.env.INTERNAL_SECRET || 'carbot-internal-super-secret'
 };
+
+export default config;
+

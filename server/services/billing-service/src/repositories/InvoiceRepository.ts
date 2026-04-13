@@ -1,9 +1,10 @@
 import { injectable } from 'tsyringe';
 import { BaseRepository } from '@carbot/common';
 import { Invoice, IInvoice } from '../models/Invoice';
+import { IInvoiceRepository } from '../interfaces/IRepository/IInvoiceRepository';
 
 @injectable()
-export class InvoiceRepository extends BaseRepository<IInvoice> {
+export class InvoiceRepository extends BaseRepository<IInvoice> implements IInvoiceRepository {
   constructor() {
     super(Invoice);
   }
@@ -16,3 +17,4 @@ export class InvoiceRepository extends BaseRepository<IInvoice> {
     return this.findOne({ tenantId, invoiceNumber });
   }
 }
+

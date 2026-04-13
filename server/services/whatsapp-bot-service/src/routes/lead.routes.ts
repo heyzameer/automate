@@ -3,12 +3,11 @@ import { container } from 'tsyringe';
 import { LeadController } from '../controllers/LeadController';
 
 const router = Router();
-const leadController = container.resolve(LeadController);
 
-router.get('/', leadController.getLeads.bind(leadController));
-router.patch('/:id', leadController.updateLead.bind(leadController));
-router.post('/:id/call-log', leadController.addCallLog.bind(leadController));
-router.get('/vehicle/:vehicleId', leadController.getLeadsByVehicle.bind(leadController));
-router.get('/qr/:carCode', leadController.getQRCode.bind(leadController));
+router.get('/', (req, res) => container.resolve(LeadController).getLeads(req, res));
+router.patch('/:id', (req, res) => container.resolve(LeadController).updateLead(req, res));
+router.post('/:id/call-log', (req, res) => container.resolve(LeadController).addCallLog(req, res));
+router.get('/vehicle/:vehicleId', (req, res) => container.resolve(LeadController).getLeadsByVehicle(req, res));
+router.get('/qr/:carCode', (req, res) => container.resolve(LeadController).getQRCode(req, res));
 
 export default router;

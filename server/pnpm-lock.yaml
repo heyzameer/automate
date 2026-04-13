@@ -23,6 +23,12 @@ importers:
       '@carbot/logger':
         specifier: workspace:*
         version: link:../logger
+      axios:
+        specifier: ^1.15.0
+        version: 1.15.0
+      axios-retry:
+        specifier: ^4.5.0
+        version: 4.5.0(axios@1.15.0)
       chalk:
         specifier: ^4.1.2
         version: 4.1.2
@@ -35,6 +41,9 @@ importers:
       mongoose:
         specifier: ^7.8.9
         version: 7.8.9
+      opossum:
+        specifier: ^9.0.0
+        version: 9.0.0
     devDependencies:
       '@types/express':
         specifier: ^4.17.20
@@ -45,6 +54,9 @@ importers:
       '@types/node':
         specifier: ^20.8.6
         version: 20.19.37
+      '@types/opossum':
+        specifier: ^8.1.9
+        version: 8.1.9
       rimraf:
         specifier: ^5.0.5
         version: 5.0.10
@@ -1878,6 +1890,12 @@ packages:
       '@types/node': 20.19.37
     dev: true
 
+  /@types/opossum@8.1.9:
+    resolution: {integrity: sha512-Jm/tYxuJFefiwRYs+/EOsUP3ktk0c8siMgAHPLnA4PXF4wKghzcjqf88dY+Xii5jId5Txw4JV0FMKTpjbd7KJA==}
+    dependencies:
+      '@types/node': 20.19.37
+    dev: true
+
   /@types/passport-google-oauth20@2.0.17:
     resolution: {integrity: sha512-MHNOd2l7gOTCn3iS+wInPQMiukliAUvMpODO3VlXxOiwNEMSyzV7UNvAdqxSN872o8OXx1SqPDVT6tLW74AtqQ==}
     dependencies:
@@ -2280,6 +2298,15 @@ packages:
     engines: {node: '>= 0.4'}
     dependencies:
       possible-typed-array-names: 1.1.0
+    dev: false
+
+  /axios-retry@4.5.0(axios@1.15.0):
+    resolution: {integrity: sha512-aR99oXhpEDGo0UuAlYcn2iGRds30k366Zfa05XWScR9QaQD4JYiP3/1Qt1u7YlefUOK+cn0CcwoL1oefavQUlQ==}
+    peerDependencies:
+      axios: 0.x || 1.x
+    dependencies:
+      axios: 1.15.0
+      is-retry-allowed: 2.2.0
     dev: false
 
   /axios@1.14.0:
@@ -4019,6 +4046,11 @@ packages:
       hasown: 2.0.2
     dev: false
 
+  /is-retry-allowed@2.2.0:
+    resolution: {integrity: sha512-XVm7LOeLpTW4jV19QSH38vkswxoLud8sQ57YwJVTPWdiaI9I8keEhGFpBlslyVsgdQy4Opg8QOLb8YRgsyZiQg==}
+    engines: {node: '>=10'}
+    dev: false
+
   /is-set@2.0.3:
     resolution: {integrity: sha512-iPAjerrse27/ygGLxw+EBR9agv9Y6uLeYVJMu+QNCoouJ1/1ri0mGrcWpfCqFZuzzx3WjtwxG098X+n4OuRkPg==}
     engines: {node: '>= 0.4'}
@@ -5242,6 +5274,11 @@ packages:
     dependencies:
       mimic-fn: 2.1.0
     dev: true
+
+  /opossum@9.0.0:
+    resolution: {integrity: sha512-K76U0QkxOfUZamneQuzz+AP0fyfTJcCplZ2oZL93nxeupuJbN4s6uFNbmVCt4eWqqGqRnnowdFuBicJ1fLMVxw==}
+    engines: {node: ^24 || ^22 || ^20}
+    dev: false
 
   /optionator@0.9.4:
     resolution: {integrity: sha512-6IpQ7mKUxRcZNLIObR0hz7lxsapSSIYNZJwXPGeF0mTVqGKFIXj1DQcMoT22S3ROcLyY/rz0PWaWZ9ayWmad9g==}

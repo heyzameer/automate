@@ -2,17 +2,19 @@ import { Router, Request, Response, NextFunction } from 'express';
 import { container } from 'tsyringe';
 import { CampaignService } from '../services/CampaignService';
 import { logger } from '../utils/logger';
+import config from '../config';
 
 const router = Router();
 
 // Secure internal-only auth check
 router.use((req: Request, res: Response, next: NextFunction) => {
     const internalSecret = req.headers['x-internal-secret'];
-    if (internalSecret !== 'carbot-internal-super-secret') {
+    if (internalSecret !== config.internalSecret) {
         return res.status(403).json({ success: false, message: 'Forbidden' });
     }
     next();
 });
+
 
 /**
  * POST /internal/new-arrival

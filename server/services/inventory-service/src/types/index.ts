@@ -40,6 +40,7 @@ export interface AppConfig {
         apiKey?: string;
         apiSecret?: string;
     };
+    internalSecret: string;
 }
 
 export interface CustomError extends Error {

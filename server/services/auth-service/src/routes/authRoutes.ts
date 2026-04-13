@@ -49,16 +49,20 @@ router.post(AUTH_ROUTES.AUTH.VALIDATE_TOKEN, authController.validateToken);
 // Protected routes
 router.use(authenticate);
 router.get(AUTH_ROUTES.AUTH.PROFILE, authController.getProfile);
-router.get(AUTH_ROUTES.AUTH.MY_TENANT, authController.getMyTenant);
-router.patch(AUTH_ROUTES.AUTH.MY_TENANT, authController.updateMyTenant);
 router.patch(AUTH_ROUTES.AUTH.PROFILE, authController.updateProfile);
 router.post(AUTH_ROUTES.AUTH.CHANGE_PASSWORD, validate(changePasswordSchema), authController.changePassword);
+
+// Showroom specific routes - require active/valid tenant
+import { tenantAuth } from '../middleware/auth';
+router.get(AUTH_ROUTES.AUTH.MY_TENANT, tenantAuth, authController.getMyTenant);
+router.patch(AUTH_ROUTES.AUTH.MY_TENANT, tenantAuth, authController.updateMyTenant);
+router.get('/my-tenant/payment-requests', authController.getMyPaymentRequests);
+router.patch('/my-tenant/payment-requests/:reqId/confirm', authController.confirmPayment);
+
 router.post(AUTH_ROUTES.AUTH.REQUEST_OTP, otpLimiter, validate(requestOTPSchema), authController.requestOTP);
 router.post(AUTH_ROUTES.AUTH.RESEND_OTP, otpLimiter, validate(resendOTPSchema), authController.requestResendOTP);
 router.post(AUTH_ROUTES.AUTH.VERIFY_OTP, validate(verifyOTPSchema), authController.verifyOTP);
 router.post(AUTH_ROUTES.AUTH.LOGOUT, authController.logout);
-router.get('/my-tenant/payment-requests', authController.getMyPaymentRequests);
-router.patch('/my-tenant/payment-requests/:reqId/confirm', authController.confirmPayment);
 
 // Payment proof image upload → Cloudinary
 router.post(

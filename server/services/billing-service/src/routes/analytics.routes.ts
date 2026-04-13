@@ -3,8 +3,7 @@ import { container } from 'tsyringe';
 import { AnalyticsController } from '../controllers/AnalyticsController';
 
 const router = Router();
-const controller = container.resolve(AnalyticsController);
 
-router.get('/dashboard', controller.getDashboardStats.bind(controller));
+router.get('/dashboard', (req, res) => container.resolve(AnalyticsController).getDashboardStats(req as any, res));
 
 export default router;

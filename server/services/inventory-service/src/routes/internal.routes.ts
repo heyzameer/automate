@@ -1,12 +1,15 @@
-import { Router } from 'express';
-import Vehicle from '../models/Vehicle';
+import { Router, Request, Response, NextFunction } from 'express';
+import { container } from 'tsyringe';
+import { IVehicleRepository } from '../interfaces/IRepository/IVehicleRepository';
+import config from '../config';
 
 const router = Router();
+const vehicleRepository = container.resolve<IVehicleRepository>('VehicleRepository');
 
 // Secure internal-only auth via shared mesh secret
-router.use((req, res, next) => {
+router.use((req: Request, res: Response, next: NextFunction) => {
     const internalSecret = req.headers['x-internal-secret'];
-    if (internalSecret !== 'carbot-internal-super-secret') {
+    if (internalSecret !== config.internalSecret) {
         return res.status(403).json({ success: false, message: 'Forbidden: Internal Service Mesh Only' });
     }
     next();
@@ -31,7 +34,7 @@ router.get('/vehicles', async (req, res) => {
         if (max_price) filters['attributes.price'] = { $lte: Number(max_price) };
         if (car_code) filters['attributes.car_code'] = car_code;
 
-        const vehicles = await Vehicle.find(filters).sort({ createdAt: -1 }).limit(5);
+        const vehicles = await vehicleRepository.find(filters, { createdAt: -1 }, 5);
         res.json({ success: true, data: vehicles });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
@@ -43,7 +46,7 @@ router.get('/analytics', async (req, res) => {
         const tenantId = req.query.tenantId as string;
         if (!tenantId) return res.status(400).json({ success: false, message: 'tenantId required' });
 
-        const vehicles = await Vehicle.find({ tenantId });
+        const vehicles = await vehicleRepository.find({ tenantId });
         
         const brandMap: Record<string, number> = {};
         vehicles.forEach(v => {

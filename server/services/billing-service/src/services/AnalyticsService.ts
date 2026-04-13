@@ -2,6 +2,7 @@ import { injectable } from 'tsyringe';
 import { logger } from '../utils/logger';
 import { InvoiceRepository } from '../repositories/InvoiceRepository';
 import axios from 'axios';
+import config from '../config';
 
 @injectable()
 export class AnalyticsService {
@@ -39,7 +40,7 @@ export class AnalyticsService {
             const botUrl = process.env.BOT_SERVICE_URL || 'http://localhost:3003';
             const response = await axios.get(`${botUrl}/api/v1/bot/internal/analytics`, {
                 params: { tenantId },
-                headers: { 'x-internal-secret': 'carbot-internal-super-secret' }
+                headers: { 'x-internal-secret': config.internalSecret }
             });
 
             if (response.data.success) {
@@ -59,7 +60,7 @@ export class AnalyticsService {
             const inventoryUrl = process.env.INVENTORY_SERVICE_URL || 'http://localhost:5002';
             const response = await axios.get(`${inventoryUrl}/internal/analytics`, {
                 params: { tenantId },
-                headers: { 'x-internal-secret': 'carbot-internal-super-secret' }
+                headers: { 'x-internal-secret': config.internalSecret }
             });
 
             if (response.data.success) {
@@ -93,7 +94,7 @@ export class AnalyticsService {
                 const botUrl = process.env.BOT_SERVICE_URL || 'http://localhost:3003';
                 const response = await axios.get(`${botUrl}/api/v1/bot/internal/leads/batch`, {
                     params: { tenantId },
-                    headers: { 'x-internal-secret': 'carbot-internal-super-secret' }
+                    headers: { 'x-internal-secret': config.internalSecret }
                 });
                 if (response.data.success) {
                     response.data.data.slice(0, 3).forEach((lead: any) => {

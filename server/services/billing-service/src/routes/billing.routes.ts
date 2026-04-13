@@ -3,11 +3,10 @@ import { container } from 'tsyringe';
 import { BillingController } from '../controllers/BillingController';
 
 const router = Router();
-const controller = container.resolve(BillingController);
 
-router.post('/invoices', controller.createInvoice.bind(controller));
-router.get('/invoices/:id/pdf', controller.getInvoicePDF.bind(controller));
-router.post('/delivery-note', controller.generateDeliveryNote.bind(controller));
-router.post('/expenses', controller.trackExpense.bind(controller));
+router.post('/invoices', (req, res) => container.resolve(BillingController).createInvoice(req as any, res));
+router.get('/invoices/:id/pdf', (req, res) => container.resolve(BillingController).getInvoicePDF(req as any, res));
+router.post('/delivery-note', (req, res) => container.resolve(BillingController).generateDeliveryNote(req as any, res));
+router.post('/expenses', (req, res) => container.resolve(BillingController).trackExpense(req as any, res));
 
 export default router;

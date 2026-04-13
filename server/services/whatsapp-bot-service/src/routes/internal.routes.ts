@@ -1,19 +1,25 @@
 import { Router, Request, Response, NextFunction } from 'express';
 import { container } from 'tsyringe';
-import { Vehicle } from '../models/Vehicle';
-import { Lead } from '../models/Lead';
-import { Tenant } from '../models/Tenant';
 import { LeadService } from '../services/LeadService';
 import { WhatsAppService } from '../services/WhatsAppService';
+import { ILeadRepository } from '../interfaces/IRepository/ILeadRepository';
+import { IVehicleRepository } from '../interfaces/IRepository/IVehicleRepository';
+import { ITenantRepository } from '../interfaces/IRepository/ITenantRepository';
+import config from '../config';
 
 const router = Router();
-const leadService = container.resolve(LeadService);
-const whatsappService = container.resolve(WhatsAppService);
+
+// Lazy resolvers to prevent top-level resolution crashes
+const getLeadService = () => container.resolve(LeadService);
+const getWhatsappService = () => container.resolve(WhatsAppService);
+const getLeadRepository = () => container.resolve<ILeadRepository>('LeadRepository');
+const getVehicleRepository = () => container.resolve<IVehicleRepository>('VehicleRepository');
+const getTenantRepository = () => container.resolve<ITenantRepository>('TenantRepository');
 
 // Secure internal-only auth check via shared secret header
 router.use((req: Request, res: Response, next: NextFunction) => {
     const internalSecret = req.headers['x-internal-secret'];
-    if (internalSecret !== 'carbot-internal-super-secret') {
+    if (internalSecret !== config.internalSecret) {
         return res.status(403).json({ success: false, message: 'Forbidden: Internal Service Mesh Only' });
     }
     next();
@@ -37,7 +43,7 @@ router.get('/vehicles', async (req, res) => {
         if (max_price) filters['attributes.price'] = { $lte: Number(max_price) };
         if (car_code) filters['attributes.car_code'] = car_code;
 
-        const vehicles = await Vehicle.find(filters).sort({ createdAt: -1 }).limit(5);
+        const vehicles = await getVehicleRepository().find(filters, { createdAt: -1 }, 5);
         res.json({ success: true, data: vehicles });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
@@ -50,7 +56,7 @@ router.get('/vehicles', async (req, res) => {
  */
 router.post('/leads', async (req, res) => {
     try {
-        const lead = await leadService.createLead(req.body);
+        const lead = await getLeadService().createLead(req.body);
         res.status(201).json({ success: true, data: lead });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
@@ -64,7 +70,7 @@ router.post('/leads', async (req, res) => {
 router.post('/qr-scan', async (req, res) => {
     try {
         const { tenantId, phone, carCode } = req.body;
-        const lead = await leadService.handleQRScan(tenantId, phone, carCode);
+        const lead = await getLeadService().handleQRScan(tenantId, phone, carCode);
         res.json({ success: true, data: lead });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
@@ -81,8 +87,9 @@ router.get('/leads/batch', async (req, res) => {
         const filters: any = { tenantId };
         if (priority) filters.priority = priority;
 
-        const leads = await Lead.find(filters).select('phone name priority').lean();
-        res.json({ success: true, data: leads });
+        const leads = await getLeadRepository().find(filters);
+        const mappedLeads = leads.map(l => ({ phone: l.phone, name: l.name, priority: l.priority }));
+        res.json({ success: true, data: mappedLeads });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -95,11 +102,11 @@ router.get('/leads/batch', async (req, res) => {
 router.get('/leads', async (req, res) => {
     try {
         const { tenantId, phone } = req.query;
-        const leads = await Lead.find({
+        const leads = await getLeadRepository().find({
             tenantId,
             phone,
             status: { $nin: ['cancelled', 'lost'] }
-        }).sort({ createdAt: -1 }).limit(3);
+        }, { createdAt: -1 }, 3);
         res.json({ success: true, data: leads });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
@@ -112,19 +119,17 @@ router.get('/leads', async (req, res) => {
  */
 router.patch('/leads/:id', async (req, res) => {
     try {
-        const lead = await Lead.findById(req.params.id);
+        const lead = await getLeadRepository().findById(req.params.id);
         if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
         
-        Object.assign(lead, req.body);
+        const updatedLead = await getLeadRepository().update(req.params.id, req.body);
         
         // If status changed to booked, increase score
-        if (req.body.status === 'booked') {
-            await leadService.scoreLead(lead, 30);
-        } else {
-            await lead.save();
+        if (req.body.status === 'booked' && updatedLead) {
+            await getLeadService().scoreLead(updatedLead, 30);
         }
 
-        res.json({ success: true, data: lead });
+        res.json({ success: true, data: updatedLead });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
     }
@@ -137,12 +142,11 @@ router.patch('/leads/:id', async (req, res) => {
 router.post('/leads/score', async (req, res) => {
     try {
         const { tenantId, phone, points } = req.body;
-        let lead = await Lead.findOne({ tenantId, phone });
+        let lead = await getLeadRepository().findOne({ tenantId, phone });
         if (!lead) {
-            lead = new Lead({ tenantId, phone, source: 'whatsapp_interaction', score: points });
-            await lead.save();
+            lead = await getLeadRepository().create({ tenantId, phone, source: 'whatsapp_interaction', score: points });
         } else {
-            await leadService.scoreLead(lead, points);
+            await getLeadService().scoreLead(lead, points);
         }
         res.json({ success: true, score: lead.score, priority: lead.priority });
     } catch (error: any) {
@@ -165,15 +169,15 @@ router.post('/broadcast', async (req, res) => {
 
         // If credentials not provided, fetch them from DB
         if (!phoneNumberId || !accessToken) {
-            const tenant = await Tenant.findById(tenantId).select('whatsappConfig');
+            const tenant = await getTenantRepository().findById(tenantId);
             if (!tenant || !tenant.whatsappConfig?.accessToken) {
                 return res.status(404).json({ success: false, message: 'Tenant WhatsApp config not found' });
             }
             phoneNumberId = tenant.whatsappConfig.phoneNumberId;
-            accessToken = tenant.whatsappConfig.accessToken; // Assumes it was stored decrypted or decrypts here if needed
+            accessToken = tenant.whatsappConfig.accessToken; 
         }
 
-        const results = await whatsappService.sendBulkText(recipients, message, phoneNumberId, accessToken);
+        const results = await getWhatsappService().sendBulkText(recipients, message, phoneNumberId, accessToken);
         res.json({ success: true, data: results });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
@@ -185,7 +189,7 @@ router.get('/analytics', async (req, res) => {
         const tenantId = req.query.tenantId as string;
         if (!tenantId) return res.status(400).json({ success: false, message: 'tenantId required' });
 
-        const leads = await Lead.find({ tenantId });
+        const leads = await getLeadRepository().find({ tenantId });
         
         const stages = [
             { stage: 'New', count: leads.filter(l => l.status === 'new').length },
@@ -211,10 +215,10 @@ router.get('/analytics', async (req, res) => {
     }
 });
 
-router.get('/internal/leads/vehicle/:vehicleId', async (req, res) => {
+router.get('/leads/vehicle/:vehicleId', async (req, res) => {
     try {
         const { vehicleId } = req.params;
-        const leads = await Lead.find({ vehicleId }).sort({ createdAt: -1 });
+        const leads = await getLeadRepository().find({ vehicleId }, { createdAt: -1 });
         res.json({ success: true, data: leads });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });

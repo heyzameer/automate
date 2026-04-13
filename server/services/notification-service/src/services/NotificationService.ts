@@ -1,14 +1,18 @@
-import { injectable } from 'tsyringe';
-import { AppNotification } from '../models/AppNotification';
+import { injectable, inject } from 'tsyringe';
 import { NotificationLog } from '../models/NotificationLog';
 import { SocketService } from './SocketService';
 import { logger } from '../utils/logger';
 import axios from 'axios';
 import config from '../config';
+import { INotificationRepository } from '../interfaces/IRepository/INotificationRepository';
 
 @injectable()
 export class NotificationService {
     private socketService = SocketService.getInstance();
+
+    constructor(
+        @inject('NotificationRepository') private notificationRepository: INotificationRepository
+    ) {}
 
     async dispatch(event: string, payload: any) {
         const { tenantId, idempotencyKey, data } = payload;
@@ -72,6 +76,18 @@ export class NotificationService {
         }
     }
 
+    async getMyNotifications(tenantId: string, userId: string) {
+        return await this.notificationRepository.findByTenantAndUser(tenantId, userId);
+    }
+
+    async markAsRead(id: string, tenantId: string) {
+        const notification = await this.notificationRepository.findOne({ _id: id, tenantId });
+        if (!notification) throw new Error('Notification not found');
+        
+        notification.isRead = true;
+        return await notification.save();
+    }
+
     private async notifyCustomer(tenantId: string, phone: string, message: string) {
         try {
             // Forward to Bot Service for WhatsApp delivery
@@ -90,7 +106,7 @@ export class NotificationService {
 
     private async notifyShowroom(tenantId: string, title: string, message: string, metadata: any, userId?: string) {
         // 1. Save to DB for history
-        const notification = await AppNotification.create({
+        const notification = await this.notificationRepository.create({
             tenantId,
             userId,
             type: metadata.type || 'alert',

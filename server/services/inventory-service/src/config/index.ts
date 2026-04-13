@@ -61,7 +61,9 @@ const config: AppConfig = {
         cloudName: get('CLOUDINARY_CLOUD_NAME', false, ''),
         apiKey: get('CLOUDINARY_API_KEY', false, ''),
         apiSecret: get('CLOUDINARY_API_SECRET', false, ''),
-    }
+    },
+    internalSecret: get('INTERNAL_SECRET', false, 'carbot-internal-super-secret')!,
 };
+
 
 export default config;

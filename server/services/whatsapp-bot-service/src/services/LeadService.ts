@@ -1,10 +1,14 @@
-import { injectable } from 'tsyringe';
-import { Lead, ILeadDocument } from '../models/Lead';
+import { injectable, inject } from 'tsyringe';
+import { ILeadDocument } from '../models/Lead';
 import { logger } from '../utils/logger';
 import { notify } from '../utils/notify';
+import { ILeadRepository } from '../interfaces/IRepository/ILeadRepository';
 
 @injectable()
 export class LeadService {
+    constructor(
+        @inject('LeadRepository') private leadRepository: ILeadRepository
+    ) {}
     
     /**
      * Score a lead based on activity.
@@ -41,11 +45,11 @@ export class LeadService {
 
     async createLead(data: any) {
         // Prevent duplicates - use existing if available
-        let lead = await Lead.findOne({ tenantId: data.tenantId, phone: data.phone });
+        let lead = await this.leadRepository.findOne({ tenantId: data.tenantId, phone: data.phone });
         if (lead) {
             Object.assign(lead, data);
         } else {
-            lead = new Lead(data);
+            lead = await this.leadRepository.create(data);
         }
         
         // Initial scoring logic
@@ -61,7 +65,7 @@ export class LeadService {
     }
 
     async handleBooking(leadId: string) {
-        const lead = await Lead.findById(leadId);
+        const lead = await this.leadRepository.findById(leadId);
         if (lead) {
             return await this.scoreLead(lead, 40); // +40 for booking a test drive
         }
@@ -69,10 +73,10 @@ export class LeadService {
     }
     
     async handleQRScan(tenantId: string, phone: string, carCode: string) {
-        let lead = await Lead.findOne({ tenantId, phone, vehicleId: carCode });
+        let lead = await this.leadRepository.findOne({ tenantId, phone, vehicleId: carCode });
         
         if (!lead) {
-            lead = new Lead({
+            lead = await this.leadRepository.create({
                 tenantId,
                 phone,
                 vehicleId: carCode,
