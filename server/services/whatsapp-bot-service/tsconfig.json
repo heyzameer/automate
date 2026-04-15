@@ -14,7 +14,7 @@
         "baseUrl": ".",
         "paths": {
             "@/*": ["src/*"],
-            "@carbot/common": ["../../packages/common/src"]
+            "@carbot/common": ["../../packages/common/dist"]
         }
     },
     "include": [
