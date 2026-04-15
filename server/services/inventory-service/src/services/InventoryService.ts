@@ -105,15 +105,9 @@ export class InventoryService implements IInventoryService {
         const vehicle = await this.vehicleRepository.create(vehicleData);
         logger.info(`Vehicle created for tenant ${tenantId} by user ${userId}`);
 
-        const campaignUrl = process.env.CAMPAIGN_SERVICE_URL || 'http://localhost:5005';
-        axios.post(`${campaignUrl}/api/v1/campaigns/internal/new-arrival`, {
-            tenantId,
-            vehicle
-        }, {
-            headers: { 'x-internal-secret': config.internalSecret }
-        }).catch(err => logger.error(`Failed to notify Campaign Service: ${err.message}`));
-
-
+        const mq = await import('../utils/rabbitmq').then(m => m.getRabbitMQ());
+        await mq.publish('carbot_events', 'vehicle.created', { tenantId, vehicle });
+        
         return vehicle;
     }
 
@@ -153,13 +147,21 @@ export class InventoryService implements IInventoryService {
             vehicle.images = vehicle.images.filter(img => !removedImages.includes(img));
         }
 
-        return await vehicle.save();
+        const updatedVehicle = await vehicle.save();
+        
+        const mq = await import('../utils/rabbitmq').then(m => m.getRabbitMQ());
+        await mq.publish('carbot_events', 'vehicle.updated', { tenantId, vehicle: updatedVehicle });
+        
+        return updatedVehicle;
     }
 
     async deleteVehicle(id: string, tenantId: string) {
         const success = await this.vehicleRepository.delete(id);
         if (!success) throw new Error('Vehicle not found');
         logger.info(`Vehicle ${id} deleted for tenant ${tenantId}`);
+
+        const mq = await import('../utils/rabbitmq').then(m => m.getRabbitMQ());
+        await mq.publish('carbot_events', 'vehicle.deleted', { tenantId, id });
     }
 
     private async validateVehicleData(data: any, isUpdate: boolean = false) {
@@ -209,6 +211,16 @@ export class InventoryService implements IInventoryService {
                 }
             }
         }
+    }
+
+    async createSellRequest(data: any) {
+        logger.info(`Create sell request for ${data.customerName}`);
+        // Publish to rabbitmq so CRM can handle it?
+        const mq = await import('../utils/rabbitmq').then(m => m.getRabbitMQ());
+        await mq.publish('carbot_events', 'lead.sell_request', data);
+        
+        // Return dummy response for now
+        return { _id: `req_${Date.now()}`, ...data };
     }
 }
 

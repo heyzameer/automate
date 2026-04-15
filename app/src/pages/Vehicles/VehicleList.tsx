@@ -33,89 +33,102 @@ interface VehicleCardProps {
     onGetQR: (carCode: string, name: string) => void;
 }
 
+import Skeleton from '../../components/Common/Skeleton';
+
 const VehicleCard = ({ vehicle, onDelete, onGetQR }: VehicleCardProps) => {
     const navigate = useNavigate();
     const attr = (key: string) => vehicle.attributes?.[key] || 'N/A';
     
-    const price = Number(attr('price'));
-    const year = attr('year_of_manufacture');
-    const km = attr('km');
-    const name = `${attr('brand')} ${attr('model')}`.trim() || 'Untitled Vehicle';
-    const carCode = (vehicle as any).stock_number || (vehicle as any).car_code || vehicle._id?.slice(-6).toUpperCase() || 'NA';
+    const price = Number(attr('price')) || vehicle.price || 0;
+    const year = attr('year_of_manufacture') || vehicle.year || 'N/A';
+    const km = attr('km') || vehicle.km_driven || 0;
+    const name = `${attr('brand') || vehicle.name || ''} ${attr('model') || ''}`.trim() || 'Untitled Vehicle';
+    const carCode = vehicle.attributes?.car_code || vehicle._id?.slice(-6).toUpperCase() || 'NA';
 
     return (
-        <div className="group bg-white rounded-[2rem] shadow-sm hover:shadow-2xl hover:shadow-indigo-100 border border-gray-100 overflow-hidden transition-all duration-500">
+        <div className="group bg-white rounded-[2rem] p-4 border border-slate-200/60 shadow-xl shadow-slate-200/30 hover:shadow-2xl hover:shadow-indigo-200/40 hover:-translate-y-2 transition-all duration-500 flex flex-col relative overflow-hidden">
+            <div className="absolute -right-10 -top-10 w-40 h-40 bg-indigo-50 rounded-full blur-3xl opacity-0 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"></div>
+            
             <div 
                 onClick={() => navigate(ROUTES.VEHICLES.DETAIL(vehicle._id || ''))}
-                className="relative aspect-[16/10] overflow-hidden bg-gray-50 cursor-pointer"
+                className="relative aspect-[16/10] overflow-hidden rounded-[1.5rem] bg-slate-50 cursor-pointer shadow-inner shadow-slate-100"
             >
                 {vehicle.images?.[0] ? (
-                    <img
-                        src={vehicle.images[0]}
-                        alt={name}
-                        className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
-                    />
+                    <>
+                        <img
+                            src={vehicle.images[0]}
+                            alt={name}
+                            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700"
+                        />
+                        <div className="absolute inset-0 bg-gradient-to-t from-slate-900/60 via-slate-900/5 to-transparent opacity-60"></div>
+                    </>
                 ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50/50 group-hover:bg-indigo-50/50 transition-colors duration-500">
-                        <Car className="w-16 h-16 text-gray-200 group-hover:text-indigo-200" />
+                    <div className="w-full h-full flex flex-col items-center justify-center bg-slate-100/50 group-hover:bg-indigo-50/50 transition-colors duration-500">
+                        <Car className="w-16 h-16 text-slate-200 group-hover:text-indigo-200" />
                     </div>
                 )}
                 
                 <div className="absolute top-4 left-4 flex gap-2">
                     <span className={cn(
-                        "px-3 py-1 rounded-full text-xs font-bold tracking-tight backdrop-blur-md shadow-sm border",
-                        vehicle.status === 'available' ? 'bg-emerald-500/90 text-white border-emerald-400' :
-                        vehicle.status === 'sold' ? 'bg-indigo-600/90 text-white border-indigo-500' : 
-                        'bg-amber-500/90 text-white border-amber-400'
+                        "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest backdrop-blur-md shadow-lg flex items-center gap-1.5 border",
+                        vehicle.status === 'available' ? 'bg-emerald-500/90 text-white border-emerald-400/50 shadow-emerald-500/20' :
+                        vehicle.status === 'sold' ? 'bg-slate-800/90 text-white border-slate-700/50 shadow-slate-900/20' : 
+                        'bg-amber-500/90 text-white border-amber-400/50 shadow-amber-500/20'
                     )}>
-                        {vehicle.status?.toUpperCase()}
+                        <div className={`w-1.5 h-1.5 rounded-full ${vehicle.status === 'sold' ? 'bg-slate-400' : 'bg-white animate-pulse'}`}></div>
+                        {vehicle.status}
                     </span>
+                </div>
+
+                <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
+                    <div>
+                        <p className="text-white/80 text-[10px] font-black uppercase tracking-widest drop-shadow-md">STOCK ID: {carCode}</p>
+                    </div>
                 </div>
             </div>
 
-            <div className="p-6">
-                <div className="flex flex-col gap-1 mb-4">
-                    <h3 className="font-bold text-gray-900 group-hover:text-indigo-600 transition-colors line-clamp-1 text-xl tracking-tight">
+            <div className="pt-5 px-2 flex-1 flex flex-col">
+                <div className="flex flex-col mb-4">
+                    <h3 className="font-black text-slate-900 group-hover:text-indigo-600 transition-colors line-clamp-1 text-xl leading-tight">
                         {name}
                     </h3>
-                    <p className="text-gray-400 text-xs font-medium uppercase tracking-widest">STOCK: {carCode}</p>
                 </div>
 
-                <div className="flex items-baseline gap-1 mb-4">
-                    <span className="text-2xl font-black text-indigo-600">₹{price.toLocaleString('en-IN')}</span>
+                <div className="flex items-end gap-1 mb-5">
+                    <span className="text-3xl font-black text-slate-900 tracking-tight">₹{price.toLocaleString('en-IN')}</span>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4 text-sm mb-6 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-                    <div className="flex items-center gap-2 text-gray-600">
-                        <Calendar className="w-3.5 h-3.5 text-indigo-500" />
-                        <span className="font-semibold">{year}</span>
+                <div className="flex gap-3 text-sm mb-6 mt-auto">
+                    <div className="flex-1 flex items-center justify-center gap-2 text-slate-600 bg-slate-50/50 border border-slate-100 p-2.5 rounded-2xl">
+                        <Calendar size={14} className="text-indigo-400" />
+                        <span className="font-bold text-xs uppercase tracking-wider">{year}</span>
                     </div>
-                    <div className="flex items-center gap-2 text-gray-600">
-                        <Gauge className="w-3.5 h-3.5 text-indigo-500" />
-                        <span className="font-semibold">{Number(km).toLocaleString()} km</span>
+                    <div className="flex-1 flex items-center justify-center gap-2 text-slate-600 bg-slate-50/50 border border-slate-100 p-2.5 rounded-2xl">
+                        <Gauge size={14} className="text-indigo-400" />
+                        <span className="font-bold text-xs uppercase tracking-wider">{Number(km).toLocaleString()}</span>
                     </div>
                 </div>
 
-                <div className="pt-4 border-t border-gray-100 flex items-center justify-between">
+                <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
                     <button 
                         onClick={(e) => { e.stopPropagation(); onGetQR(carCode, name); }}
-                        className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-bold text-xs hover:bg-indigo-600 hover:text-white transition-all border border-indigo-100"
+                        className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:shadow-lg hover:shadow-indigo-200 transition-all active:scale-95"
                     >
                         <QrCode size={14} />
-                        SMART STICKER
+                        Sticker
                     </button>
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <Link 
                             to={`${ROUTES.VEHICLES.BASE}/edit/${vehicle._id || vehicle.id}`}
-                            className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm border border-gray-100"
+                            className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-sky-500 hover:text-white hover:shadow-lg hover:shadow-sky-200 transition-all"
                         >
-                            <Edit className="w-4 h-4" />
+                            <Edit size={16} />
                         </Link>
                         <button 
                             onClick={(e) => { e.stopPropagation(); onDelete(vehicle._id || vehicle.id!); }}
-                            className="p-2.5 bg-gray-50 text-gray-400 rounded-xl hover:bg-red-600 hover:text-white transition-all shadow-sm border border-gray-100"
+                            className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white hover:shadow-lg hover:shadow-rose-200 transition-all"
                         >
-                            <Trash2 className="w-4 h-4" />
+                            <Trash2 size={16} />
                         </button>
                     </div>
                 </div>
@@ -126,6 +139,8 @@ const VehicleCard = ({ vehicle, onDelete, onGetQR }: VehicleCardProps) => {
 
 export default function VehicleList() {
     const [search, setSearch] = useState('');
+    const [statusFilter, setStatusFilter] = useState('All');
+    const [brandFilter, setBrandFilter] = useState('All');
     const [qrData, setQrData] = useState<{ src: string, code: string, name: string } | null>(null);
     const [generatingQr, setGeneratingQr] = useState(false);
     const { vehicles, loading, deleteVehicle } = useVehicles();
@@ -142,11 +157,19 @@ export default function VehicleList() {
         }
     };
 
+    const uniqueBrands = Array.from(new Set(Array.isArray(vehicles) ? vehicles.map(v => v.attributes?.brand || 'Other') : [])).filter(Boolean);
+
     const filteredVehicles = Array.isArray(vehicles) ? vehicles.filter(v => {
-        const name = `${v.attributes?.brand || ''} ${v.attributes?.model || ''}`.toLowerCase();
-        return name.includes(search.toLowerCase()) || 
-               (v.attributes?.variant || '').toLowerCase().includes(search.toLowerCase());
-    }) : [];
+        const carCode = v.attributes?.car_code || '';
+        const name = `${v.attributes?.brand || ''} ${v.attributes?.model || ''} ${carCode}`.toLowerCase();
+        const matchSearch = name.includes(search.toLowerCase()) || 
+                           (v.attributes?.variant || '').toLowerCase().includes(search.toLowerCase());
+        
+        const matchStatus = statusFilter === 'All' || v.status === statusFilter;
+        const matchBrand = brandFilter === 'All' || (v.attributes?.brand || 'Other') === brandFilter;
+
+        return matchSearch && matchStatus && matchBrand;
+    }).sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()) : [];
 
     const handleDelete = async (id: string) => {
         if (window.confirm('Are you sure you want to delete this vehicle?')) {
@@ -155,36 +178,75 @@ export default function VehicleList() {
     };
 
     return (
-        <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 bg-white p-8 rounded-[2.5rem] shadow-sm border border-gray-100 text-center sm:text-left">
+        <div className="space-y-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-12">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 glass-card p-8 rounded-[2.5rem] border-white/50 text-center sm:text-left">
                 <div className="space-y-1">
-                    <h1 className="text-3xl font-black text-gray-900 tracking-tight">Showroom Inventory</h1>
-                    <p className="text-gray-500 font-medium">Manage listings and generate Smart Stickers</p>
+                    <h1 className="text-3xl font-black text-slate-900 tracking-tight">Showroom <span className="premium-gradient-text">Inventory</span></h1>
+                    <p className="text-slate-500 font-bold text-sm tracking-wide">Manage listings and generate Smart Stickers</p>
                 </div>
                 <Link 
                     to={ROUTES.VEHICLES.ADD} 
-                    className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-sm uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
+                    className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
                 >
                     <Plus className="w-5 h-5 mr-2" />
                     Add Vehicle
                 </Link>
             </div>
 
-            <div className="relative bg-white p-2 rounded-3xl shadow-sm border border-gray-100 focus-within:border-indigo-300 transition-all max-w-2xl">
-                <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-gray-400" />
-                <input
-                    type="text"
-                    placeholder="Search inventory..."
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    className="w-full pl-16 pr-6 py-4 bg-transparent text-gray-900 font-bold placeholder:text-gray-400 outline-none"
-                />
+            <div className="flex flex-col lg:flex-row gap-4 mb-4">
+                <div className="relative glass-card p-1 flex-1 rounded-3xl border-white/40 focus-within:border-indigo-400 transition-all group shadow-sm">
+                    <Search className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-500 transition-colors" />
+                    <input
+                        type="text"
+                        placeholder="Search by Brand, Model, Variant, or exact Stock Code..."
+                        value={search}
+                        onChange={(e) => setSearch(e.target.value)}
+                        className="w-full pl-16 pr-6 py-4 bg-transparent text-slate-900 font-bold placeholder:text-slate-400 outline-none"
+                    />
+                </div>
+                
+                <div className="flex gap-4">
+                    <select 
+                        value={statusFilter}
+                        onChange={(e) => setStatusFilter(e.target.value)}
+                        className="px-6 py-4 bg-white/50 backdrop-blur-md rounded-3xl border border-white/40 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 cursor-pointer appearance-none shadow-sm min-w-[150px]"
+                    >
+                        <option value="All">All Statuses</option>
+                        <option value="available">🟢 Available</option>
+                        <option value="reserved">🟠 Reserved</option>
+                        <option value="sold">🔵 Sold</option>
+                    </select>
+
+                    <select 
+                        value={brandFilter}
+                        onChange={(e) => setBrandFilter(e.target.value)}
+                        className="px-6 py-4 bg-white/50 backdrop-blur-md rounded-3xl border border-white/40 text-sm font-bold text-slate-700 outline-none focus:ring-4 focus:ring-indigo-500/10 cursor-pointer appearance-none shadow-sm min-w-[150px]"
+                    >
+                        <option value="All">All Brands</option>
+                        {uniqueBrands.map(b => <option key={b} value={b}>{b}</option>)}
+                    </select>
+                </div>
             </div>
 
             {loading ? (
-                <div className="h-96 flex flex-col items-center justify-center gap-4">
-                    <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
-                    <p className="text-gray-400 font-black uppercase tracking-widest text-xs animate-pulse">Syncing Inventory...</p>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+                    {[1, 2, 3, 4, 5, 6].map(i => (
+                        <div key={i} className="glass-card rounded-[2rem] overflow-hidden border-white/40">
+                            <Skeleton height="200px" />
+                            <div className="p-6 space-y-4">
+                                <Skeleton height="24px" width="70%" />
+                                <Skeleton height="16px" width="40%" />
+                                <div className="grid grid-cols-2 gap-4">
+                                    <Skeleton height="40px" />
+                                    <Skeleton height="40px" />
+                                </div>
+                                <div className="pt-4 flex justify-between">
+                                    <Skeleton height="35px" width="120px" />
+                                    <Skeleton height="35px" width="80px" />
+                                </div>
+                            </div>
+                        </div>
+                    ))}
                 </div>
             ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">

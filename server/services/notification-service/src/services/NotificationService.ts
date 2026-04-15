@@ -39,7 +39,8 @@ export class NotificationService {
 
                 case 'lead.scored':
                     if (data.score >= 60) {
-                        await this.notifyShowroom(tenantId, '🔥 Hot Lead Detected!', `Lead ${data.customerName} has a score of ${data.score}. Call now!`, data);
+                        const displayName = data.customerName || data.phone || 'New Prospect';
+                        await this.notifyShowroom(tenantId, '🔥 Hot Lead Detected!', `Lead ${displayName} has a score of ${data.score}. Call now!`, data);
                     }
                     break;
 

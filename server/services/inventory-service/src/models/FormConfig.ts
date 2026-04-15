@@ -1,5 +1,5 @@
 import { Schema, model, Document } from 'mongoose';
-import { mongooseTenantPlugin } from '@carbot/common';
+import { tenantPlugin } from '@carbot/common';
 
 export interface IFormField {
     name: string;

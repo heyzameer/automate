@@ -15,6 +15,8 @@ router.use((req: Request, res: Response, next: NextFunction) => {
     next();
 });
 
+import { SearchService } from '../services/SearchService';
+
 /**
  * GET /internal/vehicles
  * Internal vehicle search for the bot service.
@@ -22,20 +24,16 @@ router.use((req: Request, res: Response, next: NextFunction) => {
  */
 router.get('/vehicles', async (req, res) => {
     try {
-        const { tenantId, brand, model, fuel_type, year, max_price, car_code, status } = req.query;
-        const filters: any = {};
+        const tenantId = req.query.tenantId as string;
+        if (!tenantId) {
+            return res.status(400).json({ success: false, message: 'Tenant ID is required for search' });
+        }
 
-        if (tenantId) filters.tenantId = tenantId;
-        filters.status = status || 'available';
-        if (brand) filters['attributes.brand'] = new RegExp(brand as string, 'i');
-        if (model) filters['attributes.model'] = new RegExp(model as string, 'i');
-        if (fuel_type) filters['attributes.fuel_type'] = new RegExp(fuel_type as string, 'i');
-        if (year) filters['attributes.year_of_manufacture'] = Number(year);
-        if (max_price) filters['attributes.price'] = { $lte: Number(max_price) };
-        if (car_code) filters['attributes.car_code'] = car_code;
-
-        const vehicles = await vehicleRepository.find(filters, { createdAt: -1 }, 5);
-        res.json({ success: true, data: vehicles });
+        const searchService = container.resolve(SearchService);
+        const vehicles = await searchService.searchVehicles(tenantId, req.query);
+        
+        // Ensure max 5 returned via limit
+        res.json({ success: true, data: vehicles.slice(0, 5) });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
     }

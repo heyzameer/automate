@@ -13,9 +13,9 @@ export default function Automation() {
     const [config, setConfig] = useState({
         botEnabled: true,
         greetingMessage: "",
-        includeGallery: true,
         includeSpecs: true,
-        includeLocation: true
+        includeLocation: true,
+        websiteLinkTemplate: 'https://uniquecars.com/inventory/{carCode}'
     });
 
     useEffect(() => {
@@ -28,9 +28,9 @@ export default function Automation() {
                     setConfig({
                         botEnabled: t.whatsappConfig?.botEnabled ?? true,
                         greetingMessage: t.whatsappConfig?.greetingMessage || "Hi 👋\nThanks for contacting us.\nHere are the details you requested:",
-                        includeGallery: t.whatsappConfig?.includeGallery ?? true,
                         includeSpecs: t.whatsappConfig?.includeSpecs ?? true,
-                        includeLocation: t.whatsappConfig?.includeLocation ?? true
+                        includeLocation: t.whatsappConfig?.includeLocation ?? true,
+                        websiteLinkTemplate: t.whatsappConfig?.websiteLinkTemplate || "https://uniquecars.com/inventory/{carCode}"
                     });
                 }
             } catch {
@@ -63,8 +63,8 @@ export default function Automation() {
     }
 
     const botConfigured = tenant?.whatsappConfig?.isActive;
-    // Admin-level kill-switch: botEnabled === false means Super Admin turned it off
-    const adminDisabled = botConfigured && config.botEnabled === false;
+    // Platform-level kill-switch: if the whole tenant is suspended
+    const platformDisabled = tenant?.isActive === false;
 
     return (
         <div className="space-y-8">
@@ -73,8 +73,8 @@ export default function Automation() {
                 <p className="text-slate-500 font-medium mt-1">Configure how your AI sales bot responds to customers.</p>
             </div>
 
-            {/* Admin kill-switch warning */}
-            {adminDisabled && (
+            {/* Platform-level suspension warning */}
+            {platformDisabled && (
                 <motion.div
                     initial={{ opacity: 0, y: -10 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -84,9 +84,9 @@ export default function Automation() {
                         <Power className="text-rose-600 w-5 h-5" />
                     </div>
                     <div>
-                        <h3 className="font-black text-rose-800">Bot Paused by Administrator</h3>
+                        <h3 className="font-black text-rose-800">Showroom Suspended</h3>
                         <p className="text-sm text-rose-700 font-medium mt-1">
-                            Your WhatsApp bot has been temporarily disabled by the platform administrator. 
+                            Your account has been temporarily disabled by the platform administrator. 
                             Customers will not receive automated replies until it is re-enabled. 
                             Contact support to restore access.
                         </p>
@@ -107,7 +107,7 @@ export default function Automation() {
                 </div>
             )}
 
-            <div className={`max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 font-sans ${adminDisabled ? 'opacity-60 pointer-events-none' : ''}`}>
+            <div className={`max-w-6xl mx-auto grid grid-cols-1 lg:grid-cols-2 gap-6 sm:gap-8 font-sans ${platformDisabled ? 'opacity-60 pointer-events-none' : ''}`}>
                 <div className="space-y-6">
                     <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl p-8 space-y-6">
                         {/* Bot Status */}
@@ -156,9 +156,8 @@ export default function Automation() {
                             <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Include in Vehicle Reply</h4>
                             <div className="space-y-4">
                                 {[
-                                    { key: 'includeGallery', icon: Image, label: 'Vehicle Images (Gallery)', desc: 'Send car photos in the chat' },
                                     { key: 'includeSpecs', icon: FileText, label: 'Full Description & Specs', desc: 'Fuel, ownership, year details' },
-                                    { key: 'includeLocation', icon: MapPin, label: 'Showroom Location', desc: 'Share address & map link' },
+                                    { key: 'includeLocation', icon: MapPin, label: 'Showroom Location', desc: 'Share address & map link within chat' },
                                 ].map(({ key, icon: Icon, label, desc }) => (
                                     <div key={key} className="flex items-center justify-between p-4 bg-slate-50 rounded-2xl border border-slate-100">
                                         <div className="flex items-center gap-3">
@@ -185,6 +184,20 @@ export default function Automation() {
                                     </div>
                                 ))}
                             </div>
+                        </div>
+                        {/* Website URL Templating */}
+                        <div className="pt-6 border-t border-slate-50">
+                            <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Vehicle Website URL Template</label>
+                            <input
+                                type="text"
+                                value={config.websiteLinkTemplate}
+                                onChange={(e) => setConfig(prev => ({ ...prev, websiteLinkTemplate: e.target.value }))}
+                                placeholder="https://yourwebsite.com/cars/{carCode}"
+                                className="w-full px-4 py-3 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-2 focus:ring-indigo-500/20 transition-all text-sm font-bold text-slate-900"
+                            />
+                            <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase tracking-wide">
+                                Use <code className="text-indigo-500 bg-indigo-50 px-1 rounded">{'{carCode}'}</code> where the stock ID should be injected. We will send this link instead of a raw image.
+                            </p>
                         </div>
                     </div>
 
@@ -223,9 +236,9 @@ export default function Automation() {
                         {config.botEnabled ? (
                             <div className="bg-[#dcf8c6] rounded-lg p-3 max-w-[85%] self-end shadow-sm text-sm space-y-2 rounded-tr-none ml-auto text-gray-900">
                                 <p className="whitespace-pre-wrap text-xs">{config.greetingMessage}</p>
-                                {config.includeGallery && (
-                                    <div className="rounded-lg overflow-hidden mt-2 border border-black/5 bg-gray-100 h-24 flex items-center justify-center">
-                                        <Image className="text-gray-400" size={28} />
+                                {config.websiteLinkTemplate && (
+                                    <div className="rounded-lg overflow-hidden mt-2 border border-blue-100 bg-blue-50 p-2 text-blue-700 font-medium text-[10px] break-all">
+                                        🔗 {config.websiteLinkTemplate.replace('{carCode}', 'car01')}
                                     </div>
                                 )}
                                 {config.includeSpecs && (

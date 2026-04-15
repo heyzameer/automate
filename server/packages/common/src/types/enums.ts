@@ -24,6 +24,8 @@ export enum ResponseMessages {
   AUTH_TOKEN_REQUIRED = 'Authentication token required',
   INVALID_TOKEN = 'Invalid or expired token',
   TOKEN_EXPIRED = 'Token has expired',
+  TOKEN_REFRESHED = 'Token refreshed successfully',
+  TOKEN_VALID = 'Token is valid',
   ACCESS_DENIED = 'Access denied',
   UNAUTHORIZED = 'Unauthorized access',
   INSUFFICIENT_PERMISSIONS = 'Insufficient permissions',
@@ -64,4 +66,25 @@ export enum ResponseMessages {
   INTERNAL_SERVER_ERROR = 'Internal server error',
   SERVICE_UNAVAILABLE = 'The service is temporarily unavailable',
   BOTH_PASSWORDS_REQUIRED = 'Both current and new passwords are required',
+}
+
+export enum LeadStatus {
+  NEW = 'new',
+  CONTACTED = 'contacted',
+  QUALIFIED = 'qualified',
+  PROPOSAL_SENT = 'proposal_sent',
+  NEGOTIATION = 'negotiation',
+  WON = 'won',
+  LOST = 'lost',
+  SPAM = 'spam',
+  CANCELLED = 'cancelled',
+  RESCHEDULED = 'rescheduled'
+}
+
+export enum BookingStatus {
+  PENDING = 'pending',
+  CONFIRMED = 'confirmed',
+  COMPLETED = 'completed',
+  NOSHOW = 'noshow',
+  CANCELLED = 'cancelled'
 }

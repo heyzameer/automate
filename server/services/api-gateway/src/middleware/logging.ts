@@ -3,11 +3,11 @@ import chalk from 'chalk';
 import { logger } from '../utils/logger';
 
 // Add user info to logs
-morgan.token('user', (req: unknown) => {
+morgan.token('user', (req: any) => {
     return req.user?.userId || 'guest';
 });
 
-morgan.token('status-colored', (req: unknown, res: unknown) => {
+morgan.token('status-colored', (req: any, res: any) => {
     const status = res.statusCode;
 
     if (status >= 500) return chalk.red(status);      // Red for 5xx

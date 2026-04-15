@@ -10,7 +10,7 @@ export class SystemSettingRepository extends BaseRepository<ISystemSetting> impl
         super(SystemSetting);
     }
 
-    async findByIdAndUpdate(id: string, data: unknown, options?: unknown): Promise<ISystemSetting | null> {
+    async findByIdAndUpdate(id: string, data: any, options?: any): Promise<ISystemSetting | null> {
         return this.model.findByIdAndUpdate(id, data, options).exec();
     }
 }

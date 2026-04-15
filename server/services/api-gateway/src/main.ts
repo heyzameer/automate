@@ -21,6 +21,7 @@ class Application {
 
     constructor() {
         this._app = express();
+        this._app.set('trust proxy', true);
         this._server = createServer(this._app);
 
         this._initializeMiddlewares();
@@ -32,6 +33,15 @@ class Application {
         // Security middlewares
         this._app.use(securityMiddleware);
         this._app.use(corsMiddleware);
+
+        // Request correlation
+        const { correlationIdMiddleware } = require('./middleware/correlationId');
+        this._app.use(correlationIdMiddleware);
+
+        // Metrics middleware
+        const { metricsMiddleware, correlationContextMiddleware } = require('@carbot/common');
+        this._app.use(metricsMiddleware);
+        this._app.use(correlationContextMiddleware);
 
         // Logging middleware
         this._app.use(httpLogger);
@@ -51,6 +61,10 @@ class Application {
     private _initializeRoutes(): void {
         // Handle preflight requests for all routes
         this._app.options('*', corsMiddleware);
+
+        // Metrics route
+        const { getMetrics } = require('@carbot/common');
+        this._app.get('/metrics', getMetrics);
 
         // API routes
         this._app.use('/api/v1', routes);

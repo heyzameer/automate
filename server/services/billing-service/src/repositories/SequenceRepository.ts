@@ -1,19 +1,21 @@
 import { injectable } from 'tsyringe';
-import { BaseRepository } from '@carbot/common';
-import { Sequence, ISequence } from '../models/Sequence';
+import { MongoBaseRepository } from './MongoBaseRepository';
+import { SequenceModel, ISequence } from '../models/Sequence.model';
+import { ISequenceRepository } from '../interfaces/IRepository/ISequenceRepository';
 
 @injectable()
-export class SequenceRepository extends BaseRepository<ISequence> {
+export class SequenceRepository extends MongoBaseRepository<ISequence> implements ISequenceRepository {
   constructor() {
-    super(Sequence);
+    super(SequenceModel);
   }
 
   async getNextNumber(tenantId: string, type: string): Promise<number> {
-    const sequence = await Sequence.findOneAndUpdate(
+    const result = await SequenceModel.findOneAndUpdate(
       { tenantId, type },
       { $inc: { currentNumber: 1 } },
       { upsert: true, new: true }
-    );
-    return sequence.currentNumber;
+    ).exec();
+
+    return result!.currentNumber;
   }
 }

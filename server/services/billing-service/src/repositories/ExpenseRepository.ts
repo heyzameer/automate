@@ -1,14 +1,15 @@
 import { injectable } from 'tsyringe';
-import { BaseRepository } from '@carbot/common';
-import { Expense, IExpense } from '../models/Expense';
+import { MongoBaseRepository } from './MongoBaseRepository';
+import { ExpenseModel, IExpense } from '../models/Expense.model';
+import { IExpenseRepository } from '../interfaces/IRepository/IExpenseRepository';
 
 @injectable()
-export class ExpenseRepository extends BaseRepository<IExpense> {
-  constructor() {
-    super(Expense);
-  }
+export class ExpenseRepository extends MongoBaseRepository<IExpense> implements IExpenseRepository {
+    constructor() {
+        super(ExpenseModel);
+    }
 
-  async findByTenant(tenantId: string): Promise<IExpense[]> {
-    return this.find({ tenantId });
-  }
+    async findByTenant(tenantId: string): Promise<IExpense[]> {
+        return this.find({ tenantId });
+    }
 }

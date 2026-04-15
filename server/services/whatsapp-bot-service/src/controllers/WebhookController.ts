@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { injectable } from 'tsyringe';
 import { logger } from '../utils/logger';
 import config from '../config';
+import { HttpStatus } from '@carbot/common';
 
 import { BotService } from '../services/BotService';
 
@@ -20,13 +21,13 @@ export class WebhookController {
         if (mode && token) {
             if (mode === 'subscribe' && token === config.whatsapp.verifyToken) {
                 logger.info('Webhook verified');
-                return res.status(200).send(challenge);
+                return res.status(HttpStatus.OK).send(challenge);
             } else {
                 logger.warn('Webhook verification failed: token mismatch');
-                return res.sendStatus(403);
+                return res.sendStatus(HttpStatus.FORBIDDEN);
             }
         }
-        res.sendStatus(400);
+        res.sendStatus(HttpStatus.BAD_REQUEST);
     }
 
     /**

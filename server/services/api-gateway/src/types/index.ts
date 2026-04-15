@@ -30,6 +30,7 @@ export interface AppConfig {
         campaign: string;
         notification: string;
         analytics: string;
+        billing: string;
     };
     jwtSecret: string;
 }

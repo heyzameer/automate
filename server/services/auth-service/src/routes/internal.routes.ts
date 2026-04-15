@@ -32,4 +32,17 @@ router.get('/tenants/whatsapp/:phoneNumberId', async (req, res) => {
     }
 });
 
+router.get('/config', async (req, res) => {
+    try {
+        const { SystemSetting } = require('../models/SystemSetting');
+        let settings = await SystemSetting.findOne({});
+        if (!settings) {
+            settings = await SystemSetting.create({});
+        }
+        res.json({ success: true, data: settings });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 export default router;

@@ -1,35 +1,34 @@
-# Stage 1: Build
-FROM node:20-alpine AS build
+# Stage 1: Builder
+FROM node:20-alpine AS builder
+RUN npm install -g pnpm
 
 WORKDIR /app
 
-# Copy package files
-COPY package*.json ./
-COPY tsconfig.json ./
+# Copy workspace configuration
+COPY package.json pnpm-lock.yaml pnpm-workspace.yaml turbo.json ./
+
+# Copy packages and service
+COPY packages/common ./packages/common
+COPY services/auth-service ./services/auth-service
 
 # Install dependencies
-RUN npm install
+RUN pnpm install --frozen-lockfile
 
-# Copy source code
-COPY . .
-
-# Build the application
-RUN npm run build
+# Build everything needed
+RUN pnpm turbo run build --filter=carbot-auth-service...
 
 # Stage 2: Runtime
 FROM node:20-alpine
-
 WORKDIR /app
 
-# Copy package files and install production dependencies only
-COPY package*.json ./
-RUN npm install --only=production
+RUN addgroup -S nodejs && adduser -S appuser -G nodejs
+USER appuser
 
-# Copy built files from build stage
-COPY --from=build /app/dist ./dist
-# Copy env files if needed (though usually passed via docker-compose)
-# COPY --from=build /app/.env ./.env
+# Copy built files
+COPY --from=builder /app/services/auth-service/dist ./dist
+COPY --from=builder /app/services/auth-service/package.json ./
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/packages/common/dist ./node_modules/@carbot/common/dist
 
 EXPOSE 5001
-
 CMD ["node", "dist/main.js"]

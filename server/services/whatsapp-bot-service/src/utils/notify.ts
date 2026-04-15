@@ -6,18 +6,16 @@ const INTERNAL_SECRET = 'carbot-internal-super-secret';
 
 export const notify = async (event: string, tenantId: string, data: any, idempotencyKey?: string) => {
     try {
-        await axios.post(`${NOTIFICATION_SERVICE_URL}/api/v1/notifications/dispatch`, {
-            event,
-            payload: {
-                tenantId,
-                idempotencyKey: idempotencyKey || `${event}_${tenantId}_${Date.now()}`,
-                data
-            }
-        }, {
-            headers: { 'x-internal-secret': INTERNAL_SECRET }
-        });
-        logger.info(`Notification event dispatched: ${event}`);
+        const mq = await import('./rabbitmq').then(m => m.getRabbitMQ());
+        const payload = {
+            tenantId,
+            idempotencyKey: idempotencyKey || `${event}_${tenantId}_${Date.now()}`,
+            data
+        };
+        await mq.publish('carbot_events', `notification.${event}`, { event, payload });
+        
+        logger.info(`Notification event published to RabbitMQ: ${event}`);
     } catch (error: any) {
-        logger.error(`Failed to dispatch notification ${event}:`, error.message);
+        logger.error(`Failed to publish notification ${event}:`, error.message);
     }
 };

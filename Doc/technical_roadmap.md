@@ -5,10 +5,10 @@ This roadmap addresses the identified technical debt and aligns the project with
 ## 🏗️ Phase 1: Structural & Architectural Reinforcement
 *Goal: Move from basic microservices to a decoupled, resilient architecture.*
 
-1.  **Pub/Sub Integration (RabbitMQ)**
+1.  ~~**Pub/Sub Integration (RabbitMQ)**~~ (✅ COMPLETED)
     *   **Task**: Implement a messaging abstraction in `@carbot/common`.
-    *   **Action**: Replace synchronous cross-service calls (e.g., Inventory → Campaign) with events like `VEHICLE.CREATED`.
-    *   **Benefit**: Decouples services and prevents cascading failures if one service is down.
+    *   **Action**: Replaced synchronous cross-service calls with events like `vehicle.created` (Inventory → Campaign) and `notification.*` (Bot → Notification Service).
+    *   **Details**: Created a highly available `RabbitMQService` wrapper with reconnect logic. Configured reliable queue consumers in both Campaign and Notification services.
 
 2.  **Clean Architecture Refactoring**
     *   **Task**: Transition services from "Controller-Service-Mongoose" to a truly Layered/Clean architecture.
@@ -17,9 +17,9 @@ This roadmap addresses the identified technical debt and aligns the project with
         *   Implement **Repository Pattern** to abstract database operations.
         *   Move business logic out of Controllers into **Use Cases**.
 
-3.  **Basic Resilience Patterns**
+3.  ~~**Basic Resilience Patterns**~~ (✅ COMPLETED)
     *   **Task**: Add Circuit Breakers and Retries.
-    *   **Action**: Instrument `@carbot/common`'s HTTP client with `opossum` and `axios-retry`.
+    *   **Details**: Developed a highly resilient shared `HttpClient` via `axios-retry` (exponential backoff) and `opossum` (Circuit Breaker with 50% threshold, 30s reset). Migrated components like Analytics and WhatsApp integrations off raw axios to use this client natively.
 
 ---
 

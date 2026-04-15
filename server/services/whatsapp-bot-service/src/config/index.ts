@@ -14,7 +14,9 @@ const config: AppConfig = {
     },
     whatsapp: {
         verifyToken: process.env.WHATSAPP_VERIFY_TOKEN || 'carbot_verify_token',
-        apiVersion: process.env.WHATSAPP_API_VERSION || 'v19.0'
+        apiVersion: process.env.WHATSAPP_API_VERSION || 'v19.0',
+        appSecret: process.env.WHATSAPP_APP_SECRET,
+        systemToken: process.env.WHATSAPP_SYSTEM_TOKEN
     },
     gemini: {
         apiKey: process.env.GEMINI_API_KEY || ''

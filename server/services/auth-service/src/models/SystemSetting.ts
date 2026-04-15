@@ -16,6 +16,7 @@ const systemSettingSchema = new Schema<ISystemSetting>(
             instagram: { type: String, default: '' },
         },
         twoFactorAuth: { type: Boolean, default: false },
+        geminiApiKey: { type: String, default: '' },
     },
     {
         timestamps: true,

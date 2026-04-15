@@ -13,6 +13,7 @@ export interface IWhatsAppConfig {
     includeGallery?: boolean;
     includeSpecs?: boolean;
     includeLocation?: boolean;
+    websiteLinkTemplate?: string;
 }
 
 export interface IPlanLimits {

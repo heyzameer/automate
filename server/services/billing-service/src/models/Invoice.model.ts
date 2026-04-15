@@ -1,10 +1,17 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
+export enum InvoiceStatus {
+  DRAFT = 'draft',
+  ISSUED = 'issued',
+  PAID = 'paid',
+  CANCELLED = 'cancelled'
+}
+
 export interface IInvoice extends Document {
   tenantId: string;
   invoiceNumber: string;
   vehicleId: string;
-  customerId: string; // From Lead/CRM
+  customerId: string;
   customerName: string;
   totalAmount: number;
   taxAmount: number;
@@ -13,16 +20,17 @@ export interface IInvoice extends Document {
     sgst: number;
     igst: number;
   };
-  status: 'draft' | 'issued' | 'paid' | 'cancelled';
+  status: InvoiceStatus;
   items: Array<{
     description: string;
     amount: number;
   }>;
   pdfUrl?: string;
   createdAt: Date;
+  updatedAt: Date;
 }
 
-const invoiceSchema = new Schema<IInvoice>({
+const InvoiceSchema: Schema = new Schema({
   tenantId: { type: String, required: true, index: true },
   invoiceNumber: { type: String, required: true },
   vehicleId: { type: String, required: true },
@@ -33,19 +41,23 @@ const invoiceSchema = new Schema<IInvoice>({
   taxDetails: {
     cgst: { type: Number, default: 0 },
     sgst: { type: Number, default: 0 },
-    igst: { type: Number, default: 0 }
+    igst: { type: Number, default: 0 },
   },
-  status: { type: String, enum: ['draft', 'issued', 'paid', 'cancelled'], default: 'draft' },
+  status: {
+    type: String,
+    enum: Object.values(InvoiceStatus),
+    default: InvoiceStatus.DRAFT
+  },
   items: [{
     description: { type: String, required: true },
-    amount: { type: Number, required: true }
+    amount: { type: Number, required: true },
   }],
-  pdfUrl: { type: String }
-}, {
-  timestamps: true
+  pdfUrl: { type: String },
+}, { 
+  timestamps: true,
+  collection: 'invoices'
 });
 
-// Compound index for unique invoice numbers per tenant
-invoiceSchema.index({ tenantId: 1, invoiceNumber: 1 }, { unique: true });
+InvoiceSchema.index({ tenantId: 1, invoiceNumber: 1 }, { unique: true });
 
-export const Invoice = mongoose.model<IInvoice>('Invoice', invoiceSchema);
+export const InvoiceModel = mongoose.model<IInvoice>('Invoice', InvoiceSchema);

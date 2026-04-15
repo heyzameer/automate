@@ -1,5 +1,6 @@
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
+// @ts-ignore
 import { CloudinaryStorage } from 'multer-storage-cloudinary';
 
 cloudinary.config({

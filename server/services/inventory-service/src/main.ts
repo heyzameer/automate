@@ -19,6 +19,7 @@ import { logger } from './utils/logger';
 import cookieParser from 'cookie-parser';
 
 import { AlertService } from './services/AlertService';
+import { SearchService } from './services/SearchService';
 
 class Application {
     private _app: express.Application;
@@ -88,6 +89,11 @@ class Application {
     public async start(): Promise<void> {
         try {
             await this._database.connect();
+            
+            // Wait for Search Engine
+            const searchService = container.resolve(SearchService);
+            await searchService.init();
+            
             this._server.listen(config.port, () => {
                 logger.info(`Inventory Service running on port ${config.port}`);
             });

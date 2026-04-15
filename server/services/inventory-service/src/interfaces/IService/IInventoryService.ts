@@ -4,6 +4,7 @@ export interface IInventoryService {
     getBrands(): Promise<any[]>;
     getModelsByBrand(brandId: string): Promise<any[]>;
     getDropdownOptions(fieldName: string): Promise<any>;
+    createSellRequest(data: any): Promise<any>;
     getNextCarCode(tenantId: string): Promise<string>;
     getVehicles(tenantId: string, filters: any): Promise<IVehicleDocument[]>;
     getVehicleById(id: string, tenantId: string): Promise<IVehicleDocument | null>;

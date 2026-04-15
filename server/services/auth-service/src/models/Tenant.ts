@@ -39,6 +39,7 @@ const tenantSchema = new Schema<ITenant>(
             includeGallery: { type: Boolean, default: true },
             includeSpecs: { type: Boolean, default: true },
             includeLocation: { type: Boolean, default: true },
+            websiteLinkTemplate: { type: String, default: "" },
         },
         limits: {
             maxCars: { type: Number, default: 50 },

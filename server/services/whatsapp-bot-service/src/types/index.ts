@@ -16,6 +16,8 @@ export interface AppConfig {
     whatsapp: {
         verifyToken: string;
         apiVersion: string;
+        appSecret?: string;
+        systemToken?: string;
     };
     gemini: {
         apiKey: string;

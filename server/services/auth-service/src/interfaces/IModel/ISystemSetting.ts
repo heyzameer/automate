@@ -14,6 +14,7 @@ export interface ISystemSetting extends Document {
         instagram: string;
     };
     twoFactorAuth: boolean;
+    geminiApiKey: string;
     createdAt: Date;
     updatedAt: Date;
 }

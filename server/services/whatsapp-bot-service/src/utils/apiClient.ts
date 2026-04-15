@@ -5,7 +5,7 @@ const INTERNAL_SECRET = config.internalSecret;
 
 // Client for calling auth-service directly (internal)
 export const authServiceClient = axios.create({
-    baseURL: process.env.AUTH_SERVICE_URL || 'http://localhost:5001',
+    baseURL: (process.env.AUTH_SERVICE_URL || 'http://localhost:5001') + '/api/v1',
     headers: { 'x-internal-secret': INTERNAL_SECRET }
 });
 

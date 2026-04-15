@@ -2,16 +2,17 @@ import { Response } from 'express';
 import { AuthenticatedRequest } from '../types';
 import { injectable, inject } from 'tsyringe';
 import { IBillingService } from '../interfaces/IService/IBillingService';
+import { IInvoiceRepository } from '../interfaces/IRepository/IInvoiceRepository';
 import { sendSuccess, sendError } from '../utils/response';
 import { logger } from '../utils/logger';
 import axios from 'axios';
 import config from '../config';
-import { Invoice } from '../models/Invoice';
 
 @injectable()
 export class BillingController {
     constructor(
-        @inject('BillingService') private billingService: IBillingService
+        @inject('BillingService') private billingService: IBillingService,
+        @inject('InvoiceRepository') private invoiceRepository: IInvoiceRepository
     ) { }
 
     async createInvoice(req: AuthenticatedRequest, res: Response) {
@@ -27,11 +28,10 @@ export class BillingController {
 
     async getInvoicePDF(req: AuthenticatedRequest, res: Response) {
         try {
-            const invoice = await Invoice.findById(req.params.id);
+            const invoice = await this.invoiceRepository.findById(req.params.id);
             if (!invoice) return sendError(res, 'Invoice not found', 404);
 
-            const authUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:5001';
-            const tenantRes = await axios.get(`${authUrl}/api/v1/auth/internal/tenants/${invoice.tenantId}`, {
+            const tenantRes = await axios.get(`${config.authServiceUrl}/api/v1/auth/internal/tenants/${invoice.tenantId}`, {
                 headers: { 'x-internal-secret': config.internalSecret }
             });
             const tenant = tenantRes.data?.data || { name: 'CarBot AI Showroom' };
@@ -51,8 +51,7 @@ export class BillingController {
         try {
             const tenantId = req.user?.tenantId || (req.headers['x-tenant-id'] as string);
 
-            const authUrl = process.env.AUTH_SERVICE_URL || 'http://localhost:5001';
-            const tenantRes = await axios.get(`${authUrl}/api/v1/auth/internal/tenants/${tenantId}`, {
+            const tenantRes = await axios.get(`${config.authServiceUrl}/api/v1/auth/internal/tenants/${tenantId}`, {
                 headers: { 'x-internal-secret': config.internalSecret }
             });
             const tenant = tenantRes.data?.data || { name: 'CarBot AI Showroom' };

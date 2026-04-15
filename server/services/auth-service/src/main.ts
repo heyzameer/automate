@@ -10,7 +10,6 @@ import { securityMiddleware } from './middleware/security';
 import { generalLimiter } from './middleware/rateLimit';
 import { httpLogger } from './middleware/logging';
 import routes from './routes';
-import internalRoutes from './routes/internal.routes';
 import { maintenanceMiddleware } from './middleware/maintenanceMiddleware';
 import { handleError } from './utils/errorHandler';
 import { logger } from './utils/logger';
@@ -65,7 +64,6 @@ class Application {
         this._app.use('/api/v1', routes);
 
         // Internal service-mesh routes (no JWT, secret-based)
-        this._app.use('/internal', internalRoutes);
 
         // Root route
         this._app.get('/', (req, res) => {

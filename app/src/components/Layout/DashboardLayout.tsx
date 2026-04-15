@@ -164,6 +164,9 @@ export default function DashboardLayout() {
                         <SidebarLink to={ROUTES.ENQUIRIES.LEADS} icon={Users} onClick={() => setSidebarOpen(false)}>
                             Enquiries
                         </SidebarLink>
+                        <SidebarLink to={ROUTES.ENQUIRIES.BOOKINGS} icon={Bell} onClick={() => setSidebarOpen(false)}>
+                            Test Drives
+                        </SidebarLink>
                         <SidebarLink to={ROUTES.AUTOMATION.WHATSAPP} icon={MessageSquare} onClick={() => setSidebarOpen(false)}>
                             WhatsApp Bot
                         </SidebarLink>

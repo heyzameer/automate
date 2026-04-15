@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: services/api-gateway/Dockerfile
+    ports:
+      - "5000:5000"
+    env_file: .env.prod
+    restart: always
+    networks:
+      - carbot-mesh
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: services/auth-service/Dockerfile
+    env_file: .env.prod
+    restart: always
+    networks:
+      - carbot-mesh
+
+  inventory-service:
+    build:
+      context: .
+      dockerfile: services/inventory-service/Dockerfile
+    env_file: .env.prod
+    restart: always
+    networks:
+      - carbot-mesh
+
+  whatsapp-bot-service:
+    build:
+      context: .
+      dockerfile: services/whatsapp-bot-service/Dockerfile
+    env_file: .env.prod
+    restart: always
+    networks:
+      - carbot-mesh
+
+  billing-service:
+    build:
+      context: .
+      dockerfile: services/billing-service/Dockerfile
+    env_file: .env.prod
+    restart: always
+    networks:
+      - carbot-mesh
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: services/notification-service/Dockerfile
+    env_file: .env.prod
+    restart: always
+    networks:
+      - carbot-mesh
+
+networks:
+  carbot-mesh:
+    driver: bridge

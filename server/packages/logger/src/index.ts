@@ -1,5 +1,16 @@
 import winston from 'winston';
 import DailyRotateFile from 'winston-daily-rotate-file';
+import { AsyncLocalStorage } from 'async_hooks';
+
+export const loggerContext = new AsyncLocalStorage<Map<string, string>>();
+
+const injectCorrelationId = winston.format((info) => {
+    const store = loggerContext.getStore();
+    if (store && store.has('correlationId')) {
+        info.correlationId = store.get('correlationId');
+    }
+    return info;
+});
 
 /**
  * @carbot/logger
@@ -9,8 +20,8 @@ import DailyRotateFile from 'winston-daily-rotate-file';
  * ═══════════════════════════════════════════════════════════
  */
 
-const consoleFormat = winston.format.printf(({ level, message, timestamp, ...meta }) => {
-    let log = `${timestamp} [${level}]: ${message}`;
+const consoleFormat = winston.format.printf(({ level, message, timestamp, correlationId, ...meta }) => {
+    let log = `${timestamp} [${level}]${correlationId ? ` [${correlationId}]` : ''}: ${message}`;
     if (Object.keys(meta).length > 0) {
         log += ` ${JSON.stringify(meta)}`;
     }
@@ -46,6 +57,7 @@ export const createLogger = (serviceName: string, logsConfig?: any) => {
     return winston.createLogger({
         level: logsConfig?.level || 'info',
         format: winston.format.combine(
+            injectCorrelationId(),
             winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
             winston.format.errors({ stack: true }),
             winston.format.json()

@@ -1,6 +1,7 @@
 import { Router, Request, Response } from 'express';
 import authRoutes from './authRoutes';
 import superAdminRoutes from './superAdminRoutes';
+import internalRoutes from './internal.routes';
 import { sendSuccess } from '../utils/response';
 
 const router = Router();
@@ -28,6 +29,7 @@ router.get('/version', (req: Request, res: Response) => {
 // Mount module routes
 router.use('/auth', authRoutes);
 router.use('/super', superAdminRoutes);
+router.use('/internal', internalRoutes);
 
 // API Root
 router.get('/', (req: Request, res: Response) => {

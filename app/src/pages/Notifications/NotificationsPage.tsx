@@ -11,9 +11,12 @@ import {
     Search,
     Filter,
     ArrowLeft,
-    Trash2
+    Trash2,
+    User,
+    Car
 } from 'lucide-react';
 import { notificationsService, AppNotification } from '../../services/notifications.service';
+import toast from 'react-hot-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '../../lib/utils';
 import { useNavigate } from 'react-router-dom';
@@ -51,43 +54,50 @@ export default function NotificationsPage() {
         }
     };
 
+    const handleMarkAllAsRead = async () => {
+        try {
+            const unreadIds = notifications.filter(n => !n.isRead).map(n => n._id);
+            if (unreadIds.length === 0) return;
+            
+            await Promise.all(unreadIds.map(id => notificationsService.markAsRead(id)));
+            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+            toast.success("All notifications marked as read");
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     const getTypeStyles = (type: string) => {
         switch (type) {
             case 'lead.scored':
                 return { 
-                    icon: <Zap size={20} />, 
-                    color: 'text-amber-500 bg-amber-50', 
+                    icon: <Zap size={22} />, 
+                    color: 'text-amber-500 bg-amber-50 border-amber-100', 
                     title: 'Hot Lead' 
+                };
+            case 'lead.qr_scan':
+                return { 
+                    icon: <Car size={22} />, 
+                    color: 'text-emerald-500 bg-emerald-50 border-emerald-100', 
+                    title: 'QR Scan' 
                 };
             case 'lead.assigned':
                 return { 
-                    icon: <Info size={20} />, 
-                    color: 'text-blue-500 bg-blue-50', 
+                    icon: <Info size={22} />, 
+                    color: 'text-blue-500 bg-blue-50 border-blue-100', 
                     title: 'Assignment' 
                 };
             case 'car.aging_alert':
                 return { 
-                    icon: <Clock size={20} />, 
-                    color: 'text-rose-500 bg-rose-50', 
+                    icon: <Clock size={22} />, 
+                    color: 'text-rose-500 bg-rose-50 border-rose-100', 
                     title: 'Inventory Alert' 
-                };
-            case 'insurance.expiring':
-                return { 
-                    icon: <ShieldAlert size={20} />, 
-                    color: 'text-indigo-500 bg-indigo-50', 
-                    title: 'Insurance Expiry' 
-                };
-            case 'rc.expiring':
-                return { 
-                    icon: <FileText size={20} />, 
-                    color: 'text-violet-500 bg-violet-50', 
-                    title: 'RC Expiry' 
                 };
             default:
                 return { 
-                    icon: <Bell size={20} />, 
-                    color: 'text-slate-500 bg-slate-50', 
-                    title: 'System Alert' 
+                    icon: <Bell size={22} />, 
+                    color: 'text-slate-500 bg-slate-50 border-slate-100', 
+                    title: 'Activity' 
                 };
         }
     };
@@ -97,67 +107,87 @@ export default function NotificationsPage() {
                              n.message.toLowerCase().includes(searchQuery.toLowerCase());
         
         if (filter === 'unread') return matchesSearch && !n.isRead;
-        if (filter === 'alerts') return matchesSearch && (n.type.includes('expiry') || n.type.includes('alert'));
+        if (filter === 'alerts') return matchesSearch && (n.type.includes('expiry') || n.type.includes('alert') || n.type.includes('scored'));
         return matchesSearch;
     });
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
+    // Grouping logic
+    const sections = [
+        { title: 'Today', data: filteredNotifications.filter(n => format(new Date(n.createdAt), 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd')) },
+        { title: 'Yesterday', data: filteredNotifications.filter(n => {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            return format(new Date(n.createdAt), 'yyyy-MM-dd') === format(yesterday, 'yyyy-MM-dd');
+        }) },
+        { title: 'Older', data: filteredNotifications.filter(n => {
+            const yesterday = new Date();
+            yesterday.setDate(yesterday.getDate() - 1);
+            return new Date(n.createdAt) < yesterday && format(new Date(n.createdAt), 'yyyy-MM-dd') !== format(yesterday, 'yyyy-MM-dd');
+        }) }
+    ].filter(s => s.data.length > 0);
+
     return (
-        <div className="max-w-5xl mx-auto space-y-8 pb-12">
+        <div className="max-w-4xl mx-auto space-y-10 pb-20 animate-in fade-in slide-in-from-bottom-4 duration-700">
             {/* Header */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                <div className="flex items-center gap-5">
-                    <button onClick={() => navigate(-1)} className="p-3 bg-white shadow-sm border border-slate-100 rounded-2xl hover:bg-slate-50 transition-all">
-                        <ArrowLeft className="w-5 h-5 text-slate-500" />
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 px-4 sm:px-0">
+                <div className="space-y-4">
+                    <button onClick={() => navigate(-1)} className="flex items-center gap-2 text-slate-400 hover:text-indigo-600 font-bold text-[10px] uppercase tracking-[0.2em] transition-colors group">
+                        <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+                        Go Back
                     </button>
                     <div>
-                        <h1 className="text-3xl font-black text-slate-900 tracking-tight flex items-center gap-4">
+                        <h1 className="text-4xl font-black text-slate-900 tracking-tight flex items-center gap-4">
                             Activity Log
                             {unreadCount > 0 && (
-                                <span className="bg-rose-500 text-white text-[10px] font-black px-3 py-1 rounded-full uppercase tracking-widest">
-                                    {unreadCount} Unread
+                                <span className="bg-indigo-600 text-white text-[10px] font-black px-4 py-1.5 rounded-full uppercase tracking-widest shadow-xl shadow-indigo-100 animate-pulse">
+                                    {unreadCount} New
                                 </span>
                             )}
                         </h1>
-                        <p className="text-slate-500 font-bold text-xs uppercase tracking-widest mt-1">
-                            Operational alerts and system notifications
+                        <p className="text-slate-500 font-bold text-sm tracking-tight mt-1">
+                            Real-time showroom intelligence and inventory alerts.
                         </p>
                     </div>
                 </div>
 
                 <div className="flex items-center gap-3">
-                    <div className="relative">
-                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 w-4 h-4" />
+                    <div className="relative group">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-indigo-600 transition-colors w-4 h-4" />
                         <input 
                             type="text"
-                            placeholder="Search activity..."
+                            placeholder="Filter events..."
                             value={searchQuery}
                             onChange={(e) => setSearchQuery(e.target.value)}
-                            className="pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-2xl text-sm font-medium w-full md:w-64 focus:ring-4 focus:ring-indigo-100 outline-none transition-all shadow-sm"
+                            className="pl-12 pr-6 py-4 bg-white border border-slate-100 rounded-[1.5rem] text-sm font-bold w-full md:w-56 focus:ring-4 focus:ring-indigo-100 focus:border-indigo-200 outline-none transition-all shadow-xl shadow-slate-200/40"
                         />
                     </div>
-                    <button className="p-4 bg-slate-900 text-white rounded-2xl hover:bg-slate-800 transition-all shadow-xl shadow-slate-200">
-                        <CheckCheck size={20} />
+                    <button 
+                        onClick={handleMarkAllAsRead}
+                        title="Mark all as read"
+                        className="p-4 bg-slate-900 text-white rounded-[1.5rem] hover:bg-indigo-600 transition-all shadow-xl shadow-slate-200 hover:shadow-indigo-100 active:scale-95"
+                    >
+                        <CheckCheck size={22} />
                     </button>
                 </div>
             </div>
 
             {/* Filters */}
-            <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide">
+            <div className="flex gap-3 overflow-x-auto px-4 sm:px-0 pb-2 scrollbar-hide">
                 {[
                     { id: 'all', label: 'All Activity' },
                     { id: 'unread', label: 'Unread Only' },
-                    { id: 'alerts', label: 'Urgent Alerts' }
+                    { id: 'alerts', label: 'Urgent Only' }
                 ].map((f) => (
                     <button
                         key={f.id}
                         onClick={() => setFilter(f.id as any)}
                         className={cn(
-                            "px-6 py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border",
+                            "px-8 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all whitespace-nowrap border-2",
                             filter === f.id 
-                                ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100" 
-                                : "bg-white border-slate-100 text-slate-500 hover:border-slate-200"
+                                ? "bg-white border-slate-900 text-slate-900 shadow-xl shadow-slate-200/50 -translate-y-1" 
+                                : "bg-slate-50/50 border-transparent text-slate-400 hover:bg-white hover:border-slate-100"
                         )}
                     >
                         {f.label}
@@ -166,96 +196,105 @@ export default function NotificationsPage() {
             </div>
 
             {/* Notifications List */}
-            <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-2xl shadow-slate-200/50 overflow-hidden">
+            <div className="space-y-12">
                 {loading ? (
-                    <div className="p-20 text-center space-y-4">
+                    <div className="py-20 text-center space-y-4">
                         <div className="w-12 h-12 border-4 border-indigo-100 border-t-indigo-600 rounded-full animate-spin mx-auto" />
-                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Loading history...</p>
+                        <p className="text-slate-400 text-[10px] font-black uppercase tracking-widest">Hydrating Log...</p>
                     </div>
-                ) : filteredNotifications.length === 0 ? (
-                    <div className="p-20 text-center">
-                        <div className="w-20 h-20 bg-slate-50 rounded-[2rem] flex items-center justify-center mx-auto mb-6">
-                            <Bell className="text-slate-200" size={32} />
+                ) : sections.length === 0 ? (
+                    <div className="bg-white rounded-[3rem] p-20 text-center border border-slate-100 shadow-xl">
+                        <div className="w-24 h-24 bg-slate-50 rounded-[2.5rem] flex items-center justify-center mx-auto mb-8">
+                            <Bell className="text-slate-200" size={40} />
                         </div>
-                        <h3 className="text-lg font-black text-slate-900 uppercase tracking-tight">No notifications found</h3>
-                        <p className="text-slate-400 font-bold text-xs uppercase tracking-widest mt-2">{searchQuery ? 'Try matching another term' : 'Go enjoy some tea ☕'}</p>
+                        <h3 className="text-2xl font-black text-slate-900 tracking-tight">QUIET DAY</h3>
+                        <p className="text-slate-400 font-bold text-[10px] uppercase tracking-widest mt-3">No activity logs found matching your criteria</p>
                     </div>
                 ) : (
-                    <div className="divide-y divide-slate-50">
-                        {filteredNotifications.map((n) => {
-                            const style = getTypeStyles(n.type);
-                            return (
-                                <div 
-                                    key={n._id}
-                                    className={cn(
-                                        "p-8 transition-all relative group flex flex-col sm:flex-row gap-6",
-                                        !n.isRead ? "bg-indigo-50/20" : "hover:bg-slate-50/50"
-                                    )}
-                                >
-                                    {!n.isRead && (
-                                        <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-indigo-600 rounded-r-lg" />
-                                    )}
+                    sections.map((section) => (
+                        <div key={section.title} className="space-y-4">
+                            <h2 className="text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] px-6">{section.title}</h2>
+                            <div className="space-y-4 capitalize">
+                                {section.data.map((n) => {
+                                    const style = getTypeStyles(n.type);
+                                    const leadSearch = n.metadata?.customerName || n.metadata?.phone || '';
                                     
-                                    <div className={cn(
-                                        "w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-sm border border-white/50",
-                                        style.color
-                                    )}>
-                                        {style.icon}
-                                    </div>
+                                    // Safety patch for old notifications with 'Lead undefined'
+                                    const cleanMessage = n.message.replace('Lead undefined', `Lead ${n.metadata?.phone || 'New Prospect'}`);
 
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 mb-2">
-                                            <div className="flex items-center gap-3">
-                                                <span className={cn(
-                                                    "text-[8px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-full border",
-                                                    style.color,
-                                                    "border-current/20"
-                                                )}>
-                                                    {style.title}
-                                                </span>
-                                                <h3 className="text-base font-black text-slate-900 tracking-tight uppercase">{n.title}</h3>
+                                    return (
+                                        <div 
+                                            key={n._id}
+                                            className={cn(
+                                                "bg-white rounded-[2rem] p-6 sm:p-8 flex flex-col sm:flex-row gap-6 transition-all border group relative overflow-hidden",
+                                                !n.isRead ? "border-indigo-100 shadow-xl shadow-indigo-100/50" : "border-slate-100 opacity-80 hover:opacity-100"
+                                            )}
+                                        >
+                                            <div className={cn(
+                                                "w-16 h-16 rounded-[1.5rem] flex items-center justify-center flex-shrink-0 border transition-transform duration-500 group-hover:scale-110",
+                                                style.color
+                                            )}>
+                                                {style.icon}
                                             </div>
-                                            <span className="text-[10px] font-bold text-slate-400 flex items-center gap-2">
-                                                <Calendar size={12} />
-                                                {format(new Date(n.createdAt), 'dd MMM yyyy')}
-                                                <span className="w-1 h-1 rounded-full bg-slate-200" />
-                                                {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
-                                            </span>
+
+                                            <div className="flex-1 min-w-0">
+                                                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-3">
+                                                    <div className="flex items-center gap-3">
+                                                        <h3 className={cn(
+                                                            "text-lg font-black tracking-tight",
+                                                            !n.isRead ? "text-slate-900" : "text-slate-500"
+                                                        )}>
+                                                            {n.title}
+                                                        </h3>
+                                                        {!n.isRead && (
+                                                            <div className="w-2 h-2 rounded-full bg-indigo-600 animate-pulse" />
+                                                        )}
+                                                    </div>
+                                                    <span className="text-[10px] font-black text-slate-400 bg-slate-50 px-3 py-1.5 rounded-xl flex items-center gap-2">
+                                                        <Clock size={12} className="text-slate-400" />
+                                                        {formatDistanceToNow(new Date(n.createdAt), { addSuffix: true })}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm font-bold text-slate-600 leading-relaxed mb-6">
+                                                    {cleanMessage}
+                                                </p>
+                                                
+                                                <div className="flex flex-wrap items-center gap-3">
+                                                    {!n.isRead && (
+                                                        <button 
+                                                            onClick={(e) => { e.stopPropagation(); handleMarkAsRead(n._id); }}
+                                                            className="flex items-center gap-2 text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-indigo-50/50 border border-indigo-100 px-5 py-3 rounded-2xl hover:bg-indigo-600 hover:text-white transition-all active:scale-95"
+                                                        >
+                                                            <CheckCheck size={14} />
+                                                            Mark as Read
+                                                        </button>
+                                                    )}
+                                                    
+                                                    {n.metadata?.leadId || n.metadata?.phone ? (
+                                                        <button 
+                                                            onClick={() => navigate(`${ROUTES.ENQUIRIES.LEADS}?search=${leadSearch}`)}
+                                                            className="flex items-center gap-2 text-[10px] font-black text-slate-900 uppercase tracking-widest bg-slate-50 border border-slate-100 px-5 py-3 rounded-2xl hover:bg-slate-900 hover:text-white transition-all active:scale-95"
+                                                        >
+                                                            <User size={14} />
+                                                            View Profile
+                                                        </button>
+                                                    ) : n.metadata?.vehicleId ? (
+                                                        <button 
+                                                            onClick={() => navigate(`${ROUTES.VEHICLES.BASE}?search=${n.metadata.carCode || n.metadata.vehicleId}`)}
+                                                            className="flex items-center gap-2 text-[10px] font-black text-slate-900 uppercase tracking-widest bg-slate-50 border border-slate-100 px-5 py-3 rounded-2xl hover:bg-slate-900 hover:text-white transition-all active:scale-95"
+                                                        >
+                                                            <Car size={14} />
+                                                            Inspect car
+                                                        </button>
+                                                    ) : null}
+                                                </div>
+                                            </div>
                                         </div>
-                                        <p className="text-sm font-medium text-slate-600 leading-relaxed mb-4">
-                                            {n.message}
-                                        </p>
-                                        
-                                        <div className="flex items-center gap-4">
-                                            {!n.isRead && (
-                                                <button 
-                                                    onClick={() => handleMarkAsRead(n._id)}
-                                                    className="flex items-center gap-2 text-[10px] font-black text-indigo-600 uppercase tracking-widest bg-white border border-slate-100 px-4 py-2 rounded-xl hover:bg-indigo-600 hover:text-white transition-all shadow-sm"
-                                                >
-                                                    <CheckCheck size={14} />
-                                                    Mark as Read
-                                                </button>
-                                            )}
-                                            {n.metadata?.vehicleId && (
-                                                <button 
-                                                    onClick={() => navigate(`${ROUTES.VEHICLES.BASE}/${n.metadata.vehicleId}`)}
-                                                    className="flex items-center gap-2 text-[10px] font-black text-slate-600 uppercase tracking-widest bg-white border border-slate-100 px-4 py-2 rounded-xl hover:bg-slate-900 hover:text-white transition-all shadow-sm"
-                                                >
-                                                    View Details
-                                                </button>
-                                            )}
-                                        </div>
-                                    </div>
-                                    
-                                    {n.isRead && (
-                                        <button className="opacity-0 group-hover:opacity-100 p-2 text-slate-300 hover:text-rose-500 transition-all self-start">
-                                            <Trash2 size={18} />
-                                        </button>
-                                    )}
-                                </div>
-                            );
-                        })}
-                    </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    ))
                 )}
             </div>
         </div>

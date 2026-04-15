@@ -1,12 +1,12 @@
 import { injectable } from 'tsyringe';
-import { BaseRepository } from '@carbot/common';
-import { Invoice, IInvoice } from '../models/Invoice';
+import { MongoBaseRepository } from './MongoBaseRepository';
+import { InvoiceModel, IInvoice } from '../models/Invoice.model';
 import { IInvoiceRepository } from '../interfaces/IRepository/IInvoiceRepository';
 
 @injectable()
-export class InvoiceRepository extends BaseRepository<IInvoice> implements IInvoiceRepository {
+export class InvoiceRepository extends MongoBaseRepository<IInvoice> implements IInvoiceRepository {
   constructor() {
-    super(Invoice);
+    super(InvoiceModel);
   }
 
   async findByTenant(tenantId: string): Promise<IInvoice[]> {
@@ -17,4 +17,3 @@ export class InvoiceRepository extends BaseRepository<IInvoice> implements IInvo
     return this.findOne({ tenantId, invoiceNumber });
   }
 }
-

@@ -32,7 +32,12 @@ class Application {
         this._app.use(cors());
         this._app.use(morgan('dev'));
         this._app.use(compression());
-        this._app.use(express.json({ limit: config.maxSizeLimit }));
+        this._app.use(express.json({ 
+            limit: config.maxSizeLimit,
+            verify: (req: any, res, buf) => {
+                req.rawBody = buf;
+            }
+        }));
         this._app.use(express.urlencoded({ extended: true, limit: config.maxSizeLimit }));
         this._app.use(cookieParser());
         logger.info('Middlewares initialized');

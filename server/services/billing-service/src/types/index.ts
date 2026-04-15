@@ -13,6 +13,15 @@ export interface AppConfig {
     mongoUri: string;
     internalSecret: string;
     authServiceUrl: string;
+    botServiceUrl: string;
+    inventoryServiceUrl: string;
+    postgres: {
+        host: string;
+        port: number;
+        username: string;
+        password: string;
+        database: string;
+    };
 }
 
 export interface RequestUser {

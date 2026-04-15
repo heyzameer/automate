@@ -22,6 +22,7 @@ export const ROUTES = {
   
   ENQUIRIES: {
     LEADS: '/leads',
+    BOOKINGS: '/bookings',
   },
   
   AUTOMATION: {

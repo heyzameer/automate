@@ -17,8 +17,13 @@ const app = express();
 const httpServer = createServer(app);
 const port = config.port;
 
+import { initRabbitMQ } from './utils/rabbitmq';
+
 mongoose.connect(config.mongoUri)
-    .then(() => logger.info('Connected to MongoDB (Notification Service)'))
+    .then(async () => {
+        logger.info('Connected to MongoDB (Notification Service)');
+        await initRabbitMQ();
+    })
     .catch(err => logger.error('MongoDB connection error:', err));
 
 app.use(cors());

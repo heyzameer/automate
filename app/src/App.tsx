@@ -14,6 +14,7 @@ import SuperAdminLayout from './components/Layout/SuperAdminLayout';
 import DashboardHome from './pages/Dashboard/Home';
 import Automation from './pages/Automation/WhatsAppSettings';
 import Leads from './pages/Enquiries/Leads';
+import TestDrives from './pages/Enquiries/TestDrives';
 import Campaigns from './pages/Marketing/Campaigns';
 import VehicleList from './pages/Vehicles/VehicleList';
 import AddVehicle from './pages/Vehicles/AddVehicle';
@@ -29,10 +30,12 @@ import SuperAdminLeads from './pages/SuperAdmin/Leads';
 import Subscription from './pages/Dashboard/Subscription';
 import ShowroomSettings from './pages/Dashboard/Settings';
 import NotificationsPage from './pages/Notifications/NotificationsPage';
+import RealtimeNotifications from './components/Common/RealtimeNotifications';
 
 function App() {
   return (
     <Router>
+      <RealtimeNotifications />
       <Toaster position="top-right" />
       <Routes>
         <Route path={ROUTES.LANDING} element={<Welcome />} />
@@ -66,6 +69,7 @@ function App() {
           </Route>
           <Route path="automation" element={<Automation />} />
           <Route path="leads" element={<Leads />} />
+          <Route path="bookings" element={<TestDrives />} />
           <Route path="campaigns" element={<Campaigns />} />
           <Route path="settings" element={<ShowroomSettings />} />
           <Route path="subscription" element={<Subscription />} />

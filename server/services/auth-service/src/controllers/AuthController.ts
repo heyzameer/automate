@@ -194,6 +194,7 @@ export class AuthController {
              if (updateData.whatsappConfig.includeGallery !== undefined) safeUpdateData['whatsappConfig.includeGallery'] = updateData.whatsappConfig.includeGallery;
              if (updateData.whatsappConfig.includeSpecs !== undefined) safeUpdateData['whatsappConfig.includeSpecs'] = updateData.whatsappConfig.includeSpecs;
              if (updateData.whatsappConfig.includeLocation !== undefined) safeUpdateData['whatsappConfig.includeLocation'] = updateData.whatsappConfig.includeLocation;
+             if (updateData.whatsappConfig.websiteLinkTemplate !== undefined) safeUpdateData['whatsappConfig.websiteLinkTemplate'] = updateData.whatsappConfig.websiteLinkTemplate;
         }
         if (updateData.address !== undefined) {
              safeUpdateData['address'] = updateData.address;

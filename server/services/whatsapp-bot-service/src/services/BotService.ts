@@ -1,6 +1,8 @@
 import { injectable } from 'tsyringe';
 import { redisClient } from '../utils/redis';
 import { authServiceClient, inventoryServiceClient, botServiceClient } from '../utils/apiClient';
+import config from '../config';
+import { LeadStatus } from '@carbot/common';
 import { GeminiService } from './GeminiService';
 import { WhatsAppService } from './WhatsAppService';
 import { logger } from '../utils/logger';
@@ -105,7 +107,7 @@ export class BotService {
                     from,
                     "🚙 Great! What is your name?",
                     tenant.whatsappConfig.phoneNumberId,
-                    tenant.whatsappConfig.accessToken
+                    config.whatsapp.systemToken || tenant.whatsappConfig.accessToken
                 );
             }
 
@@ -196,7 +198,7 @@ export class BotService {
         await this.whatsappService.sendInteractiveList(
             to, message, sections,
             tenant.whatsappConfig.phoneNumberId,
-            tenant.whatsappConfig.accessToken
+            config.whatsapp.systemToken || tenant.whatsappConfig.accessToken
         );
     }
 
@@ -213,13 +215,13 @@ export class BotService {
                 break;
             case 'MENU_BUDGET':
                 session.state = 'SEARCH_BUDGET';
-                await this.whatsappService.sendTextMessage(to, "💰 What is your budget? (e.g. 10 lakh or 500000)", tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+                await this.whatsappService.sendTextMessage(to, "💰 What is your budget? (e.g. 10 lakh or 500000)", tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
                 break;
             case 'MENU_LOCATION':
                 // Higher score for location intent
                 await botServiceClient.post('/internal/leads/score', { tenantId: session.tenantId, phone: to, points: 10 });
                 const locationMsg = `📍 *Showroom Location*\n\n*${tenant.name}*\n${tenant.address || 'Location details shared above.'}${tenant.locationUrl ? `\n\n📌 Map: ${tenant.locationUrl}` : ''}`;
-                await this.whatsappService.sendTextMessage(to, locationMsg, tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+                await this.whatsappService.sendTextMessage(to, locationMsg, tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
                 break;
             default:
                 if (selection.startsWith('CANCEL_LEAD_')) {
@@ -227,7 +229,17 @@ export class BotService {
                 } else if (selection.startsWith('RESCHEDULE_LEAD_')) {
                     session.state = 'RESCHEDULE_DATE';
                     session.context.rescheduling_id = selection.split('RESCHEDULE_LEAD_')[1];
-                    await this.whatsappService.sendTextMessage(to, "🗓️ What is the new date and time you prefer?", tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+                    const msg = "🗓️ When would you like to reschedule your test drive? Select a slot or type a time.";
+                    const buttons = [
+                        { id: 'SLOT_10AM', title: '☀️ 10:00 AM' },
+                        { id: 'SLOT_2PM', title: '☁️ 02:00 PM' },
+                        { id: 'SLOT_4PM', title: '⛅ 04:00 PM' }
+                    ];
+                    await this.whatsappService.sendInteractiveButtons(
+                        to, msg, buttons, 
+                        tenant.whatsappConfig.phoneNumberId, 
+                        config.whatsapp.systemToken || tenant.whatsappConfig.accessToken
+                    );
                 } else {
                     await this.processNaturalQuery(tenant, session, to, selection);
                 }
@@ -243,7 +255,7 @@ export class BotService {
         const leads = (res.data?.data || []).filter((l: any) => l.preferredDateTime);
 
         if (leads.length === 0) {
-            return this.whatsappService.sendTextMessage(to, "🔍 You don't have any active test drive bookings. Type MENU to browse cars or start a new booking!", tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+            return this.whatsappService.sendTextMessage(to, "🔍 You don't have any active test drive bookings. Type MENU to browse cars or start a new booking!", tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
         }
 
         for (const lead of leads) {
@@ -264,21 +276,21 @@ export class BotService {
                 { id: `RESCHEDULE_LEAD_${lead._id}`, title: '🗓️ Reschedule' },
                 { id: `CANCEL_LEAD_${lead._id}`, title: '❌ Cancel' }
             ];
-            await this.whatsappService.sendInteractiveButtons(to, msg, buttons, tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+            await this.whatsappService.sendInteractiveButtons(to, msg, buttons, tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
         }
     }
 
     private async handleCancelBooking(tenant: any, leadId: string, to: string) {
         // ✅ HTTP PATCH to bot-service internal leads endpoint
-        await botServiceClient.patch(`/internal/leads/${leadId}`, { status: 'cancelled' });
-        await this.whatsappService.sendTextMessage(to, "❌ Your booking has been cancelled successfully. Type MENU if you change your mind!", tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+        await botServiceClient.patch(`/internal/leads/${leadId}`, { status: LeadStatus.CANCELLED });
+        await this.whatsappService.sendTextMessage(to, "❌ Your booking has been cancelled successfully. Type MENU if you change your mind!", tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
     }
 
     private async handleBudgetSearch(tenant: any, session: ISessionData, to: string, input: string) {
         let price = parseInt(input.replace(/[^\d]/g, ''));
         if (input.toLowerCase().includes('lakh')) price *= 100000;
         if (isNaN(price)) {
-            return this.whatsappService.sendTextMessage(to, "Enter a valid amount like '10 lakh' or '500000'.", tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+            return this.whatsappService.sendTextMessage(to, "Enter a valid amount like '10 lakh' or '500000'.", tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
         }
         if (!session.context) session.context = {};
         session.context.search_filters = { max_price: price };
@@ -299,7 +311,7 @@ export class BotService {
                 to,
                 "🙏 I am an AI concierge exclusively trained to assist you with car sales, inventory, and test drives! Please let me know what kind of car you are looking for, or type MENU to browse our showroom.",
                 tenant.whatsappConfig.phoneNumberId,
-                tenant.whatsappConfig.accessToken
+                config.whatsapp.systemToken || tenant.whatsappConfig.accessToken
             );
         }
 
@@ -323,7 +335,7 @@ export class BotService {
         const vs = res.data?.data || [];
 
         if (vs.length === 0) {
-            return this.whatsappService.sendTextMessage(to, `🔍 No cars found matching your criteria. Type MENU to browse all inventory.`, tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+            return this.whatsappService.sendTextMessage(to, `🔍 No cars found matching your criteria. Type MENU to browse all inventory.`, tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
         }
 
         let r = `🔍 Found *${vs.length}* match(es):\n\n`;
@@ -336,7 +348,7 @@ export class BotService {
             r += `🚗 *${brand} ${model}*\n💰 ₹ ${Number(price).toLocaleString('en-IN')}\n🏷️ Code: *${code}*\n\n`;
         });
         r += `Send Code (e.g. car01) for more details!`;
-        await this.whatsappService.sendTextMessage(to, r, tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+        await this.whatsappService.sendTextMessage(to, r, tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
     }
 
     private async sendVehicleDetailByCode(tenant: any, session: ISessionData, to: string, code: string) {
@@ -345,7 +357,7 @@ export class BotService {
         });
         const v = res.data?.data?.[0];
 
-        if (!v) return this.whatsappService.sendTextMessage(to, `❌ Car *${code}* not found. Type MENU to browse.`, tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+        if (!v) return this.whatsappService.sendTextMessage(to, `❌ Car *${code}* not found. Type MENU to browse.`, tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
 
         const attrs = v.attributes || {};
         const brand = attrs.brand || '';
@@ -353,11 +365,36 @@ export class BotService {
         const price = attrs.price || 0;
         const fuel = attrs.fuel_type || 'N/A';
         const ownership = attrs.ownership || 'N/A';
-        const image = v.images?.[0] || 'N/A';
 
-        const details = `🚗 *${brand} ${model}*\n💰 Price: ₹ ${Number(price).toLocaleString('en-IN')}\n⛽ Fuel: ${fuel} | 📍 Ownership: ${ownership}\n🔗 View Photo: ${image}\n\nReply BOOK to reserve a test drive!`;
+        // Read tenant Bot automation configurations
+        const botConfig = tenant.whatsappConfig || {};
+        const includeSpecs = botConfig.includeSpecs !== false; // default true
+        const includeLocation = botConfig.includeLocation !== false; // default true
+        const websiteLinkTemplate = botConfig.websiteLinkTemplate || '';
 
-        await this.whatsappService.sendTextMessage(to, details, tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+        // Build elegant dynamic reply
+        let details = `🚗 *${brand} ${model}*`;
+        if (price) details += `\n💰 Price: ₹ ${Number(price).toLocaleString('en-IN')}`;
+        
+        if (websiteLinkTemplate) {
+            const actualCode = attrs.car_code || code;
+            const fullLink = websiteLinkTemplate.replace('{carCode}', actualCode);
+            details += `\n\n🔗 *Tap to view full gallery on our website:*\n${fullLink}`;
+        }
+        
+        if (includeSpecs) {
+            details += `\n\n📋 *Quick Specs:*`;
+            details += `\n⛽ Fuel: ${fuel} | 📍 Ownership: ${ownership}`;
+        }
+
+        if (includeLocation && tenant.address) {
+            details += `\n\n🏢 *Location:* ${tenant.address}`;
+            if (tenant.locationUrl) details += `\n🗺️ Map: ${tenant.locationUrl}`;
+        }
+
+        details += `\n\n*Reply BOOK to reserve a test drive!*`;
+
+        await this.whatsappService.sendTextMessage(to, details, tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
         if (!session.context) session.context = {};
         session.context.current_car_id = v._id;
         session.state = 'CAR_DETAIL';
@@ -367,7 +404,19 @@ export class BotService {
         if (!session.context) session.context = {};
         session.context.lead_name = input;
         session.state = 'BOOK_DATE';
-        await this.whatsappService.sendTextMessage(to, `Thanks ${input}! 🗓️ What date and time would you prefer for the test drive? (e.g. 5th April, 10:00 AM)`, tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+
+        const msg = `Thanks *${input}*! 🗓️ When would you like to schedule your Test Drive?\n\nYou can select a slot below or type a custom date and time.`;
+        const buttons = [
+            { id: 'SLOT_10AM', title: '☀️ 10:00 AM' },
+            { id: 'SLOT_2PM', title: '☁️ 02:00 PM' },
+            { id: 'SLOT_4PM', title: '⛅ 04:00 PM' }
+        ];
+
+        await this.whatsappService.sendInteractiveButtons(
+            to, msg, buttons, 
+            tenant.whatsappConfig.phoneNumberId, 
+            config.whatsapp.systemToken || tenant.whatsappConfig.accessToken
+        );
     }
 
     private async handleBookingDate(tenant: any, session: ISessionData, to: string, input: string) {
@@ -383,14 +432,14 @@ export class BotService {
             name: session.context.lead_name,
             vehicleId: session.context.current_car_id,
             preferredDateTime: parsedDate,
-            status: 'new'
+            status: LeadStatus.NEW
         });
 
         await this.whatsappService.sendTextMessage(
             to,
             `✅ *Test Drive Requested!*\n\nYour booking for *${parsedDate}* is confirmed. Our team will call you at ${to} to finalize the details.\n\nType MENU for more options.`,
             tenant.whatsappConfig.phoneNumberId,
-            tenant.whatsappConfig.accessToken
+            config.whatsapp.systemToken || tenant.whatsappConfig.accessToken
         );
 
         session.state = 'IDLE';
@@ -409,14 +458,14 @@ export class BotService {
         // ✅ HTTP PATCH to bot-service internal leads endpoint
         await botServiceClient.patch(`/internal/leads/${session.context.rescheduling_id}`, {
             preferredDateTime: parsedDate,
-            status: 'rescheduled'
+            status: LeadStatus.RESCHEDULED
         });
 
         await this.whatsappService.sendTextMessage(
             to,
             `🗓️ *Booking Rescheduled!*\n\nYour test drive has been updated to *${parsedDate}*. We look forward to seeing you!\n\nType MENU for more options.`,
             tenant.whatsappConfig.phoneNumberId,
-            tenant.whatsappConfig.accessToken
+            config.whatsapp.systemToken || tenant.whatsappConfig.accessToken
         );
 
         session.state = 'IDLE';
@@ -429,7 +478,7 @@ export class BotService {
         });
         const vs = res.data?.data || [];
 
-        if (vs.length === 0) return this.whatsappService.sendTextMessage(to, "No cars available right now. 🙏", tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+        if (vs.length === 0) return this.whatsappService.sendTextMessage(to, "No cars available right now. 🙏", tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
 
         let r = `🚗 *Available Inventory*\n\n`;
         vs.forEach((v: any) => {
@@ -441,6 +490,6 @@ export class BotService {
             r += `• *${brand} ${model}* (₹${Number(price).toLocaleString('en-IN')}) | ID: *${code}*\n`;
         });
         r += `\nSend the Car ID for full details!`;
-        await this.whatsappService.sendTextMessage(to, r, tenant.whatsappConfig.phoneNumberId, tenant.whatsappConfig.accessToken);
+        await this.whatsappService.sendTextMessage(to, r, tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
     }
 }

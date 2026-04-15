@@ -7,6 +7,7 @@ export interface AppNotification {
   title: string;
   message: string;
   isRead: boolean;
+  metadata?: any;
   createdAt: string;
 }
 

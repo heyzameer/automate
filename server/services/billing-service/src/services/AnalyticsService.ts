@@ -1,22 +1,36 @@
 import { injectable } from 'tsyringe';
 import { logger } from '../utils/logger';
 import { InvoiceRepository } from '../repositories/InvoiceRepository';
-import axios from 'axios';
+import { HttpClient } from '@carbot/common';
 import config from '../config';
 
 @injectable()
 export class AnalyticsService {
-    constructor(private invoiceRepository: InvoiceRepository) {}
+    private botClient: HttpClient;
+    private inventoryClient: HttpClient;
+
+    constructor(private invoiceRepository: InvoiceRepository) {
+        this.botClient = new HttpClient({
+            baseURL: config.botServiceUrl,
+            timeout: 5000,
+            circuitBreakerOptions: { errorThresholdPercentage: 50, resetTimeout: 10000 }
+        });
+        this.inventoryClient = new HttpClient({
+            baseURL: config.inventoryServiceUrl,
+            timeout: 5000,
+            circuitBreakerOptions: { errorThresholdPercentage: 50, resetTimeout: 10000 }
+        });
+    }
     
     // Revenue Stats (Implemented from Real Billing Logic)
     async getRevenueStats(tenantId: string) {
         try {
             const invoices = await this.invoiceRepository.find({ 
                 tenantId, 
-                status: 'paid' 
+                status: 'paid' as any
             });
 
-            const totalRevenue = invoices.reduce((acc, inv) => acc + inv.totalAmount, 0);
+            const totalRevenue = invoices.reduce((acc, inv) => acc + Number(inv.totalAmount), 0);
             const salesCount = invoices.length;
             const avgSalePrice = salesCount > 0 ? totalRevenue / salesCount : 0;
 
@@ -37,8 +51,7 @@ export class AnalyticsService {
     // Funnel Stats (Cross-service call to Bot service)
     async getFunnelStats(tenantId: string) {
         try {
-            const botUrl = process.env.BOT_SERVICE_URL || 'http://localhost:3003';
-            const response = await axios.get(`${botUrl}/api/v1/bot/internal/analytics`, {
+            const response = await this.botClient.get(`/api/v1/bot/internal/analytics`, {
                 params: { tenantId },
                 headers: { 'x-internal-secret': config.internalSecret }
             });
@@ -57,8 +70,7 @@ export class AnalyticsService {
     // Stock Analytics (Cross-service call to Inventory service)
     async getInventoryIntelligence(tenantId: string) {
         try {
-            const inventoryUrl = process.env.INVENTORY_SERVICE_URL || 'http://localhost:5002';
-            const response = await axios.get(`${inventoryUrl}/internal/analytics`, {
+            const response = await this.inventoryClient.get(`/internal/analytics`, {
                 params: { tenantId },
                 headers: { 'x-internal-secret': config.internalSecret }
             });
@@ -91,8 +103,7 @@ export class AnalyticsService {
 
             // 2. Fetch recent leads from Bot Service
             try {
-                const botUrl = process.env.BOT_SERVICE_URL || 'http://localhost:3003';
-                const response = await axios.get(`${botUrl}/api/v1/bot/internal/leads/batch`, {
+                const response = await this.botClient.get(`/api/v1/bot/internal/leads/batch`, {
                     params: { tenantId },
                     headers: { 'x-internal-secret': config.internalSecret }
                 });

@@ -1,16 +1,23 @@
-import axios from 'axios';
+import { HttpClient } from '@carbot/common';
 import { injectable } from 'tsyringe';
 import config from '../config';
 import { logger } from '../utils/logger';
 
 @injectable()
 export class WhatsAppService {
-    constructor() {}
+    private client: HttpClient;
+
+    constructor() {
+        this.client = new HttpClient({
+            timeout: 15000,
+            circuitBreakerOptions: { errorThresholdPercentage: 50, resetTimeout: 30000 }
+        });
+    }
 
     async sendTextMessage(to: string, message: string, phoneNumberId: string, accessToken: string) {
         try {
             const url = `https://graph.facebook.com/${config.whatsapp.apiVersion}/${phoneNumberId}/messages`;
-            await axios.post(
+            await this.client.post(
                 url,
                 {
                     messaging_product: 'whatsapp',
@@ -33,7 +40,7 @@ export class WhatsAppService {
     async sendInteractiveList(to: string, body: string, sections: any[], phoneNumberId: string, accessToken: string) {
         try {
             const url = `https://graph.facebook.com/${config.whatsapp.apiVersion}/${phoneNumberId}/messages`;
-            await axios.post(
+            await this.client.post(
                 url,
                 {
                     messaging_product: 'whatsapp',
@@ -63,7 +70,7 @@ export class WhatsAppService {
     async sendInteractiveButtons(to: string, body: string, buttons: any[], phoneNumberId: string, accessToken: string) {
         try {
             const url = `https://graph.facebook.com/${config.whatsapp.apiVersion}/${phoneNumberId}/messages`;
-            await axios.post(
+            await this.client.post(
                 url,
                 {
                     messaging_product: 'whatsapp',
@@ -73,7 +80,7 @@ export class WhatsAppService {
                         type: 'button',
                         body: { text: body },
                         action: {
-                            buttons: buttons.map(b => ({
+                            buttons: buttons.map((b: any) => ({
                                 type: 'reply',
                                 reply: { id: b.id, title: b.title }
                             }))
@@ -95,7 +102,7 @@ export class WhatsAppService {
     async sendImageMessage(to: string, imageUrl: string, caption: string, phoneNumberId: string, accessToken: string) {
         try {
             const url = `https://graph.facebook.com/${config.whatsapp.apiVersion}/${phoneNumberId}/messages`;
-            const response = await axios.post(
+            const response = await this.client.post(
                 url,
                 {
                     messaging_product: 'whatsapp',

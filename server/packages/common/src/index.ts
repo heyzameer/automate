@@ -7,3 +7,7 @@ export * from './middleware/errorHandler';
 export * from './utils/mongooseTenantPlugin';
 export * from './repositories/BaseRepository';
 export * from './utils/HttpClient';
+export * from './utils/RabbitMQService';
+export * from './utils/ElasticClient';
+export * from './utils/correlationContext';
+export * from './utils/metrics';

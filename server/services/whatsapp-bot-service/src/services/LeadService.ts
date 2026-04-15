@@ -3,6 +3,7 @@ import { ILeadDocument } from '../models/Lead';
 import { logger } from '../utils/logger';
 import { notify } from '../utils/notify';
 import { ILeadRepository } from '../interfaces/IRepository/ILeadRepository';
+import { LeadStatus } from '@carbot/common';
 
 @injectable()
 export class LeadService {
@@ -28,6 +29,7 @@ export class LeadService {
                     customerName: lead.name,
                     phone: lead.phone,
                     score: lead.score,
+                    leadId: lead._id || lead.id,
                     carName: lead.vehicleId || 'N/A'
                 });
             } else if (lead.score >= 30) {
@@ -53,7 +55,7 @@ export class LeadService {
         }
         
         // Initial scoring logic
-        if (data.status === 'new' || data.vehicleId) {
+        if (data.status === LeadStatus.NEW || data.vehicleId) {
             lead.score = (lead.score || 0) + 30; // 30 points for expressing interest in a car
         }
         
@@ -82,7 +84,7 @@ export class LeadService {
                 vehicleId: carCode,
                 source: 'qr_scan',
                 stage: 'New',
-                status: 'new'
+                status: LeadStatus.NEW
             });
         }
         

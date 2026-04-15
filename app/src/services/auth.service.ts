@@ -62,4 +62,14 @@ export const authService = {
   changePassword: async (currentPassword: string, newPassword: string): Promise<void> => {
     await api.post(API_ENDPOINTS.AUTH.CHANGE_PASSWORD, { currentPassword, newPassword });
   },
+
+  getSystemSettings: async (): Promise<any> => {
+    const { data } = await api.get(API_ENDPOINTS.SUPER.SETTINGS);
+    return data.data;
+  },
+
+  updateSystemSettings: async (payload: any): Promise<any> => {
+    const { data } = await api.patch(API_ENDPOINTS.SUPER.SETTINGS, payload);
+    return data.data;
+  },
 };

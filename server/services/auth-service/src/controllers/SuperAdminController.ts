@@ -1,18 +1,68 @@
 import { Request, Response, NextFunction } from 'express';
 import { asyncHandler } from '../utils/errorHandler';
 import { sendSuccess } from '../utils/response';
+import { logger } from '../utils/logger';
 import { injectable, inject } from 'tsyringe';
 import { ITenantRepository } from '../interfaces/IRepository/ITenantRepository';
+import { ISystemSettingRepository } from '../interfaces/IRepository/ISystemSettingRepository';
 import { FormField } from '../models/FormField';
 import { UserRole } from '../types';
 import { User } from '../models/User';
+import { SystemSetting } from '../models/SystemSetting';
 import mongoose from 'mongoose';
 
 @injectable()
 export class SuperAdminController {
     constructor(
-        @inject('TenantRepository') private _tenantRepository: ITenantRepository
+        @inject('TenantRepository') private _tenantRepository: ITenantRepository,
+        @inject('SystemSettingRepository') private _systemSettingRepository: ISystemSettingRepository
     ) { }
+
+    getSystemSettings = asyncHandler(async (req: Request, res: Response) => {
+        let settings = await this._systemSettingRepository.findOne({});
+        if (!settings) {
+            settings = await this._systemSettingRepository.create({});
+        }
+        sendSuccess(res, 'System settings retrieved', settings);
+    });
+
+    updateSystemSettings = asyncHandler(async (req: Request, res: Response) => {
+        try {
+            const updateData = req.body;
+            
+            // Explicitly whitelist only the fields we want to allow updating from the Super Admin UI
+            // This prevents validation errors from internal fields like __v or _id
+            const allowedFields = [
+                'geminiApiKey', 'platformName', 'supportPhone', 
+                'maintenanceMode', 'autoApprovePartners', 
+                'platformFeePercent', 'taxPercent', 'twoFactorAuth'
+            ];
+            const updatePayload: any = {};
+            
+            allowedFields.forEach(field => {
+                if (updateData[field] !== undefined) {
+                    updatePayload[field] = updateData[field];
+                }
+            });
+
+            logger.info('Mesh Sync Initiated:', JSON.stringify(updatePayload));
+
+            const settings = await SystemSetting.findOneAndUpdate(
+                {}, 
+                { $set: updatePayload }, 
+                { upsert: true, new: true, runValidators: true }
+            );
+            
+            sendSuccess(res, 'System settings synchronized successfully', settings);
+        } catch (error: any) {
+            logger.error('CRITICAL: System Settings Sync Failed:', error);
+            res.status(500).json({ 
+                success: false, 
+                message: 'Internal synchronization error', 
+                error: error.message // Expose error message temporarily for debugging
+            });
+        }
+    });
 
     getTenants = asyncHandler(async (req: Request, res: Response) => {
         const tenants = await this._tenantRepository.find({});

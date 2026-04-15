@@ -48,4 +48,8 @@ router.get('/payment-requests', superAdminController.getAllPaymentRequests);
 router.post('/tenants/:id/payment-request', superAdminController.sendPaymentRequest);
 router.patch('/tenants/:id/payment-request/:reqId', superAdminController.updatePaymentRequest);
 
+// Global System Settings
+router.get(AUTH_ROUTES.SUPER_ADMIN.SYSTEM_SETTINGS, superAdminController.getSystemSettings);
+router.patch(AUTH_ROUTES.SUPER_ADMIN.SYSTEM_SETTINGS, superAdminController.updateSystemSettings);
+
 export default router;
