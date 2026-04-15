@@ -1,70 +1,20 @@
 version: '3.8'
 
 services:
-  api-gateway:
+  # Monolithic architecture: All microservices run in one container for low EC2 load
+  orbix-monolith:
     build:
       context: .
-      dockerfile: services/api-gateway/Dockerfile
+      dockerfile: Dockerfile
     ports:
       - "5000:5000"
     env_file: .env.prod
     restart: always
     networks:
       - orbix-mesh
-
-  auth-service:
-    build:
-      context: .
-      dockerfile: services/auth-service/Dockerfile
-    env_file: .env.prod
-    restart: always
-    networks:
-      - orbix-mesh
-
-  inventory-service:
-    build:
-      context: .
-      dockerfile: services/inventory-service/Dockerfile
-    env_file: .env.prod
-    restart: always
-    networks:
-      - orbix-mesh
-
-  whatsapp-bot-service:
-    build:
-      context: .
-      dockerfile: services/whatsapp-bot-service/Dockerfile
-    env_file: .env.prod
-    restart: always
-    networks:
-      - orbix-mesh
-
-  billing-service:
-    build:
-      context: .
-      dockerfile: services/billing-service/Dockerfile
-    env_file: .env.prod
-    restart: always
-    networks:
-      - orbix-mesh
-
-  notification-service:
-    build:
-      context: .
-      dockerfile: services/notification-service/Dockerfile
-    env_file: .env.prod
-    restart: always
-    networks:
-      - orbix-mesh
-
-  campaign-service:
-    build:
-      context: .
-      dockerfile: services/campaign-service/Dockerfile
-    env_file: .env.prod
-    restart: always
-    networks:
-      - orbix-mesh
+    depends_on:
+      - rabbitmq
+      - elasticsearch
 
   rabbitmq:
     image: rabbitmq:3-management-alpine
@@ -72,8 +22,6 @@ services:
     environment:
       RABBITMQ_DEFAULT_USER: orbix
       RABBITMQ_DEFAULT_PASS: orbixrabbit
-    ports:
-      - "5672:5672"
     networks:
       - orbix-mesh
 
@@ -83,9 +31,7 @@ services:
     environment:
       - discovery.type=single-node
       - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
+      - "ES_JAVA_OPTS=-Xms256m -Xmx256m"
     networks:
       - orbix-mesh
 

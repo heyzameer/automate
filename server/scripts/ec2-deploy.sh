@@ -54,12 +54,12 @@ done
 cat >> "$APP_DIR/$ENV_FILE" << 'EOF'
 
 # ── Service Discovery (Docker Internal DNS) ──
-AUTH_SERVICE_URL=http://auth-service:5001
-INVENTORY_SERVICE_URL=http://inventory-service:5002
-BOT_SERVICE_URL=http://whatsapp-bot-service:3003
-NOTIFICATION_SERVICE_URL=http://notification-service:5006
-BILLING_SERVICE_URL=http://billing-service:5008
-CAMPAIGN_SERVICE_URL=http://campaign-service:5005
+AUTH_SERVICE_URL=http://localhost:5001
+INVENTORY_SERVICE_URL=http://localhost:5002
+BOT_SERVICE_URL=http://localhost:3003
+NOTIFICATION_SERVICE_URL=http://localhost:5006
+BILLING_SERVICE_URL=http://localhost:5008
+CAMPAIGN_SERVICE_URL=http://localhost:5005
 
 # ── Message Queue (Internal Docker) ──
 RABBITMQ_URL=amqp://orbix:orbixrabbit@rabbitmq:5672
