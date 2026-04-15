@@ -17,8 +17,8 @@ COPY services ./services
 # Install Dependencies
 RUN pnpm install --frozen-lockfile
 
-# Build everything
-RUN pnpm turbo run build
+# Build everything sequentially to prevent OOM
+RUN pnpm turbo run build --concurrency=1
 
 # Stage 2: Runtime
 FROM node:20-alpine
