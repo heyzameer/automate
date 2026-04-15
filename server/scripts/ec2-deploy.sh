@@ -23,6 +23,11 @@ declare -A SSM_MAP=(
   ["jwt-secret"]="JWT_SECRET"
   ["internal-secret"]="INTERNAL_SECRET"
   ["mongodb-uri"]="MONGODB_URI"
+  ["mongo-uri"]="MONGO_URI"
+  ["auth-mongo-uri"]="AUTH_MONGO_URI"
+  ["inventory-mongo-uri"]="INVENTORY_MONGO_URI"
+  ["frontend-url"]="FRONTEND_URL"
+  ["cors-origin"]="CORS_ORIGIN"
   ["redis-url"]="REDIS_URL"
   ["gemini-api-key"]="GEMINI_API_KEY"
   ["whatsapp-system-token"]="WHATSAPP_SYSTEM_TOKEN"
@@ -53,7 +58,7 @@ done
 # Static production values
 cat >> "$APP_DIR/$ENV_FILE" << 'EOF'
 
-# ── Service Discovery (Docker Internal DNS) ──
+# ── Service Discovery (Monolithic Localhost) ──
 AUTH_SERVICE_URL=http://localhost:5001
 INVENTORY_SERVICE_URL=http://localhost:5002
 BOT_SERVICE_URL=http://localhost:3003
