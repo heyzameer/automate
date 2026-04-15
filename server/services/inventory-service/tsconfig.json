@@ -4,6 +4,7 @@
         "module": "CommonJS",
         "moduleResolution": "node",
         "outDir": "dist",
+        "rootDir": "src",
         "strict": true,
         "esModuleInterop": true,
         "skipLibCheck": true,
@@ -16,7 +17,6 @@
         }
     },
     "include": [
-        "src/**/*",
-        "../../packages/common/src/**/*"
+        "src/**/*"
     ]
 }
