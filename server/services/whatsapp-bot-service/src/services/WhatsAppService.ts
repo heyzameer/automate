@@ -17,7 +17,7 @@ export class WhatsAppService {
     async sendTextMessage(to: string, message: string, phoneNumberId: string, accessToken: string) {
         try {
             const url = `https://graph.facebook.com/${config.whatsapp.apiVersion}/${phoneNumberId}/messages`;
-            await this.client.post(
+            const response = await this.client.post(
                 url,
                 {
                     messaging_product: 'whatsapp',
@@ -32,6 +32,10 @@ export class WhatsAppService {
                     }
                 }
             );
+            logger.info('✅ WhatsApp Text Sent Successfully:', { 
+                id: response.data?.messages?.[0]?.id,
+                to 
+            });
         } catch (error: any) {
             logger.error('Error sending WhatsApp message:', error.response?.data || error.message);
         }
@@ -144,6 +148,7 @@ export class WhatsAppService {
                 logger.error(`Failed to send broadcast to ${to}:`, error);
             }
         }
+        logger.info(`📝 Broadcast Summary: ${results.sent} sent, ${results.failed} failed`);
         return results;
     }
 }

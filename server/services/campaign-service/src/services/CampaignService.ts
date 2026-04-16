@@ -29,10 +29,14 @@ export class CampaignService {
             // (Keeping logic brief for this refactor demo, but it would use the repository where needed)
             
             // 1. Fetch leads from bot service based on audience
+            const audiencePriority = ['hot', 'warm', 'cold'].includes(campaign.audience.toLowerCase()) 
+                ? campaign.audience.charAt(0).toUpperCase() + campaign.audience.slice(1).toLowerCase() 
+                : undefined;
+
             const leadRes = await botServiceClient.get('/api/v1/bot/internal/leads/batch', {
                 params: { 
                     tenantId: campaign.tenantId,
-                    priority: ['hot', 'warm', 'cold'].includes(campaign.audience) ? campaign.audience : undefined
+                    priority: audiencePriority
                 }
             });
 
