@@ -28,8 +28,9 @@ class NotificationService {
     if (this.socket) return;
 
     // Connect to gateway which will proxy to notification service
-    // For now, we connect directly to the service for simplicity or via a specific WS path in gateway
-    const wsUrl = "http://localhost:5006"; 
+    const wsUrl = process.env.NODE_ENV === 'production' 
+      ? "https://orbixapi.nineorbite.in" 
+      : "http://localhost:5006"; 
     
     this.socket = io(wsUrl, {
       query: { tenantId }
