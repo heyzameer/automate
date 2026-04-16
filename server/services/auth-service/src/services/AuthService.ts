@@ -273,7 +273,8 @@ export class AuthService implements IAuthService {
         // Send Email
         await this._emailService.sendOTP(user.email, otpCode, user.fullName);
 
-        logger.info(`OTP sent to ${email} for password reset`);
+        console.log(`[DEV] Generated OTP for ${email}: ${otpCode}`);
+        logger.info(`OTP sent to ${email} for password reset: ${otpCode}`);
     }
 
     async resetPassword(email: string, otp: string, newPassword?: string): Promise<void> {
@@ -309,6 +310,7 @@ export class AuthService implements IAuthService {
     async requestOTPVerification(userId: string, type: OTPType): Promise<void> {
         const otpCode = generateOTP();
         await this._otpRepository.createOTP(userId, type, otpCode);
+        console.log(`[DEV] OTP Verification for UserID ${userId}: ${otpCode}`);
         logger.info(`[TEST] OTP for UserID ${userId} (${type}): ${otpCode}`);
     }
 
@@ -322,7 +324,8 @@ export class AuthService implements IAuthService {
     async generateVerificationOTPs(userId: string, type: OTPType): Promise<void> {
         const otpCode = generateOTP();
         await this._otpRepository.createOTP(userId, type, otpCode);
-        logger.info(`[TEST] Generated Verification OTP: ${otpCode}`);
+        console.log(`[DEV] Generated Verification OTP for ${userId}: ${otpCode}`);
+        logger.info(`[TEST] Generated Verification OTP for ${userId}: ${otpCode}`);
     }
 
     async getUserFromToken(token: string): Promise<IUser> {

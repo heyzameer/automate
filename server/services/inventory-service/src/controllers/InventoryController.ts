@@ -202,4 +202,15 @@ export class InventoryController {
             res.status(500).json({ success: false, message: error.message });
         }
     }
+
+    async checkCarCodeAvailability(req: Request, res: Response) {
+        try {
+            const { code } = req.params;
+            const tenantId = req.user?.tenantId || 'global';
+            const isAvailable = await this.inventoryService.isCarCodeAvailable(tenantId, code);
+            return sendSuccess(res, 'Car code availability checked', { available: isAvailable });
+        } catch (error: any) {
+            res.status(500).json({ success: false, message: error.message });
+        }
+    }
 }

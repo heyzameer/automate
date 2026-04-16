@@ -48,11 +48,17 @@ const proxyOptions = {
             path = `${PROXY_PATHS.ANALYTICS_SERVICE}${req.url}`;
         } else if (req.originalUrl.includes(GATEWAY_ROUTES.BILLING)) {
             path = `${PROXY_PATHS.BILLING_SERVICE}${req.url}`;
+        } else if (req.originalUrl.includes(GATEWAY_ROUTES.SUPER_ADMIN)) {
+            path = `${PROXY_PATHS.SUPER_ADMIN_API}${req.url}`;
         } else {
             path = `${PROXY_PATHS.SUPER_ADMIN_API}${req.url}`;
         }
-        logger.info(`Proxying to service: ${path}`);
-        return path;
+        
+        // DEBUG: Log the final resolving path to catch 404 mismatches
+        const finalPath = path.replace(/\/+/g, '/'); // Sanitize double slashes
+        logger.info(`[GATEWAY PROXY] ${req.method} ${req.originalUrl} -> ${finalPath}`);
+        
+        return finalPath;
     },
     proxyErrorHandler: (err: any, res: Response, next: NextFunction) => {
         logger.error(`[PROXY_ERROR]: ${err.message || 'Unknown error'}`, { error: err });

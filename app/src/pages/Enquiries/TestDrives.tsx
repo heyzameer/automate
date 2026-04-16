@@ -33,8 +33,11 @@ export default function TestDrives() {
                 vehicleService.getAll().catch(() => [])
             ]);
             
-            // Filter only leads that have a preferred date time (Bookings)
-            const bookingsData = leadsData.filter(l => l.preferredDateTime && l.status !== 'cancelled');
+            // Filter only active leads: have a date, and not completed/cancelled/noshow
+            const bookingsData = leadsData.filter(l => 
+                l.preferredDateTime && 
+                !['cancelled', 'completed', 'noshow'].includes(l.status)
+            );
             
             const vMap: Record<string, Vehicle> = {};
             vehiclesData.forEach((v: Vehicle) => {
@@ -57,11 +60,10 @@ export default function TestDrives() {
 
     const handleUpdateStatus = async (id: string, status: string) => {
         try {
-            const updated = await leadsService.updateLead(id, { status });
-            setBookings(prev => prev.map(b => (b._id || b.id) === id ? updated : b));
-            if (selectedBooking && (selectedBooking._id || selectedBooking.id) === id) {
-                setSelectedBooking(updated);
-            }
+            await leadsService.updateLead(id, { status });
+            // Remove from active list immediately
+            setBookings(prev => prev.filter(b => (b._id || b.id) !== id));
+            setSelectedBooking(null);
             toast.success(`Booking ${status}`);
         } catch {
             toast.error("Status update failed");

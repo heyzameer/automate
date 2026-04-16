@@ -103,4 +103,9 @@ export const vehicleService = {
     const { data } = await api.get(API_ENDPOINTS.VEHICLES.DROPDOWN(fieldName));
     return data.data.options;
   },
+
+  checkCarCode: async (code: string): Promise<boolean> => {
+    const { data } = await api.get(`/vehicles/check-code/${code}`);
+    return data.data.available;
+  },
 };

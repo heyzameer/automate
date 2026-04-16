@@ -3,8 +3,15 @@ import authRoutes from './authRoutes';
 import superAdminRoutes from './superAdminRoutes';
 import internalRoutes from './internal.routes';
 import { sendSuccess } from '../utils/response';
+import { logger } from '../utils/logger';
 
 const router = Router();
+
+// DEBUG: Log all incoming requests to Auth Service
+router.use((req, res, next) => {
+    logger.info(`[AUTH SERVICE RECV] ${req.method} ${req.originalUrl}`);
+    next();
+});
 
 // Health check route
 router.get('/health', (req: Request, res: Response) => {

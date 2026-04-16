@@ -1,13 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { Car, Mail, Lock, ArrowRight, Loader2, AlertCircle, Sparkles, Megaphone } from 'lucide-react';
+import { Car, Mail, Lock, ArrowRight, Loader2, AlertCircle, Sparkles, Megaphone, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../constants/routes';
 
 const Login = () => {
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [showPassword, setShowPassword] = useState(false);
     
     const { loading, error, setError, authenticate, checkAuth } = useAuth();
 
@@ -60,8 +61,13 @@ const Login = () => {
                     animate={{ y: 0, opacity: 1 }}
                     className="flex justify-center mb-6"
                 >
-                    <div className="bg-indigo-600 p-3.5 rounded-2xl shadow-xl shadow-indigo-600/30">
-                        <Car className="text-white h-8 w-8" />
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-indigo-500/20 blur-xl rounded-full group-hover:bg-indigo-500/40 transition-all duration-700"></div>
+                        <img 
+                            src="/logo-black.png" 
+                            alt="Orbix Logo" 
+                            className="w-16 h-16 object-contain relative z-10 drop-shadow-lg mix-blend-screen" 
+                        />
                     </div>
                 </motion.div>
 
@@ -136,17 +142,24 @@ const Login = () => {
                                 <div className="relative group">
                                     <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
                                     <input
-                                        type="password"
+                                        type={showPassword ? "text" : "password"}
                                         name="password"
                                         value={formData.password}
                                         required
                                         autoComplete="current-password"
                                         placeholder="••••••••"
-                                        className={`block w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-slate-800 rounded-2xl text-white font-bold placeholder-slate-600 focus:outline-none transition-all ${
+                                        className={`block w-full pl-12 pr-12 py-3.5 bg-slate-950/50 border border-slate-800 rounded-2xl text-white font-bold placeholder-slate-600 focus:outline-none transition-all ${
                                             fieldErrors.password ? 'border-rose-500/50 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10' : 'focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10'
                                         }`}
                                         onChange={handleChange}
                                     />
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword(!showPassword)}
+                                        className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-indigo-400 transition-colors"
+                                    >
+                                        {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
                                 </div>
                                 {fieldErrors.password && <p className="mt-2 text-xs font-bold text-rose-400">{fieldErrors.password}</p>}
                             </div>

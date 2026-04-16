@@ -2,12 +2,15 @@ import React, { useState } from 'react';
 import {
   Plus, Search, Loader2, Edit2, MessageSquare, X, Save,
   CreditCard, Send, ToggleLeft, ToggleRight, Power, ChevronDown, ChevronUp,
-  Users, Bot, Zap, Shield, Star, Crown
+  Users, Bot, Zap, Shield, Star, Crown, Eye, EyeOff, Circle
 } from 'lucide-react';
 import { useTenants } from '../../hooks/useTenants';
 import { Tenant } from '../../types';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
+
+// Utility for Tailwind class merging
+const cn = (...classes: (string | boolean | undefined | null)[]) => classes.filter(Boolean).join(' ');
 
 // ─── Plan Definitions ────────────────────────────────────────────────────────
 
@@ -89,6 +92,7 @@ const TenantList = () => {
     name: '', email: '', phone: '', password: '', fullName: '',
     expiryDate: new Date(new Date().setFullYear(new Date().getFullYear() + 1)).toISOString().split('T')[0]
   });
+  const [showAddPassword, setShowAddPassword] = useState(false);
   const [savingPlan, setSavingPlan] = useState(false);
   const [sendingPay, setSendingPay] = useState(false);
   const [togglingBot, setTogglingBot] = useState<string | null>(null);
@@ -151,7 +155,10 @@ const TenantList = () => {
     const newState = !currentState;
     setTogglingBot(tid);
     try {
-      await api.patch(`/super/tenants/${tid}/bot-status`, { botEnabled: newState });
+      // Use the generic update endpoint which is more stable and verified
+      await api.patch(`/super/tenants/${tid}`, { 
+        whatsappConfig: { botEnabled: newState } 
+      });
       toast.success(`Bot ${newState ? 'enabled' : 'disabled'} for ${tenant.name}`);
       await fetchTenants(); // refresh tenant list to reflect new state
     } catch {
@@ -264,17 +271,40 @@ const TenantList = () => {
                     </td>
                     <td className="px-8 py-5">
                       {!botActive ? (
-                        <span className="text-[10px] font-black text-slate-400 uppercase">Not Configured</span>
+                        <div className="flex items-center gap-2 text-[10px] font-black text-slate-300 uppercase italic">
+                           <Circle size={8} fill="currentColor" className="text-slate-200" /> Not Configured
+                        </div>
                       ) : (
                         <div className="flex items-center gap-2">
                           <button
                             onClick={() => handleToggleBot(tenant)}
                             disabled={togglingBot === tid}
                             title={botEnabled ? 'Click to disable bot' : 'Click to enable bot'}
-                            className={`flex items-center gap-1.5 text-xs font-black px-3 py-1.5 rounded-xl transition-all ${botEnabled ? 'bg-emerald-50 text-emerald-700 hover:bg-rose-50 hover:text-rose-600' : 'bg-rose-50 text-rose-600 hover:bg-emerald-50 hover:text-emerald-700'}`}
+                            className={cn(
+                                "relative flex items-center gap-2 text-[10px] font-black px-4 py-2 rounded-2xl transition-all duration-500 overflow-hidden group/bot",
+                                botEnabled 
+                                    ? "bg-emerald-50 text-emerald-600 hover:bg-rose-50 hover:text-rose-600 border border-emerald-100/50" 
+                                    : "bg-slate-50 text-slate-400 hover:bg-emerald-50 hover:text-emerald-600 border border-slate-100"
+                            )}
                           >
-                            {togglingBot === tid ? <Loader2 size={12} className="animate-spin" /> : <Bot size={12} />}
-                            {botEnabled ? 'Bot ON' : 'Bot OFF'}
+                            {/* Glowing Pulse for Active Bot */}
+                            {botEnabled && (
+                                <span className="absolute inset-0 bg-emerald-400/10 animate-pulse" />
+                            )}
+                            
+                            {togglingBot === tid ? (
+                                <Loader2 size={12} className="animate-spin" />
+                            ) : (
+                                <div className={cn(
+                                    "w-1.5 h-1.5 rounded-full transition-all duration-500",
+                                    botEnabled ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]" : "bg-slate-300"
+                                )} />
+                            )}
+                            
+                            <span className="relative z-10 flex items-center gap-1.5">
+                                <Bot size={12} className={cn("transition-transform group-hover/bot:scale-110", botEnabled ? "text-emerald-600" : "text-slate-400")} />
+                                {botEnabled ? 'BOT ACTIVE' : 'BOT OFFLINE'}
+                            </span>
                           </button>
                         </div>
                       )}
@@ -517,7 +547,23 @@ const TenantList = () => {
               <input placeholder="Admin Full Name" value={addForm.fullName} onChange={e => setAddForm({ ...addForm, fullName: e.target.value })} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold" />
               <input placeholder="Email" value={addForm.email} onChange={e => setAddForm({ ...addForm, email: e.target.value })} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold" required />
               <input placeholder="Phone" value={addForm.phone} onChange={e => setAddForm({ ...addForm, phone: e.target.value })} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold" />
-              <input placeholder="Password" type="password" value={addForm.password} onChange={e => setAddForm({ ...addForm, password: e.target.value })} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold" required />
+              <div className="relative group/pw flex items-center">
+                  <input 
+                    placeholder="Password" 
+                    type={showAddPassword ? "text" : "password"} 
+                    value={addForm.password} 
+                    onChange={e => setAddForm({ ...addForm, password: e.target.value })} 
+                    className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold pr-12" 
+                    required 
+                  />
+                  <button 
+                    type="button" 
+                    onClick={() => setShowAddPassword(!showAddPassword)}
+                    className="absolute right-4 text-slate-400 hover:text-indigo-600 transition-colors"
+                  >
+                      {showAddPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                  </button>
+              </div>
               <div className="flex gap-2">
                 <button type="button" onClick={() => setIsAddModalOpen(false)} className="flex-1 font-bold text-slate-400 py-3">Cancel</button>
                 <button type="submit" disabled={saving} className="flex-1 bg-indigo-600 text-white p-3 rounded-xl font-bold flex items-center justify-center gap-2 disabled:opacity-50">

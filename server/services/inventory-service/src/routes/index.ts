@@ -50,6 +50,7 @@ router.get('/brands', (req, res) => container.resolve(InventoryController).getBr
 router.get('/brands/:brandId/models', (req, res) => container.resolve(InventoryController).getModels(req, res));
 router.get('/dropdown/:fieldName', (req, res) => container.resolve(InventoryController).getDropdownOptions(req, res));
 router.get('/next-car-code', (req, res) => container.resolve(InventoryController).getNextCarCode(req, res));
+router.get('/vehicles/check-code/:code', (req, res) => container.resolve(InventoryController).checkCarCodeAvailability(req, res));
 
 // Health check
 router.get('/health', (req, res) => {

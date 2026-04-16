@@ -199,11 +199,43 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
     };
 
     const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isCheckingCode, setIsCheckingCode] = useState(false);
+    const [codeError, setCodeError] = useState<string | null>(null);
+
+    // Debounced Car Code Uniqueness Check
+    useEffect(() => {
+        const checkUnique = async () => {
+            const code = formData['car_code'];
+            if (!code || isEdit) return; // Skip check if editing
+            
+            try {
+                setIsCheckingCode(true);
+                const isAvailable = await vehicleService.checkCarCode(code);
+                if (!isAvailable) {
+                    setCodeError(`ID "${code}" is already in use`);
+                } else {
+                    setCodeError(null);
+                }
+            } catch (err) {
+                console.error('Code check failed', err);
+            } finally {
+                setIsCheckingCode(false);
+            }
+        };
+
+        const timer = setTimeout(checkUnique, 600);
+        return () => clearTimeout(timer);
+    }, [formData.car_code, isEdit]);
 
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
         
         const currentYear = new Date().getFullYear();
+
+        // Include Car ID uniqueness error
+        if (codeError) {
+            newErrors['car_code'] = codeError;
+        }
 
         fields.forEach(field => {
             const value = formData[field.name];
@@ -439,15 +471,25 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                                                             className={cn(
                                                                 "w-full px-4 py-3 rounded-2xl border bg-gray-50/50 focus:bg-white focus:ring-4 transition-all outline-none",
                                                                 field.name === 'price' && "pl-10",
+                                                                field.name === 'car_code' && "pr-12",
                                                                 "placeholder:text-gray-400",
-                                                                errors[field.name] 
+                                                                (errors[field.name] || (field.name === 'car_code' && codeError))
                                                                     ? "border-red-300 ring-4 ring-red-50 focus:ring-red-100 focus:border-red-500" 
                                                                     : "border-gray-200 focus:ring-indigo-100 focus:border-indigo-500"
                                                             )}
                                                         />
-                                                        {errors[field.name] && (
+                                                        {field.name === 'car_code' && (
+                                                            <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none">
+                                                                {isCheckingCode ? (
+                                                                    <Loader2 className="w-4 h-4 text-indigo-500 animate-spin" />
+                                                                ) : formData.car_code && !codeError ? (
+                                                                    <CheckCircle2 className="w-4 h-4 text-emerald-500" />
+                                                                ) : null}
+                                                            </div>
+                                                        )}
+                                                        {(errors[field.name] || (field.name === 'car_code' && codeError)) && (
                                                             <span className="text-[10px] font-bold text-red-500 uppercase tracking-wider ml-1 mt-1 block">
-                                                                {errors[field.name]}
+                                                                {errors[field.name] || codeError}
                                                             </span>
                                                         )}
                                                     </div>

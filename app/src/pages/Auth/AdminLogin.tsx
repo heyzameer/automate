@@ -54,9 +54,14 @@ const AdminLogin = () => {
                     <motion.div 
                         initial={{ scale: 0.8, opacity: 0 }}
                         animate={{ scale: 1, opacity: 1 }}
-                        className="p-3 rounded-2xl shadow-xl bg-slate-900 border border-slate-800 shadow-slate-900"
+                        className="relative group"
                     >
-                        <ShieldCheck className="text-emerald-400 h-8 w-8" />
+                        <div className="absolute inset-0 bg-emerald-500/20 blur-xl rounded-full group-hover:bg-emerald-500/40 transition-all duration-700"></div>
+                        <img 
+                            src="/logo-black.png" 
+                            alt="Orbix Logo" 
+                            className="w-16 h-16 object-contain relative z-10 drop-shadow-lg mix-blend-screen" 
+                        />
                     </motion.div>
                 </div>
                 

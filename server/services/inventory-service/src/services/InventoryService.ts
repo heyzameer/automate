@@ -222,5 +222,13 @@ export class InventoryService implements IInventoryService {
         // Return dummy response for now
         return { _id: `req_${Date.now()}`, ...data };
     }
+
+    async isCarCodeAvailable(tenantId: string, code: string): Promise<boolean> {
+        const vehicle = await this.vehicleRepository.findOne({ 
+            tenantId, 
+            'attributes.car_code': code 
+        });
+        return !vehicle;
+    }
 }
 

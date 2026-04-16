@@ -6,6 +6,8 @@ import {
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
+const cn = (...classes: (string | boolean | undefined | null)[]) => classes.filter(Boolean).join(' ');
+
 const WhatsAppConfig = () => {
     const [tenants, setTenants] = useState<any[]>([]);
     const [loading, setLoading] = useState(true);
@@ -45,7 +47,10 @@ const WhatsAppConfig = () => {
         const newState = !currentEnabled;
         setTogglingBot(tid);
         try {
-            await api.patch(`/super/tenants/${tid}/bot-status`, { botEnabled: newState });
+            // Use the generic update endpoint which is more stable
+            await api.patch(`/super/tenants/${tid}`, { 
+                whatsappConfig: { botEnabled: newState } 
+            });
             setTenants(prev => prev.map(t =>
                 (t._id || t.id) === tid
                     ? { ...t, whatsappConfig: { ...t.whatsappConfig, botEnabled: newState } }
@@ -110,27 +115,44 @@ const WhatsAppConfig = () => {
                                     </div>
 
                                     {/* Bot ON/OFF Kill Switch */}
-                                    <div className="flex flex-col items-end gap-1">
+                                    <div className="flex flex-col items-end gap-1.5">
                                         <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Bot Power</p>
                                         <button
                                             onClick={() => handleToggleBot(tenant)}
                                             disabled={isToggling || !botActive}
                                             title={!botActive ? 'Configure credentials first' : botEnabled ? 'Click to disable bot' : 'Click to enable bot'}
-                                            className={`relative inline-flex h-7 w-14 items-center rounded-full transition-all focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed ${
+                                            className={cn(
+                                                "relative inline-flex h-8 w-16 items-center rounded-full transition-all duration-500 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-40 disabled:cursor-not-allowed group/power",
                                                 botEnabled && botActive
-                                                    ? 'bg-emerald-500 focus:ring-emerald-500'
-                                                    : 'bg-slate-300 focus:ring-slate-400'
-                                            }`}
-                                        >
-                                            {isToggling ? (
-                                                <Loader2 size={12} className="absolute left-1/2 -translate-x-1/2 animate-spin text-white" />
-                                            ) : (
-                                                <span className={`inline-block h-5 w-5 transform rounded-full bg-white shadow-md transition-transform duration-200 ${botEnabled && botActive ? 'translate-x-8' : 'translate-x-1'}`} />
+                                                    ? 'bg-emerald-500/10 border border-emerald-500/20 focus:ring-emerald-500'
+                                                    : 'bg-slate-100 border border-slate-200 focus:ring-slate-400'
                                             )}
+                                        >
+                                            {/* Glow effect when ON */}
+                                            {botEnabled && botActive && (
+                                                <span className="absolute inset-0 bg-emerald-400/20 animate-pulse rounded-full" />
+                                            )}
+
+                                            <div className={cn(
+                                                "absolute h-6 w-6 transform rounded-full bg-white shadow-lg transition-all duration-300 flex items-center justify-center",
+                                                botEnabled && botActive ? 'translate-x-9' : 'translate-x-1'
+                                            )}>
+                                                {isToggling ? (
+                                                    <Loader2 size={10} className="animate-spin text-indigo-600" />
+                                                ) : (
+                                                    <div className={cn(
+                                                        "w-1.5 h-1.5 rounded-full",
+                                                        botEnabled && botActive ? 'bg-emerald-500 shadow-[0_0_5px_rgba(16,185,129,0.8)]' : 'bg-slate-300'
+                                                    )} />
+                                                )}
+                                            </div>
                                         </button>
-                                        <p className={`text-[10px] font-black ${botEnabled && botActive ? 'text-emerald-600' : 'text-slate-400'}`}>
-                                            {botEnabled && botActive ? 'ON' : 'OFF'}
-                                        </p>
+                                        <div className={cn(
+                                            "text-[10px] font-black tracking-tighter transition-colors px-2 py-0.5 rounded",
+                                            botEnabled && botActive ? 'bg-emerald-50 text-emerald-600' : 'bg-slate-50 text-slate-400'
+                                        )}>
+                                            {botEnabled && botActive ? 'ACTIVE' : 'OFFLINE'}
+                                        </div>
                                     </div>
                                 </div>
 

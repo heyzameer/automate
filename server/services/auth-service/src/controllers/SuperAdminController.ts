@@ -115,7 +115,43 @@ export class SuperAdminController {
             }
         }
 
-        const tenant = await this._tenantRepository.update(id, updateData);
+        // --- SAFE NESTED UPDATE LOGIC ---
+        // We manually flatten nested objects into dot-notation to prevent Mongoose from 
+        // overwriting entire sub-documents (common issue with nested schemas).
+        const safeUpdateData: Record<string, any> = {};
+        
+        // 1. WhatsApp Config
+        if (updateData.whatsappConfig) {
+            Object.keys(updateData.whatsappConfig).forEach(key => {
+                safeUpdateData[`whatsappConfig.${key}`] = updateData.whatsappConfig[key];
+            });
+        }
+
+        // 2. Limits
+        if (updateData.limits) {
+            Object.keys(updateData.limits).forEach(key => {
+                safeUpdateData[`limits.${key}`] = updateData.limits[key];
+            });
+        }
+
+        // 3. Features
+        if (updateData.features) {
+            Object.keys(updateData.features).forEach(key => {
+                safeUpdateData[`features.${key}`] = updateData.features[key];
+            });
+        }
+
+        // 4. Flat Fields
+        const flatFields = ['name', 'address', 'locationUrl', 'isActive', 'plan', 'expiryDate', 'status'];
+        flatFields.forEach(field => {
+            if (updateData[field] !== undefined) {
+                safeUpdateData[field] = updateData[field];
+            }
+        });
+
+        logger.info(`[SUPER ADMIN UPDATE] Tenant: ${id}, Fields: ${Object.keys(safeUpdateData).join(', ')}`);
+
+        const tenant = await this._tenantRepository.update(id, safeUpdateData);
         sendSuccess(res, 'Tenant updated successfully', tenant);
     });
 
@@ -206,17 +242,16 @@ export class SuperAdminController {
     toggleBotStatus = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;
         const { botEnabled } = req.body;
+        
+        logger.info(`[CONTROLLER BOT TOGGLE] Showroom: ${id}, Target State: ${botEnabled}`);
 
         if (typeof botEnabled !== 'boolean') {
             return res.status(400).json({ success: false, message: 'botEnabled must be a boolean' });
         }
 
-        const Tenant = mongoose.model('Tenant');
-        const tenant = await Tenant.findByIdAndUpdate(
-            id,
-            { $set: { 'whatsappConfig.botEnabled': botEnabled } },
-            { new: true }
-        );
+        const tenant = await this._tenantRepository.update(id, { 
+            'whatsappConfig.botEnabled': botEnabled 
+        });
 
         if (!tenant) return res.status(404).json({ success: false, message: 'Tenant not found' });
 

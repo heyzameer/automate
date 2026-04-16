@@ -1,4 +1,5 @@
-import { Router } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
+import { logger } from '../utils/logger';
 import { SuperAdminController } from '../controllers/SuperAdminController';
 import { CampaignController } from '../controllers/CampaignController';
 import { BillingController } from '../controllers/BillingController';
@@ -14,14 +15,18 @@ const campaignController = container.resolve(CampaignController);
 router.use(authenticate);
 router.use(superAuth);
 
+// Bot Assignment & Control — PRIORITY ROUTES
+router.patch('/tenants/:id/bot-status', (req: Request, res: Response, next: NextFunction) => {
+    logger.info(`[ROUTER HIT] PATCH /tenants/${req.params.id}/bot-status`);
+    next();
+}, superAdminController.toggleBotStatus);
+
+router.post('/tenants/:id/assign-bot', superAdminController.assignBot);
+
 // Tenant Management
 router.get(AUTH_ROUTES.SUPER_ADMIN.TENANTS, superAdminController.getTenants);
 router.post(AUTH_ROUTES.SUPER_ADMIN.TENANTS, superAdminController.createTenant);
 router.delete(AUTH_ROUTES.SUPER_ADMIN.TENANT_BY_ID, superAdminController.deleteTenant);
-
-// Bot Assignment & Control — must come BEFORE generic PATCH /tenants/:id
-router.post('/tenants/:id/assign-bot', superAdminController.assignBot);
-router.patch('/tenants/:id/bot-status', superAdminController.toggleBotStatus);
 
 // Generic tenant update (catch-all PATCH — must be LAST among PATCH /tenants/:id routes)
 router.patch(AUTH_ROUTES.SUPER_ADMIN.TENANT_BY_ID, superAdminController.updateTenant);

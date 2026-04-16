@@ -16,7 +16,7 @@ export interface Lead {
     phone: string;
     vehicleId: string;
     preferredDateTime: string;
-    status: 'new' | 'contacted' | 'booked' | 'lost' | 'cancelled' | 'rescheduled';
+    status: 'new' | 'contacted' | 'booked' | 'lost' | 'cancelled' | 'rescheduled' | 'completed' | 'noshow';
     source: string;
     stage: LeadStage;
     score: number;

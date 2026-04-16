@@ -95,9 +95,11 @@ export default function SuperAdminLayout() {
             >
                 <div className="h-20 flex items-center px-8 border-b border-slate-50">
                     <div className="flex items-center gap-3">
-                        <div className="bg-slate-900 p-2 rounded-xl shadow-lg shadow-slate-100 text-white">
-                            <ShieldCheck className="w-6 h-6" />
-                        </div>
+                        <img 
+                            src="/logo-white.png" 
+                            alt="Orbix Logo" 
+                            className="w-10 h-10 object-contain drop-shadow-md transition-transform hover:scale-110 duration-500 rounded-lg mix-blend-multiply" 
+                        />
                         <span className="text-xl font-black tracking-tight text-slate-900 uppercase">
                             Orbix <span className="text-slate-400">SA</span>
                         </span>

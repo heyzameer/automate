@@ -12,6 +12,21 @@ const Welcome = () => {
 
             <div className="relative z-10 max-w-5xl mx-auto px-6 py-20 lg:py-32 w-full text-center">
                 
+                <motion.div
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    className="mb-8 flex justify-center"
+                >
+                    <div className="relative group">
+                        <div className="absolute inset-0 bg-indigo-500/20 blur-2xl rounded-full group-hover:bg-indigo-500/40 transition-all duration-1000"></div>
+                        <img 
+                            src="/logo-black.png" 
+                            alt="Orbix Logo" 
+                            className="w-24 h-24 object-contain relative z-10 transition-transform duration-700 group-hover:rotate-12 mix-blend-screen" 
+                        />
+                    </div>
+                </motion.div>
+
                 <motion.div 
                     initial={{ opacity: 0, y: 20 }}
                     animate={{ opacity: 1, y: 0 }}
@@ -69,9 +84,12 @@ const Welcome = () => {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ delay: 0.5, duration: 1 }}
-                    className="mt-20 pt-10 border-t border-slate-800/50 flex items-center justify-center gap-3 text-slate-500 font-medium"
+                    className="mt-20 pt-10 border-t border-slate-800/50 flex items-center justify-center gap-3 text-slate-500 font-medium font-sans"
                 >
-                    <Car size={18} /> © {new Date().getFullYear()} Orbix Showroom Platform
+                    <div className="flex items-center gap-2">
+                        <img src="/logo-black.png" alt="Orbix Icon" className="w-5 h-5 object-contain opacity-50 mix-blend-screen" />
+                        © {new Date().getFullYear()} Orbix Showroom Platform
+                    </div>
                 </motion.div>
             </div>
         </div>
