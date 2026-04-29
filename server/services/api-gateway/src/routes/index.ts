@@ -5,8 +5,30 @@ import { sendSuccess } from '../utils/response';
 import { logger } from '../utils/logger';
 import { GATEWAY_ROUTES, PROXY_PATHS } from '../constants/routes';
 import { authenticate } from '../middleware/auth';
+import { kioskGuard } from '../middleware/kioskGuard';
 
 const router = Router();
+
+const usageTracker = async (req: Request, res: Response, next: NextFunction) => {
+    // Only track if we have a tenantId (either from session or kioskGuard)
+    const tenantId = req.headers['x-tenant-id'] || (req.user as any)?.tenantId;
+    
+    if (tenantId) {
+        let service: string | null = null;
+        if (req.originalUrl.includes(GATEWAY_ROUTES.INVENTORY)) service = 'inventory';
+        else if (req.originalUrl.includes(GATEWAY_ROUTES.BOT)) service = 'bot';
+
+        if (service) {
+            import('../utils/rabbitmq').then(m => m.getRabbitMQ()).then(mq => {
+                mq.publish('carbot_events', 'usage.increment', {
+                    tenantId,
+                    service
+                });
+            });
+        }
+    }
+    next();
+};
 
 // Health check route
 router.get(GATEWAY_ROUTES.HEALTH, (req: Request, res: Response) => {
@@ -72,7 +94,7 @@ const proxyOptions = {
     }
 };
 
-// Apply authentication to all proxied routes EXCLUDING public bot webhooks and public inventory
+// Apply authentication to all proxied routes EXCLUDING public bot webhooks, public inventory, and public auth routes
 router.use((req: Request, res: Response, next: NextFunction) => {
     // 1. Bot Webhooks and Public Capture/Scan are always public
     if (req.path.startsWith('/bot/webhooks') || req.path.startsWith('/bot/public')) {
@@ -83,9 +105,25 @@ router.use((req: Request, res: Response, next: NextFunction) => {
     if (req.path.startsWith(`${GATEWAY_ROUTES.INVENTORY}/public`)) {
         return next();
     }
+
+    // 3. Auth public routes (login, register, forgot-password, etc.)
+    const publicAuthRoutes = [
+        '/register', '/register-tenant', '/login', '/super-login', 
+        '/forgot-password', '/reset-password', '/refresh-token',
+        '/customer/auth' // Kiosk Customer OTP Login
+    ];
+    if (req.path.startsWith(GATEWAY_ROUTES.AUTH)) {
+        const isPublicAuth = publicAuthRoutes.some(route => req.path.includes(route));
+        if (isPublicAuth) {
+            return next();
+        }
+    }
     
     return authenticate(req, res, next);
 });
+
+router.use(kioskGuard);
+router.use(usageTracker);
 
 router.use(GATEWAY_ROUTES.AUTH, proxy(config.services.auth, proxyOptions) as any);
 
@@ -93,7 +131,7 @@ router.use(GATEWAY_ROUTES.INVENTORY, proxy(config.services.inventory, proxyOptio
 
 router.use(GATEWAY_ROUTES.BOT, proxy(config.services.bot, proxyOptions) as any);
 
-router.use(GATEWAY_ROUTES.CAMPAIGN, proxy(config.services.campaign, proxyOptions) as any);
+router.use(GATEWAY_ROUTES.CAMPAIGN, proxy(config.services.bot, proxyOptions) as any);
 router.use(GATEWAY_ROUTES.NOTIFICATION, proxy(config.services.notification, proxyOptions) as any);
 router.use(GATEWAY_ROUTES.ANALYTICS, proxy(config.services.analytics, proxyOptions) as any);
 router.use(GATEWAY_ROUTES.BILLING, proxy(config.services.billing, proxyOptions) as any);

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import Skeleton from '../../components/Common/Skeleton';
 import {
     Search,
     Plus,
@@ -18,6 +19,11 @@ import {
     X,
     Download,
     Printer,
+    Eye,
+    EyeOff,
+    AlertCircle,
+    Settings,
+    Tag
 } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useVehicles } from '../../hooks/useVehicles';
@@ -26,16 +32,17 @@ import { leadsService } from '../../services/leads.service';
 import { ROUTES } from '../../constants/routes';
 import { cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 interface VehicleCardProps {
     vehicle: Vehicle;
-    onDelete: (id: string) => void;
+    onDelete: (id: string, e: React.MouseEvent) => void;
+    onToggleDelist: (id: string) => void;
     onGetQR: (carCode: string, name: string) => void;
 }
 
-import Skeleton from '../../components/Common/Skeleton';
 
-const VehicleCard = ({ vehicle, onDelete, onGetQR }: VehicleCardProps) => {
+const VehicleCard = ({ vehicle, onDelete, onToggleDelist, onGetQR }: VehicleCardProps) => {
     const navigate = useNavigate();
     const attr = (key: string) => vehicle.attributes?.[key] || 'N/A';
     
@@ -73,11 +80,18 @@ const VehicleCard = ({ vehicle, onDelete, onGetQR }: VehicleCardProps) => {
                         "px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest backdrop-blur-md shadow-lg flex items-center gap-1.5 border",
                         vehicle.status === 'available' ? 'bg-emerald-500/90 text-white border-emerald-400/50 shadow-emerald-500/20' :
                         vehicle.status === 'sold' ? 'bg-slate-800/90 text-white border-slate-700/50 shadow-slate-900/20' : 
-                        'bg-amber-500/90 text-white border-amber-400/50 shadow-amber-500/20'
+                        vehicle.status === 'booked' ? 'bg-amber-500/90 text-white border-amber-400/50 shadow-amber-500/20' :
+                        'bg-slate-400/90 text-white border-slate-300/50'
                     )}>
                         <div className={`w-1.5 h-1.5 rounded-full ${vehicle.status === 'sold' ? 'bg-slate-400' : 'bg-white animate-pulse'}`}></div>
-                        {vehicle.status}
+                        {vehicle.status === 'booked' ? 'Booked' : vehicle.status}
                     </span>
+                    {vehicle.isDelisted && (
+                        <span className="px-3 py-1.5 rounded-full bg-rose-500/90 text-white text-[10px] font-black uppercase tracking-widest backdrop-blur-md shadow-lg border border-rose-400/50 flex items-center gap-1.5">
+                            <EyeOff size={10} />
+                            Delisted
+                        </span>
+                    )}
                 </div>
 
                 <div className="absolute bottom-4 left-4 right-4 flex items-end justify-between">
@@ -98,14 +112,22 @@ const VehicleCard = ({ vehicle, onDelete, onGetQR }: VehicleCardProps) => {
                     <span className="text-3xl font-black text-slate-900 tracking-tight">₹{price.toLocaleString('en-IN')}</span>
                 </div>
 
-                <div className="flex gap-3 text-sm mb-6 mt-auto">
-                    <div className="flex-1 flex items-center justify-center gap-2 text-slate-600 bg-slate-50/50 border border-slate-100 p-2.5 rounded-2xl">
-                        <Calendar size={14} className="text-indigo-400" />
-                        <span className="font-bold text-xs uppercase tracking-wider">{year}</span>
+                <div className="grid grid-cols-2 gap-2 text-sm mb-6 mt-auto">
+                    <div className="flex items-center gap-2 text-slate-600 bg-slate-50/50 border border-slate-100 p-2 rounded-xl">
+                        <Calendar size={14} className="text-indigo-400 flex-shrink-0" />
+                        <span className="font-bold text-[10px] uppercase tracking-wider truncate">{year}</span>
                     </div>
-                    <div className="flex-1 flex items-center justify-center gap-2 text-slate-600 bg-slate-50/50 border border-slate-100 p-2.5 rounded-2xl">
-                        <Gauge size={14} className="text-indigo-400" />
-                        <span className="font-bold text-xs uppercase tracking-wider">{Number(km).toLocaleString()}</span>
+                    <div className="flex items-center gap-2 text-slate-600 bg-slate-50/50 border border-slate-100 p-2 rounded-xl">
+                        <Gauge size={14} className="text-indigo-400 flex-shrink-0" />
+                        <span className="font-bold text-[10px] uppercase tracking-wider truncate">{Number(km).toLocaleString()} km</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-600 bg-slate-50/50 border border-slate-100 p-2 rounded-xl">
+                        <Fuel size={14} className="text-indigo-400 flex-shrink-0" />
+                        <span className="font-bold text-[10px] uppercase tracking-wider truncate">{attr('fuel_type') || attr('fuel') || 'N/A'}</span>
+                    </div>
+                    <div className="flex items-center gap-2 text-slate-600 bg-slate-50/50 border border-slate-100 p-2 rounded-xl">
+                        <Settings size={14} className="text-indigo-400 flex-shrink-0" />
+                        <span className="font-bold text-[10px] uppercase tracking-wider truncate">{attr('transmission') || 'N/A'}</span>
                     </div>
                 </div>
 
@@ -125,10 +147,22 @@ const VehicleCard = ({ vehicle, onDelete, onGetQR }: VehicleCardProps) => {
                             <Edit size={16} />
                         </Link>
                         <button 
-                            onClick={(e) => { e.stopPropagation(); onDelete(vehicle._id || vehicle.id!); }}
+                            onClick={(e) => onDelete(vehicle._id || vehicle.id!, e)}
                             className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-rose-500 hover:text-white hover:shadow-lg hover:shadow-rose-200 transition-all"
                         >
                             <Trash2 size={16} />
+                        </button>
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onToggleDelist(vehicle._id || vehicle.id!); }}
+                            title={vehicle.isDelisted ? "List on Bot" : "Delist from Bot"}
+                            className={cn(
+                                "p-3 rounded-xl transition-all shadow-sm",
+                                vehicle.isDelisted 
+                                    ? "bg-amber-50 text-amber-500 hover:bg-amber-500 hover:text-white shadow-amber-100" 
+                                    : "bg-indigo-50 text-indigo-500 hover:bg-indigo-500 hover:text-white shadow-indigo-100"
+                            )}
+                        >
+                            {vehicle.isDelisted ? <Eye size={16} /> : <EyeOff size={16} />}
                         </button>
                     </div>
                 </div>
@@ -143,7 +177,9 @@ export default function VehicleList() {
     const [brandFilter, setBrandFilter] = useState('All');
     const [qrData, setQrData] = useState<{ src: string, code: string, name: string } | null>(null);
     const [generatingQr, setGeneratingQr] = useState(false);
-    const { vehicles, loading, deleteVehicle } = useVehicles();
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [vehicleToDelete, setVehicleToDelete] = useState<string | null>(null);
+    const { vehicles, loading, deleteVehicle, toggleDelist } = useVehicles();
 
     const handleGetQR = async (carCode: string, vehicleName: string) => {
         setGeneratingQr(true);
@@ -165,16 +201,69 @@ export default function VehicleList() {
         const matchSearch = name.includes(search.toLowerCase()) || 
                            (v.attributes?.variant || '').toLowerCase().includes(search.toLowerCase());
         
-        const matchStatus = statusFilter === 'All' || v.status === statusFilter;
+        let matchStatus = false;
+        if (statusFilter === 'All') {
+            matchStatus = true;
+        } else if (statusFilter === 'delisted') {
+            matchStatus = !!v.isDelisted;
+        } else {
+            matchStatus = v.status === statusFilter && !v.isDelisted;
+        }
+        
         const matchBrand = brandFilter === 'All' || (v.attributes?.brand || 'Other') === brandFilter;
 
         return matchSearch && matchStatus && matchBrand;
     }).sort((a, b) => new Date(b.createdAt || '').getTime() - new Date(a.createdAt || '').getTime()) : [];
 
-    const handleDelete = async (id: string) => {
-        if (window.confirm('Are you sure you want to delete this vehicle?')) {
-            await deleteVehicle(id);
-        }
+    const handleDeleteClick = (id: string, e: React.MouseEvent) => {
+        e.preventDefault();
+        e.stopPropagation();
+        setVehicleToDelete(id);
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
+        if (!vehicleToDelete) return;
+        await deleteVehicle(vehicleToDelete);
+        setDeleteModalOpen(false);
+        setVehicleToDelete(null);
+    };
+
+    const downloadCustomQR = (src: string, code: string, name: string) => {
+        const canvas = document.createElement('canvas');
+        const ctx = canvas.getContext('2d');
+        const img = new Image();
+        img.onload = () => {
+            const padding = 40;
+            const textHeight = 80;
+            canvas.width = img.width + padding * 2;
+            canvas.height = img.height + padding * 2 + textHeight;
+
+            if (ctx) {
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.drawImage(img, padding, padding);
+
+                ctx.fillStyle = '#0f172a'; // slate-900
+                ctx.textAlign = 'center';
+                
+                // Draw Vehicle Name
+                ctx.font = 'bold 24px sans-serif';
+                ctx.fillText(name, canvas.width / 2, canvas.height - 60);
+                
+                // Draw Car Code
+                ctx.fillStyle = '#64748b'; // slate-500
+                ctx.font = 'bold 16px sans-serif';
+                ctx.fillText(`STOCK ID: ${code}`, canvas.width / 2, canvas.height - 30);
+
+                const dataUrl = canvas.toDataURL('image/png');
+                const link = document.createElement('a');
+                link.download = `${code}_${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+                link.href = dataUrl;
+                link.click();
+            }
+        };
+        img.src = src;
     };
 
     return (
@@ -213,8 +302,9 @@ export default function VehicleList() {
                     >
                         <option value="All">All Statuses</option>
                         <option value="available">🟢 Available</option>
-                        <option value="reserved">🟠 Reserved</option>
+                        <option value="booked">🟠 Booked</option>
                         <option value="sold">🔵 Sold</option>
+                        <option value="delisted">⛔ Delisted</option>
                     </select>
 
                     <select 
@@ -227,6 +317,17 @@ export default function VehicleList() {
                     </select>
                 </div>
             </div>
+
+            <ConfirmModal 
+                isOpen={deleteModalOpen}
+                title="Delete Vehicle"
+                message="Are you sure you want to delete this vehicle? This action cannot be undone."
+                onConfirm={confirmDelete}
+                onCancel={() => {
+                    setDeleteModalOpen(false);
+                    setVehicleToDelete(null);
+                }}
+            />
 
             {loading ? (
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -254,7 +355,8 @@ export default function VehicleList() {
                         <VehicleCard 
                             key={vehicle._id || vehicle.id} 
                             vehicle={vehicle} 
-                            onDelete={handleDelete}
+                            onDelete={handleDeleteClick}
+                            onToggleDelist={toggleDelist}
                             onGetQR={handleGetQR}
                         />
                     ))}
@@ -297,14 +399,13 @@ export default function VehicleList() {
                                             <Printer size={18} />
                                             Print Sticker
                                         </button>
-                                        <a 
-                                            href={qrData.src} 
-                                            download={`Sticker_${qrData.code}.png`}
+                                        <button 
+                                            onClick={() => downloadCustomQR(qrData.src, qrData.code, qrData.name)}
                                             className="flex items-center justify-center gap-3 bg-indigo-600 text-white py-4 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
                                         >
                                             <Download size={18} />
                                             Download
-                                        </a>
+                                        </button>
                                     </div>
                                     <p className="mt-6 text-[10px] font-bold text-slate-400 max-w-xs leading-relaxed">
                                         Paste this QR on your car window. Customers scanning this will see all specs and added to your CRM as a hot lead.

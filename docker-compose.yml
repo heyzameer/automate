@@ -129,15 +129,11 @@ services:
       context: ./server
       dockerfile: services/billing-service/Dockerfile
     environment:
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
-      POSTGRES_DB: carbot_billing
+      MONGODB_URI: mongodb://mongodb:27017/carbot_billing
       AUTH_SERVICE_URL: http://auth-service:5001
       INVENTORY_SERVICE_URL: http://inventory-service:5002
     depends_on:
-      postgres:
+      mongodb:
         condition: service_healthy
     networks:
       - carbot_net
@@ -172,20 +168,6 @@ services:
     networks:
       - carbot_net
 
-  campaign-service:
-    build:
-      context: ./server
-      dockerfile: services/campaign-service/Dockerfile
-    environment:
-      MONGODB_URI: mongodb://mongodb:27017/carbot_campaign
-      RABBITMQ_URL: amqp://rabbitmq:5672
-    depends_on:
-      mongodb:
-        condition: service_healthy
-      rabbitmq:
-        condition: service_healthy
-    networks:
-      - carbot_net
 
   # --- FRONTEND ---
   app:

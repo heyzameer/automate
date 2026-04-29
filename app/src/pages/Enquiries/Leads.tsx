@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { Search, Phone, MessageCircle, Calendar, XCircle, Loader2, Filter, TrendingUp, User, Clock, Car, History, MoreVertical, CheckCircle2 } from 'lucide-react';
+import { Search, Phone, MessageCircle, Calendar, XCircle, Loader2, Filter, TrendingUp, User, Clock, Car, History, MoreVertical, CheckCircle2, Edit, Trash2 } from 'lucide-react';
 import { leadsService, Lead, LeadStage, LeadPriority } from '../../services/leads.service';
 import { vehicleService, Vehicle } from '../../services/vehicle.service';
 import toast from 'react-hot-toast';
@@ -48,6 +48,8 @@ export default function Leads() {
     const [filterStage, setFilterStage] = useState<string>('All');
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [newNote, setNewNote] = useState('');
+    const [editingLogId, setEditingLogId] = useState<string | null>(null);
+    const [editNote, setEditNote] = useState('');
     const [vehiclesMap, setVehiclesMap] = useState<Record<string, Vehicle>>({});
 
     const fetchLeadsAndVehicles = async () => {
@@ -109,6 +111,33 @@ export default function Leads() {
         }
     };
 
+    const handleUpdateCallLog = async (logId: string) => {
+        if (!selectedLead || !editNote) return;
+        try {
+            const updated = await leadsService.updateCallLog(selectedLead._id || selectedLead.id, logId, editNote);
+            setLeads(leads.map(l => (l._id || l.id) === (selectedLead._id || selectedLead.id) ? updated : l));
+            setSelectedLead(updated);
+            setEditingLogId(null);
+            setEditNote('');
+            toast.success("Log updated successfully!");
+        } catch {
+            toast.error("Failed to update log");
+        }
+    };
+
+    const handleDeleteCallLog = async (logId: string) => {
+        if (!selectedLead) return;
+        if (!window.confirm("Are you sure you want to delete this log entry?")) return;
+        try {
+            const updated = await leadsService.deleteCallLog(selectedLead._id || selectedLead.id, logId);
+            setLeads(leads.map(l => (l._id || l.id) === (selectedLead._id || selectedLead.id) ? updated : l));
+            setSelectedLead(updated);
+            toast.success("Log deleted successfully!");
+        } catch {
+            toast.error("Failed to delete log");
+        }
+    };
+
     const isOverdue = (date?: string) => {
         if (!date) return false;
         const d = new Date(date);
@@ -125,6 +154,23 @@ export default function Leads() {
         if (!isValidDate(date)) return 'N/A';
         return format(new Date(date!), formatStr);
     };
+
+    const getVehicleDisplayName = (id: string) => {
+        const v = vehiclesMap[id];
+        if (!v) return `ID: ${id.slice(-6)}`;
+        const brand = v.attributes?.brand || '';
+        const model = v.attributes?.model || '';
+        if (brand || model) return `${brand} ${model}`.trim();
+        return v.attributes?.car_code || id;
+    };
+
+    const SLOT_MAP: Record<string, string> = {
+        'SLOT_10AM': '10:00 AM',
+        'SLOT_2PM': '02:00 PM',
+        'SLOT_4PM': '04:00 PM'
+    };
+
+    const formatSlot = (slot: string) => SLOT_MAP[slot] || slot;
 
     const filteredLeads = leads.filter(l => {
         const matchSearch = l.name?.toLowerCase().includes(search.toLowerCase()) || l.phone?.includes(search) || l.vehicleId?.toLowerCase().includes(search.toLowerCase());
@@ -382,6 +428,63 @@ export default function Leads() {
                                     </div>
                                 </div>
                             </div>
+
+                            {/* Customer Intelligence / History */}
+                            {((selectedLead.historicalNames && selectedLead.historicalNames.length > 0) || 
+                              (selectedLead.interestedVehicles && selectedLead.interestedVehicles.length > 0)) && (
+                                <div className="mt-8 space-y-4">
+                                    <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1 flex items-center gap-2">
+                                        <TrendingUp size={12} className="text-indigo-500" /> Lead Intelligence
+                                    </h4>
+                                    
+                                    <div className="bg-white/50 rounded-[1.5rem] p-5 border border-slate-200/60 space-y-4 shadow-sm">
+                                        {selectedLead.historicalNames && selectedLead.historicalNames.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Historical Names</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {selectedLead.historicalNames.map((n, i) => (
+                                                        <span key={i} className="px-3 py-1 bg-indigo-50 text-indigo-700 rounded-lg text-[10px] font-black border border-indigo-100/50">
+                                                            {n}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {selectedLead.interestedVehicles && selectedLead.interestedVehicles.length > 0 && (
+                                            <div>
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Interested Vehicles</p>
+                                                <div className="flex flex-wrap gap-2">
+                                                    {selectedLead.interestedVehicles.map((vId, i) => (
+                                                        <span key={i} className="px-3 py-1 bg-amber-50 text-amber-700 rounded-lg text-[10px] font-black border border-amber-100/50">
+                                                            {getVehicleDisplayName(vId)}
+                                                        </span>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+
+                                        {selectedLead.historicalBookings && selectedLead.historicalBookings.length > 0 && (
+                                            <div className="pt-2">
+                                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">Past Bookings</p>
+                                                <div className="space-y-2">
+                                                    {selectedLead.historicalBookings.map((b, i) => (
+                                                        <div key={i} className="flex items-center justify-between bg-white px-3 py-2 rounded-xl border border-slate-100">
+                                                            <div className="flex items-center gap-2">
+                                                                <Calendar size={12} className="text-indigo-400" />
+                                                                <span className="text-[10px] font-bold text-slate-600">{formatSlot(b.date)}</span>
+                                                            </div>
+                                                            <span className="text-[9px] font-black uppercase text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-md">
+                                                                {getVehicleDisplayName(b.carId)}
+                                                            </span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                            )}
                         </div>
 
                         {/* Right Column: Interaction & Logs */}
@@ -417,12 +520,56 @@ export default function Leads() {
                                         <div key={i} className="bg-white p-5 rounded-[1.5rem] border border-slate-100 shadow-sm relative group overflow-hidden">
                                             <div className="absolute left-0 top-0 bottom-0 w-1 bg-indigo-100 group-hover:bg-indigo-400 transition-colors"></div>
                                             <div className="flex items-center justify-between mb-3 ml-2">
-                                                <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-1 rounded uppercase tracking-widest">{log.agent || "System"}</span>
-                                                <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
-                                                    <Clock size={10} /> {safeFormatDate(log.date)}
-                                                </span>
+                                                <div className="flex items-center gap-2">
+                                                    <span className="text-[10px] font-black bg-slate-100 text-slate-600 px-2 py-1 rounded uppercase tracking-widest">{log.agent || "System"}</span>
+                                                    <span className="text-[10px] font-bold text-slate-400 flex items-center gap-1">
+                                                        <Clock size={10} /> {safeFormatDate(log.date)}
+                                                    </span>
+                                                </div>
+                                                <div className="flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                    <button 
+                                                        onClick={() => {
+                                                            setEditingLogId(log._id || null);
+                                                            setEditNote(log.note);
+                                                        }}
+                                                        className="p-1.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-all"
+                                                    >
+                                                        <Edit size={14} />
+                                                    </button>
+                                                    <button 
+                                                        onClick={() => log._id && handleDeleteCallLog(log._id)}
+                                                        className="p-1.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-all"
+                                                    >
+                                                        <Trash2 size={14} />
+                                                    </button>
+                                                </div>
                                             </div>
-                                            <p className="text-sm font-medium text-slate-600 leading-relaxed ml-2">{log.note}</p>
+                                            
+                                            {editingLogId === log._id ? (
+                                                <div className="ml-2 space-y-3">
+                                                    <textarea 
+                                                        value={editNote}
+                                                        onChange={(e) => setEditNote(e.target.value)}
+                                                        className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500/20 resize-none"
+                                                    />
+                                                    <div className="flex justify-end gap-2">
+                                                        <button 
+                                                            onClick={() => setEditingLogId(null)}
+                                                            className="px-3 py-1.5 text-[10px] font-black uppercase text-slate-400 hover:text-slate-600"
+                                                        >
+                                                            Cancel
+                                                        </button>
+                                                        <button 
+                                                            onClick={() => log._id && handleUpdateCallLog(log._id)}
+                                                            className="px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-black uppercase rounded-lg shadow-lg shadow-indigo-200"
+                                                        >
+                                                            Save Changes
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            ) : (
+                                                <p className="text-sm font-medium text-slate-600 leading-relaxed ml-2 whitespace-pre-wrap">{log.note}</p>
+                                            )}
                                         </div>
                                     ))}
                                     {selectedLead.callLogs.length === 0 && (

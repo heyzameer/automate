@@ -19,7 +19,8 @@ const storage = new CloudinaryStorage({
     return {
       folder: 'carbot-inventory',
       allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
-      public_id: `${Date.now()}-${file.originalname.split('.')[0]}`
+      public_id: `${Date.now()}-${file.originalname.split('.')[0]}`,
+      transformation: [{ width: 2000, crop: 'limit', quality: 'auto:best', fetch_format: 'auto' }]
     };
   }
 });

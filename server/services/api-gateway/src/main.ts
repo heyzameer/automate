@@ -93,9 +93,17 @@ class Application {
     public async start(): Promise<void> {
         try {
             // Start server
-            this._server.listen(config.port, () => {
+            this._server.listen(config.port, async () => {
                 logger.info(`Gateway running on port ${config.port} in ${config.env} mode`);
                 logger.info(`Gateway available at http://localhost:${config.port}/api/v1`);
+                
+                // Init RabbitMQ
+                try {
+                    const { getRabbitMQ } = await import('./utils/rabbitmq');
+                    await getRabbitMQ();
+                } catch (e) {
+                    logger.error('Failed to init RabbitMQ in Gateway', e);
+                }
             });
 
             // Graceful shutdown handlers

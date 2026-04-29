@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import authRoutes from './authRoutes';
 import superAdminRoutes from './superAdminRoutes';
 import internalRoutes from './internal.routes';
+import customerRoutes from './customerRoutes';
 import { sendSuccess } from '../utils/response';
 import { logger } from '../utils/logger';
 
@@ -37,6 +38,7 @@ router.get('/version', (req: Request, res: Response) => {
 router.use('/auth', authRoutes);
 router.use('/super', superAdminRoutes);
 router.use('/internal', internalRoutes);
+router.use('/customer', customerRoutes);
 
 // API Root
 router.get('/', (req: Request, res: Response) => {

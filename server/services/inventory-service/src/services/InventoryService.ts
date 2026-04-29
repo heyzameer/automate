@@ -33,20 +33,46 @@ export class InventoryService implements IInventoryService {
     }
 
     async getNextCarCode(tenantId: string): Promise<string> {
-        const count = await this.vehicleRepository.count({ tenantId });
-        return `car${(count + 1).toString().padStart(2, '0')}`;
+        // Find all vehicles for this tenant to find the highest car code
+        const vehicles = await this.vehicleRepository.find({ tenantId });
+        let maxNum = 0;
+        
+        vehicles.forEach(v => {
+            const code = v.attributes.get('car_code');
+            if (code && typeof code === 'string') {
+                const match = code.match(/car(\d+)/i);
+                if (match) {
+                    const num = parseInt(match[1]);
+                    if (num > maxNum) maxNum = num;
+                }
+            }
+        });
+
+        return `car${(maxNum + 1).toString().padStart(2, '0')}`;
     }
 
     async getVehicles(tenantId: string, filters: any = {}) {
         const query: any = { tenantId };
         
+        // Handle visibility filtering
+        if (filters.isDelisted !== undefined) {
+            query.isDelisted = filters.isDelisted === 'true' || filters.isDelisted === true;
+        } else if (filters.includeDelisted !== 'true' && filters.includeDelisted !== true) {
+            // Default to only showing listed vehicles (legacy/safe behavior)
+            query.isDelisted = false;
+        }
+        
         Object.keys(filters).forEach(key => {
-            if (['brand', 'model', 'fuel_type', 'transmission', 'ownership', 'body_type'].includes(key)) {
+            if (['brand', 'model', 'fuel_type', 'transmission', 'ownership', 'body_type'].includes(key) && filters[key]) {
                 query[`attributes.${key}`] = new RegExp(filters[key], 'i');
             } else if (key === 'max_price') {
-                query['attributes.price'] = { $lte: Number(filters[key]) };
+                query['attributes.price'] = { ...query['attributes.price'], $lte: Number(filters[key]) };
             } else if (key === 'min_price') {
                 query['attributes.price'] = { ...query['attributes.price'], $gte: Number(filters[key]) };
+            } else if (key === 'max_year') {
+                query['attributes.year_of_manufacture'] = { ...query['attributes.year_of_manufacture'], $lte: Number(filters[key]) };
+            } else if (key === 'min_year') {
+                query['attributes.year_of_manufacture'] = { ...query['attributes.year_of_manufacture'], $gte: Number(filters[key]) };
             } else if (key === 'year') {
                 query['attributes.year_of_manufacture'] = Number(filters[key]);
             } else if (key === 'status') {
@@ -59,6 +85,8 @@ export class InventoryService implements IInventoryService {
             const order = filters.sortOrder === 'desc' ? -1 : 1;
             if (filters.sortBy === 'price') sort = { 'attributes.price': order };
             else if (filters.sortBy === 'year') sort = { 'attributes.year_of_manufacture': order };
+            else if (filters.sortBy === 'mileage') sort = { 'attributes.km': order };
+            else if (filters.sortBy === 'newest') sort = { createdAt: -1 };
         }
 
         return await this.vehicleRepository.find(query, sort);
@@ -69,7 +97,29 @@ export class InventoryService implements IInventoryService {
     }
 
     async createVehicle(data: any, images: string[], tenantId: string, userId: string) {
+        if (!images || images.length === 0) {
+            throw new Error('At least one vehicle image is required');
+        }
+
         await this.validateVehicleData(data);
+        
+        // Double check car code uniqueness
+        const carCode = data.car_code;
+        if (carCode) {
+            const isAvailable = await this.isCarCodeAvailable(tenantId, carCode);
+            if (!isAvailable) {
+                throw new Error(`Car code '${carCode}' is already in use in your showroom. Please use a unique code.`);
+            }
+        }
+
+        // Prevent duplicate registration numbers in the same showroom
+        if (data.rcNumber) {
+            const existing = await this.vehicleRepository.findOne({ tenantId, rcNumber: data.rcNumber });
+            if (existing) {
+                throw new Error(`A vehicle with RC Number '${data.rcNumber}' already exists in your inventory.`);
+            }
+        }
+
         const aiPrice = await this.aiService.suggestPrice(data);
 
         const vehicleData: any = {
@@ -91,7 +141,7 @@ export class InventoryService implements IInventoryService {
 
         const topLevelFields = [
             'purchasePrice', 'refurbishmentCost', 'otherExpenses', 'rcNumber', 
-            'rcExpiry', 'insuranceExpiry', 'spin_images', 'service_history'
+            'rcExpiry', 'insuranceExpiry', 'spin_images', 'service_history', 'bookingDetails'
         ];
         
         const attributes = new Map();
@@ -127,11 +177,12 @@ export class InventoryService implements IInventoryService {
             if (updates.insuranceExpiry !== undefined) vehicle.insuranceExpiry = updates.insuranceExpiry ? new Date(updates.insuranceExpiry) : undefined;
             if (updates.spin_images !== undefined) vehicle.spin_images = updates.spin_images;
             if (updates.service_history !== undefined) vehicle.service_history = updates.service_history;
+            if (updates.bookingDetails !== undefined) vehicle.bookingDetails = updates.bookingDetails;
 
             for (const [key, value] of Object.entries(updates)) {
                 const topLevelFields = [
                     'status', 'purchasePrice', 'refurbishmentCost', 'otherExpenses', 
-                    'rcNumber', 'rcExpiry', 'insuranceExpiry', 'spin_images', 'service_history'
+                    'rcNumber', 'rcExpiry', 'insuranceExpiry', 'spin_images', 'service_history', 'bookingDetails'
                 ];
                 if (!topLevelFields.includes(key)) {
                     vehicle.attributes.set(key, value);
@@ -156,12 +207,29 @@ export class InventoryService implements IInventoryService {
     }
 
     async deleteVehicle(id: string, tenantId: string) {
-        const success = await this.vehicleRepository.delete(id);
-        if (!success) throw new Error('Vehicle not found');
-        logger.info(`Vehicle ${id} deleted for tenant ${tenantId}`);
-
+        const vehicle = await this.vehicleRepository.findOne({ _id: id, tenantId });
+        if (!vehicle) throw new Error('Vehicle not found');
+        
+        await this.vehicleRepository.delete(id);
+        
         const mq = await import('../utils/rabbitmq').then(m => m.getRabbitMQ());
-        await mq.publish('carbot_events', 'vehicle.deleted', { tenantId, id });
+        await mq.publish('carbot_events', 'vehicle.deleted', { id });
+    }
+
+    async toggleDelist(id: string, tenantId: string) {
+        const vehicle = await this.vehicleRepository.findOne({ _id: id, tenantId });
+        if (!vehicle) throw new Error('Vehicle not found');
+
+        vehicle.isDelisted = !vehicle.isDelisted;
+        await vehicle.save();
+
+        // Update Search Index
+        const { container } = await import('tsyringe');
+        const { SearchService } = await import('./SearchService');
+        const searchService = container.resolve(SearchService);
+        await searchService.indexVehicle(tenantId, vehicle);
+
+        return vehicle;
     }
 
     private async validateVehicleData(data: any, isUpdate: boolean = false) {
@@ -229,6 +297,26 @@ export class InventoryService implements IInventoryService {
             'attributes.car_code': code 
         });
         return !vehicle;
+    }
+
+    async createBrand(data: any) {
+        return await this.brandRepository.create(data);
+    }
+
+    async deleteBrand(id: string) {
+        return await this.brandRepository.delete(id);
+    }
+
+    async createModel(data: any) {
+        return await this.modelRepository.create(data);
+    }
+
+    async deleteModel(id: string) {
+        return await this.modelRepository.delete(id);
+    }
+
+    async updateDropdownOptions(fieldName: string, options: string[]) {
+        return await this.dropdownRepository.update(fieldName, options);
     }
 }
 

@@ -112,6 +112,9 @@ importers:
       '@carbot/common':
         specifier: workspace:*
         version: link:../../packages/common
+      axios:
+        specifier: ^1.15.2
+        version: 1.15.2
       chalk:
         specifier: ^4.1.2
         version: 4.1.2
@@ -2465,6 +2468,16 @@ packages:
 
   /axios@1.15.0:
     resolution: {integrity: sha512-wWyJDlAatxk30ZJer+GeCWS209sA42X+N5jU2jy6oHTp7ufw8uzUTVFBX9+wTfAlhiJXGS0Bq7X6efruWjuK9Q==}
+    dependencies:
+      follow-redirects: 1.15.11
+      form-data: 4.0.5
+      proxy-from-env: 2.1.0
+    transitivePeerDependencies:
+      - debug
+    dev: false
+
+  /axios@1.15.2:
+    resolution: {integrity: sha512-wLrXxPtcrPTsNlJmKjkPnNPK2Ihe0hn0wGSaTEiHRPxwjvJwT3hKmXF4dpqxmPO9SoNb2FsYXj/xEo0gHN+D5A==}
     dependencies:
       follow-redirects: 1.15.11
       form-data: 4.0.5

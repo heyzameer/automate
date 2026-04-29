@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Car, Store, Mail, Lock, Phone, ArrowRight, Loader2, CheckCircle2, AlertCircle } from 'lucide-react';
+import { Car, Store, Mail, Lock, Phone, ArrowRight, Loader2, CheckCircle2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import api from '../../lib/api';
 import toast, { Toaster } from 'react-hot-toast';
 import { ROUTES } from '../../constants/routes';
@@ -23,13 +23,18 @@ const Register = () => {
     const [formData, setFormData] = useState({
         businessName: '', fullName: '', email: '', phone: '', password: '',
     });
+    const [showPassword, setShowPassword] = useState(false);
     const [error, setError] = useState('');
     const [fieldErrors, setFieldErrors] = useState<FieldErrors>({});
 
     const validateStep1 = () => {
         const errors: FieldErrors = {};
-        if (!formData.businessName || formData.businessName.length < 2) {
-            errors.businessName = 'Business name must be at least 2 characters';
+        if (!formData.businessName) {
+            errors.businessName = 'Business name is required';
+        } else if (formData.businessName.length < 3) {
+            errors.businessName = 'Business name must be at least 3 characters long';
+        } else if (/^[^a-zA-Z0-9]/.test(formData.businessName)) {
+            errors.businessName = 'Business name should start with a letter or number';
         }
         setFieldErrors(errors);
         return Object.keys(errors).length === 0;
@@ -37,18 +42,40 @@ const Register = () => {
 
     const validateStep2 = () => {
         const errors: FieldErrors = {};
-        if (!formData.fullName || formData.fullName.length < 2) {
-            errors.fullName = 'Full name is required';
+        
+        // Full Name Validation
+        if (!formData.fullName) {
+            errors.fullName = 'Please enter your full name';
+        } else if (formData.fullName.trim().split(' ').length < 2) {
+            errors.fullName = 'Please enter both your first and last name';
         }
-        if (!formData.email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-            errors.email = 'Please enter a valid email address';
+
+        // Email Validation
+        const emailRegex = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/;
+        if (!formData.email) {
+            errors.email = 'Email address is required';
+        } else if (!emailRegex.test(formData.email)) {
+            errors.email = 'Please provide a valid professional email address';
         }
-        if (!formData.phone || !/^\+?[0-9]{10,15}$/.test(formData.phone.replace(/\s/g, ''))) {
-            errors.phone = 'Please enter a valid phone number (min 10 digits)';
+
+        // Phone Validation (Strict 10-12 digits)
+        const phoneClean = formData.phone.replace(/[\s\-\+\(\)]/g, '');
+        const phoneRegex = /^[0-9]{10,12}$/;
+        if (!formData.phone) {
+            errors.phone = 'Phone number is required for verification';
+        } else if (!phoneRegex.test(phoneClean)) {
+            errors.phone = 'Please enter a valid 10-12 digit phone number';
         }
-        if (!formData.password || formData.password.length < 8) {
-            errors.password = 'Password must be at least 8 characters';
+
+        // Password Validation
+        if (!formData.password) {
+            errors.password = 'Security password is required';
+        } else if (formData.password.length < 8) {
+            errors.password = 'Password is too short (minimum 8 characters)';
+        } else if (!/[A-Z]/.test(formData.password)) {
+            errors.password = 'Password must contain at least one uppercase letter';
         }
+
         setFieldErrors(errors);
         return Object.keys(errors).length === 0;
     };
@@ -91,8 +118,9 @@ const Register = () => {
 
         try {
             await api.post(API_ENDPOINTS.AUTH.REGISTER_TENANT, payload);
-            toast.success("Dealership registered! Redirecting to login...");
-            setTimeout(() => navigate(ROUTES.LOGIN), 2000);
+            
+            toast.success("Dealership application submitted!");
+            setTimeout(() => navigate(ROUTES.REGISTER_SUCCESS), 1500);
         } catch (err: unknown) {
             const e = err as { response?: { data?: { message?: string } }; message?: string };
             const message = e.response?.data?.message || e.message || 'Registration failed. Check your data.';
@@ -296,16 +324,23 @@ const Register = () => {
                                     <div className="relative group">
                                         <Lock className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-indigo-400 transition-colors" size={20} />
                                         <input
-                                            type="password"
+                                            type={showPassword ? "text" : "password"}
                                             name="password"
                                             required
                                             placeholder="••••••••"
-                                            className={`block w-full pl-12 pr-4 py-3.5 bg-slate-950/50 border border-slate-800 rounded-2xl text-white font-bold placeholder-slate-600 focus:outline-none transition-all ${
+                                            className={`block w-full pl-12 pr-12 py-3.5 bg-slate-950/50 border border-slate-800 rounded-2xl text-white font-bold placeholder-slate-600 focus:outline-none transition-all ${
                                                 fieldErrors.password ? 'border-rose-500/50 focus:border-rose-500 focus:ring-4 focus:ring-rose-500/10' : 'focus:border-indigo-500 focus:ring-4 focus:ring-indigo-500/10'
                                             }`}
                                             onChange={handleChange}
                                             value={formData.password}
                                         />
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowPassword(!showPassword)}
+                                            className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-indigo-400 transition-colors"
+                                        >
+                                            {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                        </button>
                                     </div>
                                     {fieldErrors.password && <p className="mt-2 text-xs font-bold text-rose-400">{fieldErrors.password}</p>}
                                 </div>

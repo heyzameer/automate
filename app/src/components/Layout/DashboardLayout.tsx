@@ -12,7 +12,10 @@ import {
     Bell,
     Car,
     CreditCard,
-    Megaphone
+    Megaphone,
+    ShieldAlert,
+    Clock,
+    AlertTriangle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
@@ -50,8 +53,9 @@ const SidebarLink = ({ to, icon: Icon, children, end, onClick }: SidebarLinkProp
 
 export default function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
-    const [user, setUser] = useState<{ fullName: string; role: string } | null>(null);
-    const [tenant, setTenant] = useState<{ plan?: string } | null>(null);
+    const [user, setUser] = useState<{ fullName: string; role: string; tenantId?: string } | null>(null);
+    const [tenant, setTenant] = useState<{ plan?: string; verificationStatus?: string; name?: string; isActive?: boolean } | null>(null);
+    const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
     const location = useLocation();
     const { logout } = useAuth();
@@ -61,9 +65,15 @@ export default function DashboardLayout() {
             const data = await authService.getMyTenant();
             if (data?.tenant) {
                 setTenant(data.tenant);
+                // Redirect if deactivated or pending
+                if (!data.tenant.isActive || data.tenant.verificationStatus === 'pending') {
+                    navigate(ROUTES.DEACTIVATED);
+                }
             }
         } catch (error) {
             console.error("Failed to fetch tenant info in layout", error);
+        } finally {
+            setIsLoading(false);
         }
     };
 
@@ -75,7 +85,7 @@ export default function DashboardLayout() {
             } else {
                 // eslint-disable-next-line react-hooks/set-state-in-effect
                 setUser(storedUser);
-                fetchTenantData();
+                if (!tenant) fetchTenantData();
             }
         } else {
             navigate(ROUTES.LOGIN);
@@ -88,7 +98,41 @@ export default function DashboardLayout() {
 
     const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-    if (!user) return null;
+    if (!user || isLoading) {
+        return (
+            <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center relative overflow-hidden font-sans">
+                {/* Background Decor */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-full max-w-lg h-full pointer-events-none opacity-20">
+                    <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-600 blur-[100px] rounded-full animate-pulse"></div>
+                    <div className="absolute bottom-0 left-0 w-64 h-64 bg-cyan-600 blur-[100px] rounded-full animate-pulse delay-700"></div>
+                </div>
+
+                <div className="relative z-10 flex flex-col items-center">
+                    <motion.div 
+                        animate={{ 
+                            scale: [1, 1.1, 1],
+                            rotate: [0, 180, 360]
+                        }}
+                        transition={{ 
+                            duration: 3, 
+                            repeat: Infinity,
+                            ease: "easeInOut" 
+                        }}
+                        className="w-16 h-16 mb-8 relative"
+                    >
+                        <div className="absolute inset-0 border-4 border-indigo-500/20 rounded-2xl"></div>
+                        <div className="absolute inset-0 border-t-4 border-indigo-500 rounded-2xl"></div>
+                        <div className="flex items-center justify-center h-full">
+                            <Car className="text-white w-6 h-6" />
+                        </div>
+                    </motion.div>
+                    
+                    <h3 className="text-white font-black text-xl tracking-tight mb-2">Syncing your showroom</h3>
+                    <p className="text-slate-500 font-medium text-sm">Verifying partnership credentials...</p>
+                </div>
+            </div>
+        );
+    }
 
     const initials = user.fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
 
@@ -216,7 +260,20 @@ export default function DashboardLayout() {
                         <Car className="w-4 h-4 text-slate-400" />
                         <span className="text-sm font-semibold text-slate-400">/</span>
                         <span className="text-sm font-bold text-slate-900 capitalize">
-                            {location.pathname.split('/').filter(Boolean).pop()?.replace('-', ' ') || 'Overview'}
+                            {(() => {
+                                const parts = location.pathname.split('/').filter(Boolean);
+                                const lastPart = parts[parts.length - 1];
+                                
+                                // If it looks like a MongoDB ID (24 hex chars)
+                                if (lastPart && /^[0-9a-fA-F]{24}$/.test(lastPart)) {
+                                    if (parts.includes('vehicles')) return 'Vehicle Detail';
+                                    if (parts.includes('leads')) return 'Lead Detail';
+                                    if (parts.includes('bookings')) return 'Booking Detail';
+                                    return 'Detail View';
+                                }
+                                
+                                return lastPart?.replace('-', ' ') || 'Overview';
+                            })()}
                         </span>
                     </div>
 
@@ -241,9 +298,27 @@ export default function DashboardLayout() {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto p-6 lg:p-10 bg-[#fbfcfd]">
+                <main className="flex-1 overflow-y-auto p-6 lg:p-10 bg-[#fbfcfd] relative">
                     <div className="max-w-7xl mx-auto">
-                        <Outlet />
+                        {tenant?.verificationStatus === 'pending' ? (
+                            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-white rounded-3xl border border-slate-100 shadow-sm">
+                                <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                                    <Clock className="w-10 h-10 text-amber-500" />
+                                </div>
+                                <h1 className="text-3xl font-black text-slate-900 mb-4">Verification Pending</h1>
+                                <p className="text-slate-500 max-w-md mx-auto mb-8 leading-relaxed">
+                                    Welcome to CarBot, <span className="font-bold text-slate-900">{tenant.name}</span>! 
+                                    Our administrative team is currently reviewing your showroom registration. 
+                                    You will receive an email once your account is activated.
+                                </p>
+                                <div className="flex items-center gap-2 px-6 py-3 bg-slate-50 rounded-2xl text-slate-600 font-medium border border-slate-100">
+                                    <ShieldAlert className="w-5 h-5 text-indigo-500" />
+                                    Estimated review time: 12-24 hours
+                                </div>
+                            </div>
+                        ) : (
+                            <Outlet />
+                        )}
                     </div>
                 </main>
             </div>

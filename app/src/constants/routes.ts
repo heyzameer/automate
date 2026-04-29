@@ -6,6 +6,7 @@ export const ROUTES = {
   LOGIN: '/login',
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
+  REGISTER_SUCCESS: '/registration-success',
   
   DASHBOARD: {
     HOME: '/dashboard',
@@ -37,8 +38,12 @@ export const ROUTES = {
     BASE: '/super',
     DASHBOARD: '/super/dashboard',
     SHOWROOMS: '/super/showrooms',
+    SHOWROOM_DETAIL: (id: string) => `/super/showrooms/${id}`,
     FORM_BUILDER: '/super/form-builder',
+    INVENTORY_CONFIG: '/super/inventory-config',
     WA_CONFIG: '/super/wa-config',
+    KIOSK_CONFIG: '/super/kiosk-config',
+    USAGE_ANALYTICS: '/super/usage-analytics',
     SETTINGS: '/super/settings',
   }
 } as const;

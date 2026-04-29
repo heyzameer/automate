@@ -3,18 +3,14 @@ import { container } from 'tsyringe';
 import { LeadService } from '../services/LeadService';
 import { WhatsAppService } from '../services/WhatsAppService';
 import { ILeadRepository } from '../interfaces/IRepository/ILeadRepository';
-import { IVehicleRepository } from '../interfaces/IRepository/IVehicleRepository';
-import { ITenantRepository } from '../interfaces/IRepository/ITenantRepository';
+import { authServiceClient } from '../utils/apiClient';
 import config from '../config';
 
 const router = Router();
 
-// Lazy resolvers to prevent top-level resolution crashes
 const getLeadService = () => container.resolve(LeadService);
 const getWhatsappService = () => container.resolve(WhatsAppService);
 const getLeadRepository = () => container.resolve<ILeadRepository>('LeadRepository');
-const getVehicleRepository = () => container.resolve<IVehicleRepository>('VehicleRepository');
-const getTenantRepository = () => container.resolve<ITenantRepository>('TenantRepository');
 
 // Secure internal-only auth check via shared secret header
 router.use((req: Request, res: Response, next: NextFunction) => {
@@ -23,31 +19,6 @@ router.use((req: Request, res: Response, next: NextFunction) => {
         return res.status(403).json({ success: false, message: 'Forbidden: Internal Service Mesh Only' });
     }
     next();
-});
-
-/**
- * GET /internal/vehicles
- * Search vehicles by query params for the bot service.
- */
-router.get('/vehicles', async (req, res) => {
-    try {
-        const { tenantId, brand, model, fuel_type, year, max_price, car_code, status } = req.query;
-        const filters: any = {};
-
-        if (tenantId) filters.tenantId = tenantId;
-        if (status) filters.status = status; else filters.status = 'available';
-        if (brand) filters['attributes.brand'] = new RegExp(brand as string, 'i');
-        if (model) filters['attributes.model'] = new RegExp(model as string, 'i');
-        if (fuel_type) filters['attributes.fuel_type'] = new RegExp(fuel_type as string, 'i');
-        if (year) filters['attributes.year_of_manufacture'] = Number(year);
-        if (max_price) filters['attributes.price'] = { $lte: Number(max_price) };
-        if (car_code) filters['attributes.car_code'] = car_code;
-
-        const vehicles = await getVehicleRepository().find(filters, { createdAt: -1 }, 5);
-        res.json({ success: true, data: vehicles });
-    } catch (error: any) {
-        res.status(500).json({ success: false, error: error.message });
-    }
 });
 
 /**
@@ -83,12 +54,18 @@ router.post('/qr-scan', async (req, res) => {
  */
 router.get('/leads/batch', async (req, res) => {
     try {
-        const { tenantId, priority } = req.query;
+        const { tenantId, priority, leadIds } = req.query;
         const filters: any = { tenantId };
+        
         if (priority) filters.priority = priority;
+        
+        if (leadIds) {
+            const ids = Array.isArray(leadIds) ? leadIds : (leadIds as string).split(',');
+            filters._id = { $in: ids };
+        }
 
         const leads = await getLeadRepository().find(filters);
-        const mappedLeads = leads.map(l => ({ phone: l.phone, name: l.name, priority: l.priority }));
+        const mappedLeads = leads.map(l => ({ phone: l.phone, name: l.name, priority: l.priority, email: (l as any).email }));
         res.json({ success: true, data: mappedLeads });
     } catch (error: any) {
         res.status(500).json({ success: false, error: error.message });
@@ -167,12 +144,22 @@ router.post('/broadcast', async (req, res) => {
             return res.status(400).json({ success: false, message: 'Missing required broadcast fields (recipients, message, tenantId)' });
         }
 
-        // If credentials not provided, fetch them from DB
+        // If credentials not provided, fetch them from Auth Service via HTTP API
         if (!phoneNumberId || !accessToken) {
-            const tenant = await getTenantRepository().findById(tenantId);
-            if (!tenant || !tenant.whatsappConfig?.accessToken) {
-                return res.status(404).json({ success: false, message: 'Tenant WhatsApp config not found' });
+            const tenantRes = await authServiceClient.get(`/internal/tenants/${tenantId}`);
+            const tenant = tenantRes.data?.data;
+            if (!tenant || !tenant.isActive) {
+                return res.status(404).json({ success: false, message: 'Tenant not found or inactive' });
             }
+
+            if (tenant.whatsappConfig?.isActive === false || tenant.whatsappConfig?.botEnabled === false) {
+                return res.status(403).json({ success: false, message: 'WhatsApp bot is currently disabled for this showroom' });
+            }
+
+            if (!tenant.whatsappConfig?.accessToken || !tenant.whatsappConfig?.phoneNumberId) {
+                return res.status(400).json({ success: false, message: 'Tenant WhatsApp configuration is incomplete' });
+            }
+
             phoneNumberId = tenant.whatsappConfig.phoneNumberId;
             accessToken = tenant.whatsappConfig.accessToken; 
         }

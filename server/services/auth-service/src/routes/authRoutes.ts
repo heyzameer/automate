@@ -56,6 +56,7 @@ router.post(AUTH_ROUTES.AUTH.CHANGE_PASSWORD, validate(changePasswordSchema), au
 import { tenantAuth } from '../middleware/auth';
 router.get(AUTH_ROUTES.AUTH.MY_TENANT, tenantAuth, authController.getMyTenant);
 router.patch(AUTH_ROUTES.AUTH.MY_TENANT, tenantAuth, authController.updateMyTenant);
+router.post('/my-tenant/kiosk/rotate', tenantAuth, authController.rotateKioskKey);
 router.get('/my-tenant/payment-requests', authController.getMyPaymentRequests);
 router.patch('/my-tenant/payment-requests/:reqId/confirm', authController.confirmPayment);
 

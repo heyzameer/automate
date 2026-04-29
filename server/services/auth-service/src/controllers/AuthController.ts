@@ -205,6 +205,10 @@ export class AuthController {
         if (updateData.name !== undefined && updateData.name.trim()) {
              safeUpdateData['name'] = updateData.name.trim();
         }
+        if (updateData.kioskConfig) {
+             if (updateData.kioskConfig.isActive !== undefined) safeUpdateData['kioskConfig.isActive'] = updateData.kioskConfig.isActive;
+             if (updateData.kioskConfig.allowedDomains !== undefined) safeUpdateData['kioskConfig.allowedDomains'] = updateData.kioskConfig.allowedDomains;
+        }
 
         const tenant = await Tenant.findByIdAndUpdate(
             req.user.tenantId,
@@ -217,6 +221,27 @@ export class AuthController {
         }
 
         sendSuccess(res, 'Tenant updated', { tenant });
+    });
+
+    rotateKioskKey = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {
+        if (!req.user?.tenantId) {
+            return sendError(res, 'No tenant assigned', HttpStatus.FORBIDDEN);
+        }
+        
+        const crypto = await import('crypto');
+        const newKey = `kb_${crypto.randomBytes(24).toString('hex')}`;
+
+        const tenant = await Tenant.findByIdAndUpdate(
+            req.user.tenantId,
+            { $set: { 'kioskConfig.kioskKey': newKey } },
+            { new: true }
+        );
+
+        if (!tenant) {
+            return sendError(res, 'Tenant not found', HttpStatus.NOT_FOUND);
+        }
+
+        sendSuccess(res, 'Kiosk Key rotated successfully', { kioskKey: newKey });
     });
 
     updateProfile = asyncHandler(async (req: Request, res: Response, _next: NextFunction) => {

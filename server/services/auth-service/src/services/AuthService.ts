@@ -81,7 +81,8 @@ export class AuthService implements IAuthService {
         const tenant = await this._tenantRepository.create({
             ...tenantData,
             slug,
-            isActive: true, 
+            isActive: false, 
+            verificationStatus: 'pending'
         } as unknown as Partial<ITenant>);
 
         const hashedPassword = await hashPassword(adminData.password || '');
@@ -101,8 +102,8 @@ export class AuthService implements IAuthService {
             refreshToken
         });
 
-        this._emailService.sendWelcomeEmail(adminUser.email, adminUser.fullName).catch(err => {
-            logger.error(`Welcome email failed: ${err.message}`);
+        this._emailService.sendRegistrationPendingEmail(adminUser.email, adminUser.fullName).catch(err => {
+            logger.error(`Pending registration email failed: ${err.message}`);
         });
 
         return { user: adminUser, tenant, accessToken, refreshToken };
@@ -140,7 +141,7 @@ export class AuthService implements IAuthService {
         // Check if tenant is active if it's a showroom user
         if (user.tenantId) {
             const tenant = await this._tenantRepository.findById(user.tenantId);
-            if (!tenant || !tenant.isActive) {
+            if (!tenant || !tenant.isActive || tenant.verificationStatus === 'pending') {
                 throw createError('Tenant account is deactivated. Contact support.', HttpStatus.FORBIDDEN);
             }
             if (tenant.expiryDate && new Date() > tenant.expiryDate) {

@@ -17,7 +17,9 @@ export class BillingController {
 
     async createInvoice(req: AuthenticatedRequest, res: Response) {
         try {
-            const tenantId = req.user?.tenantId || (req.headers['x-tenant-id'] as string);
+            const tenantId = req.user?.tenantId;
+            if (!tenantId) return sendError(res, 'Tenant ID required', 403);
+            
             const invoice = await this.billingService.createInvoice(tenantId, req.body);
             return sendSuccess(res, 'Invoice created successfully', { invoice });
         } catch (error: any) {
@@ -28,7 +30,10 @@ export class BillingController {
 
     async getInvoicePDF(req: AuthenticatedRequest, res: Response) {
         try {
-            const invoice = await this.invoiceRepository.findById(req.params.id);
+            const tenantId = req.user?.tenantId;
+            if (!tenantId) return sendError(res, 'Tenant ID required', 403);
+
+            const invoice = await this.invoiceRepository.findOne({ _id: req.params.id as any, tenantId });
             if (!invoice) return sendError(res, 'Invoice not found', 404);
 
             const tenantRes = await axios.get(`${config.authServiceUrl}/api/v1/auth/internal/tenants/${invoice.tenantId}`, {
@@ -49,7 +54,8 @@ export class BillingController {
 
     async generateDeliveryNote(req: AuthenticatedRequest, res: Response) {
         try {
-            const tenantId = req.user?.tenantId || (req.headers['x-tenant-id'] as string);
+            const tenantId = req.user?.tenantId;
+            if (!tenantId) return sendError(res, 'Tenant ID required', 403);
 
             const tenantRes = await axios.get(`${config.authServiceUrl}/api/v1/auth/internal/tenants/${tenantId}`, {
                 headers: { 'x-internal-secret': config.internalSecret }
@@ -69,7 +75,9 @@ export class BillingController {
 
     async trackExpense(req: AuthenticatedRequest, res: Response) {
         try {
-            const tenantId = req.user?.tenantId || (req.headers['x-tenant-id'] as string);
+            const tenantId = req.user?.tenantId;
+            if (!tenantId) return sendError(res, 'Tenant ID required', 403);
+            
             const expense = await this.billingService.trackExpense(tenantId, req.body);
             return sendSuccess(res, 'Expense tracked', { expense });
         } catch (error: any) {

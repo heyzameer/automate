@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
+import { ROUTES } from '../../constants/routes';
 import {
   Plus, Search, Loader2, Edit2, MessageSquare, X, Save,
   CreditCard, Send, ToggleLeft, ToggleRight, Power, ChevronDown, ChevronUp,
@@ -14,7 +16,13 @@ const cn = (...classes: (string | boolean | undefined | null)[]) => classes.filt
 
 // ─── Plan Definitions ────────────────────────────────────────────────────────
 
-const PLANS = [
+export const PLANS = [
+  {
+    key: 'none', emoji: '⏳', label: 'No Plan', price: 'N/A',
+    badge: 'bg-rose-50 text-rose-400',
+    limits: { maxCars: 0, maxLeads: 0, maxStaff: 0, maxCampaignsPerMonth: 0 },
+    features: { customWelcome: false, emailAlerts: false, analyticsLevel: 'none', prioritySupport: false, dedicatedSupport: false, emailCampaigns: false, newArrivalBroadcast: false, leadScoring: false },
+  },
   {
     key: 'trial', emoji: '🆓', label: 'Trial', price: 'Free',
     badge: 'bg-slate-100 text-slate-600',
@@ -313,6 +321,13 @@ const TenantList = () => {
                       {new Date(tenant.expiryDate).toLocaleDateString()}
                     </td>
                     <td className="px-8 py-5 text-right space-x-2">
+                      <Link 
+                        to={ROUTES.SUPER_ADMIN.SHOWROOM_DETAIL(tid)} 
+                        title="View Full Details" 
+                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg inline-block"
+                      >
+                        <Eye size={16} />
+                      </Link>
                       <button onClick={() => setPayModalTenant(tenant)} title="Send Payment Request" className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg"><CreditCard size={16} /></button>
                       <button onClick={() => openBotModal(tenant)} title="WhatsApp Config" className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg"><MessageSquare size={16} /></button>
                       <button onClick={() => openEditModal(tenant)} title="Manage Plan" className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"><Edit2 size={16} /></button>

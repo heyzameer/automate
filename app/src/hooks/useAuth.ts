@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { authService, LoginPayload } from '../services/auth.service';
 import toast from 'react-hot-toast';
+import { ROUTES } from '../constants/routes';
 
 export const useAuth = () => {
   const [loading, setLoading] = useState(false);
@@ -31,6 +32,12 @@ export const useAuth = () => {
     } catch (err: unknown) {
       const e = err as { response?: { data?: { message?: string } } };
       const message = e.response?.data?.message || 'Login failed. Check your credentials.';
+      
+      if (message.toLowerCase().includes('deactivated') || message.toLowerCase().includes('pending')) {
+        navigate(ROUTES.REGISTER_SUCCESS);
+        return false;
+      }
+
       setError(message);
       toast.error(message);
       return false;

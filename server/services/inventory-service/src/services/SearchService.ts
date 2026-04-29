@@ -62,6 +62,7 @@ export class SearchService {
                 document: {
                     tenantId,
                     status: vehicle.status,
+                    isDelisted: vehicle.isDelisted || false,
                     purchasePrice: vehicle.purchasePrice,
                     attributes: vehicle.attributes ? Object.fromEntries(vehicle.attributes) : {},
                     images: vehicle.images,
@@ -88,7 +89,11 @@ export class SearchService {
     async searchVehicles(tenantId: string, filters: any) {
         try {
             const client = this.esClient.getClient();
-            const must: any[] = [{ match: { tenantId } }];
+            const must: any[] = [
+                { match: { tenantId } },
+                { match: { isDelisted: false } }, // ⛔ Never show delisted cars to bot
+                { terms: { status: ['available', 'booked'] } } // 🟢 Show available and booked stock to bot
+            ];
 
             if (filters.status) must.push({ match: { status: filters.status } });
             if (filters.car_code) must.push({ match: { 'attributes.car_code': filters.car_code } });

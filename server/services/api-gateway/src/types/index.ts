@@ -33,6 +33,7 @@ export interface AppConfig {
         billing: string;
     };
     jwtSecret: string;
+    internalSecret: string;
 }
 
 export interface CustomError extends Error {

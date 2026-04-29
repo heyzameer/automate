@@ -11,7 +11,7 @@ export interface IServiceRecord {
 
 export interface IVehicleDocument extends Document {
     tenantId: string;
-    status: 'available' | 'sold' | 'reserved' | 'archived';
+    status: 'available' | 'sold' | 'reserved' | 'booked' | 'archived';
     images: string[];
     spin_images: string[]; // 360 interactive view images
     // Financials
@@ -25,6 +25,8 @@ export interface IVehicleDocument extends Document {
     insuranceExpiry?: Date;
     rcNumber?: string;
     rcExpiry?: Date;
+    isDelisted: boolean;
+    bookingDetails?: string;
     // Dynamic vehicle data (price, km, model, etc)
     attributes: Map<string, any>;
     createdBy: string;
@@ -46,7 +48,7 @@ const vehicleSchema = new Schema<IVehicleDocument>({
     },
     status: { 
         type: String, 
-        enum: ['available', 'sold', 'reserved', 'archived'], 
+        enum: ['available', 'sold', 'reserved', 'booked', 'archived'], 
         default: 'available',
         index: true
     },
@@ -65,6 +67,8 @@ const vehicleSchema = new Schema<IVehicleDocument>({
     insuranceExpiry: { type: Date },
     rcNumber: { type: String },
     rcExpiry: { type: Date },
+    isDelisted: { type: Boolean, default: false },
+    bookingDetails: { type: String },
     attributes: {
         type: Map,
         of: Schema.Types.Mixed,

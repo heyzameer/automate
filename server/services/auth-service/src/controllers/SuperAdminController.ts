@@ -15,7 +15,8 @@ import mongoose from 'mongoose';
 export class SuperAdminController {
     constructor(
         @inject('TenantRepository') private _tenantRepository: ITenantRepository,
-        @inject('SystemSettingRepository') private _systemSettingRepository: ISystemSettingRepository
+        @inject('SystemSettingRepository') private _systemSettingRepository: ISystemSettingRepository,
+        @inject('EmailService') private _emailService: any
     ) { }
 
     getSystemSettings = asyncHandler(async (req: Request, res: Response) => {
@@ -69,6 +70,32 @@ export class SuperAdminController {
         sendSuccess(res, 'Tenants retrieved successfully', tenants);
     });
 
+    getTenantById = asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
+        logger.info(`[SUPER ADMIN] Fetching tenant by ID: ${id}`);
+        const tenant = await this._tenantRepository.findById(id);
+        if (!tenant) {
+            logger.warn(`[SUPER ADMIN] Tenant not found with ID: ${id}`);
+            return res.status(404).json({ success: false, message: 'Tenant not found' });
+        }
+
+        // Fetch primary admin for this tenant to show contact info
+        const owner = await User.findOne({ 
+            tenantId: new mongoose.Types.ObjectId(id), 
+            role: UserRole.SHOWROOM_ADMIN 
+        });
+        
+        const tenantData = tenant.toJSON();
+        const responseData = {
+            ...tenantData,
+            email: owner?.email || 'N/A',
+            phone: owner?.phone || 'N/A',
+            ownerName: owner?.fullName || 'N/A'
+        };
+
+        sendSuccess(res, 'Tenant retrieved successfully', responseData);
+    });
+
     createTenant = asyncHandler(async (req: Request, res: Response) => {
         const tenantData = req.body;
         // Default expiry in 1 year
@@ -80,6 +107,67 @@ export class SuperAdminController {
         
         const tenant = await this._tenantRepository.create(tenantData);
         sendSuccess(res, 'Showroom onboarded successfully', tenant);
+    });
+
+    verifyTenant = asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const { status } = req.body;
+        
+        const tenant = await this._tenantRepository.update(id, { 
+            verificationStatus: status || 'verified'
+        });
+
+        if (!tenant) return res.status(404).json({ success: false, message: 'Tenant not found' });
+
+        // Get owner email to notify
+        const owner = await User.findOne({ 
+            tenantId: new mongoose.Types.ObjectId(id), 
+            role: UserRole.SHOWROOM_ADMIN 
+        });
+
+        // Publish event for notification service
+        const mq = await import('../utils/rabbitmq').then(m => m.getRabbitMQ());
+        await mq.publish('carbot_events', 'tenant.verified', { 
+            tenantId: id, 
+            email: owner?.email,
+            name: tenant.name 
+        });
+
+        // Send activation email ONLY if status is verified
+        if (owner && (status === 'verified' || !status)) {
+            this._emailService.sendAccountActivatedEmail(owner.email, owner.fullName).catch((err: any) => {
+                logger.error(`Activation email failed for ${owner.email}:`, err);
+            });
+        }
+
+        sendSuccess(res, 'Showroom verification status updated', tenant);
+    });
+
+    deactivateTenant = asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const { reason } = req.body;
+        const tenant = await this._tenantRepository.update(id, { 
+            isActive: false
+        });
+
+        if (!tenant) return res.status(404).json({ success: false, message: 'Tenant not found' });
+
+        // Get owner email
+        const owner = await User.findOne({ 
+            tenantId: new mongoose.Types.ObjectId(id), 
+            role: UserRole.SHOWROOM_ADMIN 
+        });
+
+        // Publish event for notification service
+        const mq = await import('../utils/rabbitmq').then(m => m.getRabbitMQ());
+        await mq.publish('carbot_events', 'tenant.deactivated', { 
+            tenantId: id, 
+            email: owner?.email,
+            name: tenant.name,
+            reason 
+        });
+
+        sendSuccess(res, 'Showroom deactivated', tenant);
     });
 
     updateTenant = asyncHandler(async (req: Request, res: Response) => {
@@ -141,7 +229,14 @@ export class SuperAdminController {
             });
         }
 
-        // 4. Flat Fields
+        // 4. Kiosk Config
+        if (updateData.kioskConfig) {
+            Object.keys(updateData.kioskConfig).forEach(key => {
+                safeUpdateData[`kioskConfig.${key}`] = updateData.kioskConfig[key];
+            });
+        }
+
+        // 5. Flat Fields
         const flatFields = ['name', 'address', 'locationUrl', 'isActive', 'plan', 'expiryDate', 'status'];
         flatFields.forEach(field => {
             if (updateData[field] !== undefined) {
@@ -361,5 +456,35 @@ export class SuperAdminController {
             systemHealth,
             securityAudit
         });
+    });
+
+    rotateTenantKioskKey = asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
+        const crypto = require('crypto');
+        const newKey = `ck_${crypto.randomBytes(24).toString('hex')}`;
+        
+        const tenant = await this._tenantRepository.update(id, { 
+            'kioskConfig.kioskKey': newKey 
+        });
+
+        if (!tenant) return res.status(404).json({ success: false, message: 'Tenant not found' });
+
+        sendSuccess(res, 'Kiosk Key rotated successfully', { kioskKey: newKey });
+    });
+
+    getUsageStats = asyncHandler(async (req: Request, res: Response) => {
+        const { tenantId, startDate, endDate, service, page, limit } = req.query;
+        const { UsageService } = await import('../services/UsageService');
+        const usageService = new UsageService();
+        
+        const stats = await usageService.getUsageStats(
+            tenantId as string, 
+            startDate as string, 
+            endDate as string,
+            service as string,
+            Number(page) || 1,
+            Number(limit) || 10
+        );
+        sendSuccess(res, 'Usage statistics retrieved', stats);
     });
 }

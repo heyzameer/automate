@@ -15,6 +15,7 @@ export const API_ENDPOINTS = {
     SETTINGS: '/super/settings',
     WA_CONFIG: '/super/wa-config',
     STATS: '/super/dashboard/stats',
+    USAGE: '/super/usage',
   },
   VEHICLES: {
     BASE: '/inventory/vehicles',
@@ -24,6 +25,8 @@ export const API_ENDPOINTS = {
     MODELS: (brandId: string) => `/inventory/brands/${brandId}/models`,
     DROPDOWN: (fieldName: string) => `/inventory/dropdown/${fieldName}`,
     UPLOAD_IMAGES: '/inventory/images/upload',
+    NEXT_CODE: '/inventory/next-car-code',
+    CHECK_CODE: (code: string) => `/inventory/vehicles/check-code/${code}`,
   },
   LEADS: {
     BASE: '/leads',

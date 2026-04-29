@@ -13,6 +13,7 @@ export interface AuthTenant {
   limits?: { maxCars?: number; maxLeads?: number };
   expiryDate: string;
   isActive: boolean;
+  verificationStatus?: 'pending' | 'verified' | 'rejected';
   [key: string]: unknown;
 }
 

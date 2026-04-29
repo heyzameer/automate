@@ -4,11 +4,12 @@ export interface Campaign {
   _id?: string;
   name: string;
   type: "whatsapp" | "email";
-  audience: "all" | "hot" | "warm" | "cold" | "new" | "customers" | "remarketing";
+  audience: "all" | "hot" | "warm" | "cold" | "new" | "customers" | "remarketing" | "custom";
   message: string;
   mediaUrl?: string;
   vehicleId?: string;
   vehicleIds?: string[];
+  targetLeadIds?: string[];
   status: "draft" | "scheduled" | "sending" | "completed" | "failed";
   scheduledAt?: string;
   stats?: {

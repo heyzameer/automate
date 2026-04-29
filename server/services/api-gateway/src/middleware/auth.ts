@@ -12,10 +12,8 @@ import { RequestUser } from '../types';
 export const authenticate = async (req: Request, res: Response, next: NextFunction) => {
     try {
         const authHeader = req.headers.authorization;
-
         if (!authHeader || !authHeader.startsWith('Bearer ')) {
-            // Some routes might be public, but we still try to decode if header present
-            return next();
+            return sendError(res, 'Authorization token required', 401);
         }
 
         const token = authHeader.split(' ')[1];

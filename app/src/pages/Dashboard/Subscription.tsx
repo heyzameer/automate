@@ -59,6 +59,7 @@ const Subscription = () => {
   const [submitting, setSubmitting] = useState(false);
   const [uploadingProof, setUploadingProof] = useState(false);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [viewProof, setViewProof] = useState<PaymentRequest | null>(null);
 
   useEffect(() => {
     const fetchAll = async () => {
@@ -275,8 +276,13 @@ const Subscription = () => {
                           <BadgeCheck size={12} /> {req.status === 'rejected' ? 'Re-upload Proof' : 'Upload Proof'}
                         </button>
                       )}
-                      {(req.status === 'paid' || req.status === 'verified') && req.screenshotUrl && (
-                        <a href={req.screenshotUrl} target="_blank" rel="noreferrer" className="text-indigo-600 text-xs font-bold underline">View Proof</a>
+                      {['paid', 'verified'].includes(req.status) && req.screenshotUrl && (
+                        <button 
+                          onClick={() => setViewProof(req)} 
+                          className="text-indigo-600 text-xs font-bold underline hover:text-indigo-800 transition-colors"
+                        >
+                          View Proof
+                        </button>
                       )}
                     </div>
                   </div>
@@ -427,6 +433,73 @@ const Subscription = () => {
                 >
                   {submitting ? <Loader2 size={16} className="animate-spin" /> : <BadgeCheck size={16} />}
                   Submit Proof
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Payment Proof Viewer Modal */}
+      {viewProof && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm">
+          <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-300">
+            <div className="bg-slate-900 p-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-lg font-black text-white">Payment Proof</h2>
+                <p className="text-xs text-slate-400 font-bold mt-0.5">Amount: ₹{viewProof.amount.toLocaleString()}</p>
+              </div>
+              <button onClick={() => setViewProof(null)} className="p-2 bg-white/10 rounded-xl text-white/70 hover:bg-white/20 transition-colors">
+                <X size={18} />
+              </button>
+            </div>
+            <div className="p-6 space-y-4">
+              <div className="rounded-2xl overflow-hidden border border-slate-100 bg-slate-50 flex items-center justify-center min-h-[200px]">
+                {viewProof.screenshotUrl?.startsWith('http') ? (
+                  <img src={viewProof.screenshotUrl} alt="Payment proof" className="w-full object-contain max-h-[400px]" />
+                ) : (
+                  <div className="p-8 text-center">
+                    <AlertCircle size={32} className="mx-auto text-slate-300 mb-2" />
+                    <p className="text-sm font-bold text-slate-400">Invalid Proof Link</p>
+                    <p className="text-[10px] text-slate-400 mt-1 truncate">{viewProof.screenshotUrl}</p>
+                  </div>
+                )}
+              </div>
+              
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Status</p>
+                  <div className="flex items-center gap-1.5">
+                    <span className={`w-2 h-2 rounded-full ${viewProof.status === 'verified' ? 'bg-emerald-500' : viewProof.status === 'paid' ? 'bg-indigo-500' : 'bg-slate-400'}`} />
+                    <span className="text-xs font-black text-slate-700 uppercase tracking-tight">{viewProof.status === 'paid' ? 'Under Review' : viewProof.status}</span>
+                  </div>
+                </div>
+                <div className="bg-slate-50 rounded-xl p-3 border border-slate-100">
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Uploaded On</p>
+                  <p className="text-xs font-black text-slate-700">{new Date(viewProof.paidAt || viewProof.createdAt).toLocaleDateString()}</p>
+                </div>
+                {viewProof.note && (
+                  <div className="col-span-2 bg-slate-50 rounded-xl p-3 border border-slate-100">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Your Note</p>
+                    <p className="text-xs font-medium text-slate-600">{viewProof.note}</p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex gap-3">
+                <a 
+                  href={viewProof.screenshotUrl} 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="flex-1 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all text-center flex items-center justify-center gap-2"
+                >
+                  <ExternalLink size={12} /> Open Original
+                </a>
+                <button 
+                  onClick={() => setViewProof(null)}
+                  className="flex-1 py-3 bg-indigo-600 text-white rounded-2xl font-bold text-xs hover:bg-indigo-700 transition-all shadow-lg shadow-indigo-100"
+                >
+                  Close Preview
                 </button>
               </div>
             </div>

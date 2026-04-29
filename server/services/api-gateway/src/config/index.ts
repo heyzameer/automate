@@ -57,6 +57,7 @@ const config: AppConfig = {
         billing: get('BILLING_SERVICE_URL', false, 'http://localhost:5008')!,
     },
     jwtSecret: get('JWT_SECRET', true, 'supersecretjwtkeyforcarbotai2024')!,
+    internalSecret: get('INTERNAL_SECRET', false, 'carbot-internal-secret-2024')!,
 };
 
 export default config;

@@ -3,13 +3,23 @@ import { logger } from './logger';
 
 const rabbitMQ = new RabbitMQService(process.env.RABBITMQ_URL || 'amqp://localhost');
 
-export const getRabbitMQ = async () => {
+let isConnecting = false;
+export const getRabbitMQ = async (): Promise<RabbitMQService> => {
+    if ((rabbitMQ as any).connection) return rabbitMQ;
+    if (isConnecting) {
+        await new Promise(res => setTimeout(res, 500));
+        return getRabbitMQ();
+    }
+
     try {
+        isConnecting = true;
         await rabbitMQ.connect();
         return rabbitMQ;
     } catch (e) {
-        logger.error('Failed to init RabbitMQ in whatsapp-bot-service', e);
+        console.error('Failed to init RabbitMQ in bot-service', e);
         return rabbitMQ;
+    } finally {
+        isConnecting = false;
     }
 };
 

@@ -4,6 +4,7 @@ export type LeadStage = 'New' | 'Contacted' | 'Test Drive' | 'Negotiation' | 'Cl
 export type LeadPriority = 'Cold' | 'Warm' | 'Hot';
 
 export interface ICallLog {
+    _id?: string;
     date: string;
     note: string;
     agent?: string;
@@ -24,6 +25,13 @@ export interface Lead {
     assignedTo?: string;
     followUpDate?: string;
     callLogs: ICallLog[];
+    historicalNames?: string[];
+    interestedVehicles?: string[];
+    historicalBookings?: {
+        carId: string;
+        date: string;
+        status: string;
+    }[];
     createdAt?: string;
     lastActivity?: string;
 }
@@ -43,6 +51,16 @@ export const leadsService = {
 
     addCallLog: async (leadId: string, note: string, agent?: string): Promise<Lead> => {
         const { data } = await api.post(`/bot/leads/${leadId}/call-log`, { note, agent });
+        return data.data;
+    },
+    
+    updateCallLog: async (leadId: string, logId: string, note: string): Promise<Lead> => {
+        const { data } = await api.put(`/bot/leads/${leadId}/call-log/${logId}`, { note });
+        return data.data;
+    },
+
+    deleteCallLog: async (leadId: string, logId: string): Promise<Lead> => {
+        const { data } = await api.delete(`/bot/leads/${leadId}/call-log/${logId}`);
         return data.data;
     },
 

@@ -2,6 +2,7 @@ import { injectable } from 'tsyringe';
 import { redisClient } from '../utils/redis';
 import { authServiceClient, inventoryServiceClient, botServiceClient } from '../utils/apiClient';
 import config from '../config';
+import { getRabbitMQ } from '../utils/rabbitmq';
 import { LeadStatus } from '@carbot/common';
 import { GeminiService } from './GeminiService';
 import { WhatsAppService } from './WhatsAppService';
@@ -31,8 +32,26 @@ export class BotService {
             const tenantRes = await authServiceClient.get(`/internal/tenants/whatsapp/${phoneNumberId}`);
             const tenant = tenantRes.data?.data;
 
-            if (!tenant) {
+            if (!tenant || !tenant.isActive) {
                 logger.warn(`Tenant not found or inactive for phone_number_id: ${phoneNumberId}`);
+                return;
+            }
+
+            // Check if Bot is active (Admin level toggle)
+            if (tenant.whatsappConfig?.isActive === false) {
+                logger.info(`Bot is administratively deactivated for tenant: ${tenant.name}`);
+                return;
+            }
+
+            // Check if Bot is enabled for this showroom (Owner level toggle)
+            if (tenant.whatsappConfig?.botEnabled === false) {
+                logger.info(`Bot is disabled for tenant: ${tenant.name}`);
+                return;
+            }
+
+            // Check if Subscription has expired
+            if (tenant.expiryDate && new Date() > new Date(tenant.expiryDate)) {
+                logger.warn(`Subscription expired for tenant: ${tenant.name}. Disabling bot responses.`);
                 return;
             }
 
@@ -44,6 +63,14 @@ export class BotService {
             }
 
             console.log(`📩 INCOMING: "${messageBody}" from ${from}`);
+
+            // Increment Bot Usage (Async)
+            getRabbitMQ().then(mq => {
+                mq.publish('carbot_events', 'usage.increment', {
+                    tenantId,
+                    service: 'bot'
+                });
+            });
 
             // 2. Get User Session from Redis (in-memory, no disk I/O)
             const sessionKey = `session:${tenantId}:${from}`;
@@ -302,7 +329,7 @@ export class BotService {
         // Score for asking questions
         await botServiceClient.post('/internal/leads/score', { tenantId: session.tenantId, phone: to, points: 10 });
 
-        const nlpResult = await this.geminiService.parseCarQuery(query);
+        const nlpResult = await this.geminiService.parseCarQuery(query, session.tenantId);
 
         if (!nlpResult || nlpResult.intent === 'greeting') return this.sendMenu(tenant, to);
 
@@ -324,7 +351,7 @@ export class BotService {
         const sf = session.context?.search_filters || {};
 
         // ✅ HTTP call to inventory-service internal API
-        const params: any = { tenantId: session.tenantId, status: 'available' };
+        const params: any = { tenantId: session.tenantId, status: 'available,booked' };
         if (sf.brand) params.brand = sf.brand;
         if (sf.model) params.model = sf.model;
         if (sf.fuel_type) params.fuel_type = sf.fuel_type;
@@ -345,7 +372,8 @@ export class BotService {
             const model = attrs.model || attrs.get?.('model') || '';
             const price = attrs.price || attrs.get?.('price') || 0;
             const code = attrs.car_code || attrs.get?.('car_code') || 'N/A';
-            r += `🚗 *${brand} ${model}*\n💰 ₹ ${Number(price).toLocaleString('en-IN')}\n🏷️ Code: *${code}*\n\n`;
+            const statusBadge = v.status === 'booked' ? ' 🔴 *[BOOKED]*' : '';
+            r += `🚗 *${brand} ${model}*${statusBadge}\n💰 ₹ ${Number(price).toLocaleString('en-IN')}\n🏷️ Code: *${code}*\n\n`;
         });
         r += `Send Code (e.g. car01) for more details!`;
         await this.whatsappService.sendTextMessage(to, r, tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);
@@ -374,6 +402,7 @@ export class BotService {
 
         // Build elegant dynamic reply
         let details = `🚗 *${brand} ${model}*`;
+        if (v.status === 'booked') details += ` 🔴 *[BOOKED]*`;
         if (price) details += `\n💰 Price: ₹ ${Number(price).toLocaleString('en-IN')}`;
         
         if (websiteLinkTemplate) {
@@ -423,7 +452,7 @@ export class BotService {
         if (!session.context) session.context = {};
 
         // Parse natural language date
-        const parsedDate = await this.geminiService.parseDateTime(input);
+        const parsedDate = await this.geminiService.parseDateTime(input, session.tenantId);
 
         // ✅ HTTP POST to bot-service internal leads endpoint
         await botServiceClient.post('/internal/leads', {
@@ -453,7 +482,7 @@ export class BotService {
         }
 
         // Parse natural language date
-        const parsedDate = await this.geminiService.parseDateTime(input);
+        const parsedDate = await this.geminiService.parseDateTime(input, session.tenantId);
 
         // ✅ HTTP PATCH to bot-service internal leads endpoint
         await botServiceClient.patch(`/internal/leads/${session.context.rescheduling_id}`, {
@@ -474,7 +503,7 @@ export class BotService {
 
     private async sendLatestVehicles(tenant: any, to: string) {
         const res = await inventoryServiceClient.get('/internal/vehicles', {
-            params: { tenantId: (tenant.id || tenant._id)?.toString(), status: 'available' }
+            params: { tenantId: (tenant.id || tenant._id)?.toString(), status: 'available,booked' }
         });
         const vs = res.data?.data || [];
 
@@ -487,7 +516,8 @@ export class BotService {
             const model = attrs.model || '';
             const price = attrs.price || 0;
             const code = attrs.car_code || 'N/A';
-            r += `• *${brand} ${model}* (₹${Number(price).toLocaleString('en-IN')}) | ID: *${code}*\n`;
+            const statusBadge = v.status === 'booked' ? ' 🔴 *[BOOKED]*' : '';
+            r += `• *${brand} ${model}*${statusBadge} (₹${Number(price).toLocaleString('en-IN')}) | ID: *${code}*\n`;
         });
         r += `\nSend the Car ID for full details!`;
         await this.whatsappService.sendTextMessage(to, r, tenant.whatsappConfig.phoneNumberId, config.whatsapp.systemToken || tenant.whatsappConfig.accessToken);

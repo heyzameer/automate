@@ -29,6 +29,12 @@ const userSchema = new Schema<IUser>(
             required: [true, 'Phone number is required'],
             unique: true,
             trim: true,
+            validate: {
+                validator: function(v: string) {
+                    return /^\+?[0-9]{10,14}$/.test(v.replace(/[\s\-]/g, ''));
+                },
+                message: (props: any) => `${props.value} is not a valid phone number!`
+            }
         },
         password: {
             type: String,

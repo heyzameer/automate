@@ -6,6 +6,7 @@ export enum UserRole {
 }
 
 export enum PlanType {
+    NONE = 'none',
     TRIAL = 'trial',
     BASIC = 'basic',
     PRO = 'pro',

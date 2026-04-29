@@ -20,6 +20,13 @@ export interface ILeadDocument extends Document {
   assignedTo?: string;
   followUpDate?: Date;
   callLogs: ICallLog[];
+  historicalNames: string[];
+  interestedVehicles: string[];
+  historicalBookings: {
+    carId: string;
+    date: string;
+    status: string;
+  }[];
   lastActivity: Date;
 }
 
@@ -43,6 +50,13 @@ const leadSchema = new Schema<ILeadDocument>({
   assignedTo: { type: String },
   followUpDate: { type: Date },
   callLogs: [callLogSchema],
+  historicalNames: { type: [String], default: [] },
+  interestedVehicles: { type: [String], default: [] },
+  historicalBookings: [{
+    carId: { type: String },
+    date: { type: String },
+    status: { type: String }
+  }],
   lastActivity: { type: Date, default: Date.now }
 }, {
   timestamps: true

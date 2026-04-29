@@ -20,15 +20,20 @@ import VehicleList from './pages/Vehicles/VehicleList';
 import AddVehicle from './pages/Vehicles/AddVehicle';
 import VehicleDetail from './pages/Vehicles/VehicleDetail';
 import TenantList from './pages/SuperAdmin/Tenants';
+import ShowroomDetail from './pages/SuperAdmin/ShowroomDetail';
 import SuperAdminDashboard from './pages/SuperAdmin/Dashboard';
 import WhatsAppConfig from './pages/SuperAdmin/WhatsAppConfig';
+import InventoryConfig from './pages/SuperAdmin/InventoryConfig';
 import SuperAdminSettings from './pages/SuperAdmin/Settings';
 import SuperAdminBilling from './pages/SuperAdmin/Billing';
 import BillingPayments from './pages/SuperAdmin/BillingPayments';
 import SuperAdminCampaigns from './pages/SuperAdmin/Campaigns';
 import SuperAdminLeads from './pages/SuperAdmin/Leads';
+import KioskConfig from './pages/SuperAdmin/KioskConfig';
+import UsageAnalytics from './pages/SuperAdmin/UsageAnalytics';
 import Subscription from './pages/Dashboard/Subscription';
 import ShowroomSettings from './pages/Dashboard/Settings';
+import RegistrationSuccess from './pages/Auth/RegistrationSuccess';
 import NotificationsPage from './pages/Notifications/NotificationsPage';
 import RealtimeNotifications from './components/Common/RealtimeNotifications';
 
@@ -44,17 +49,22 @@ function App() {
         <Route path={ROUTES.ADMIN_LOGIN} element={<AdminLogin />} />
         <Route path={ROUTES.REGISTER} element={<Register />} />
         <Route path={ROUTES.FORGOT_PASSWORD} element={<ForgotPassword />} />
+        <Route path={ROUTES.REGISTER_SUCCESS} element={<RegistrationSuccess />} />
 
         {/* Super Admin Routes */}
         <Route path={ROUTES.SUPER_ADMIN.BASE} element={<SuperAdminLayout />}>
           <Route index element={<Navigate to={ROUTES.SUPER_ADMIN.DASHBOARD} replace />} />
           <Route path="dashboard" element={<SuperAdminDashboard />} />
           <Route path="showrooms" element={<TenantList />} />
+          <Route path="showrooms/:id" element={<ShowroomDetail />} />
           <Route path="billing" element={<SuperAdminBilling />} />
           <Route path="payments" element={<BillingPayments />} />
           <Route path="campaigns" element={<SuperAdminCampaigns />} />
           <Route path="wa-config" element={<WhatsAppConfig />} />
+          <Route path="inventory-config" element={<InventoryConfig />} />
           <Route path="leads" element={<SuperAdminLeads />} />
+          <Route path="kiosk-config" element={<KioskConfig />} />
+          <Route path="usage-analytics" element={<UsageAnalytics />} />
           <Route path="settings" element={<SuperAdminSettings />} />
         </Route>
 

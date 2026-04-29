@@ -67,6 +67,18 @@ export const useVehicles = () => {
     }
   }, []);
 
+  const toggleDelist = useCallback(async (id: string): Promise<boolean> => {
+    try {
+      const updated = await vehicleService.toggleDelist(id);
+      setVehicles(prev => prev.map(v => (v._id || v.id) === id ? updated : v));
+      toast.success(updated.isDelisted ? 'Delisted from bot' : 'Listed on bot');
+      return true;
+    } catch {
+      toast.error('Failed to change visibility');
+      return false;
+    }
+  }, []);
+
   return {
     vehicles,
     loading,
@@ -75,5 +87,6 @@ export const useVehicles = () => {
     createVehicle,
     deleteVehicle,
     updateVehicle,
+    toggleDelist,
   };
 };

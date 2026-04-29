@@ -42,6 +42,9 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
     const [models, setModels] = useState<any[]>([]);
     const [files, setFiles] = useState<(File & { preview: string })[]>([]);
     const [spinFiles, setSpinFiles] = useState<(File & { preview: string })[]>([]);
+    const [existingImages, setExistingImages] = useState<string[]>([]);
+    const [existingSpinImages, setExistingSpinImages] = useState<string[]>([]);
+    const [removedImages, setRemovedImages] = useState<string[]>([]);
     const [formData, setFormData] = useState<Record<string, any>>({ service_history: [] });
     const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -49,9 +52,10 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
         const fetchConfig = async () => {
             try {
                 setLoadingConfig(true);
-                const [config, brandsList] = await Promise.all([
+                const [config, brandsList, nextCode] = await Promise.all([
                     vehicleService.getFormConfig(),
-                    vehicleService.getBrands()
+                    vehicleService.getBrands(),
+                    !isEdit ? vehicleService.getNextCode() : Promise.resolve('')
                 ]);
 
                 if (config && config.fields) {
@@ -91,8 +95,8 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                     formFields.forEach((f: any) => {
                         initial[f.name] = f.defaultValue || (f.type === 'number' ? 0 : '');
                     });
-                     // Generate a random default ID if creating new
-                    initial['car_code'] = `car${Math.floor(Math.random() * 10000).toString().padStart(3, '0')}`;
+                     // Use the fetched nextCode from backend
+                    initial['car_code'] = nextCode;
                     setFormData(initial);
                 }
                 setBrands(brandsList || []);
@@ -111,8 +115,9 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                             status: vehicle.status
                         };
                         // Ensure legacy vehicles without an ID get an auto-generated one
-                        if (!attrs.car_code) {
-                            attrs.car_code = `car${Math.floor(Math.random() * 10000).toString().padStart(3, '0')}`;
+                        // Legacy fallback (rare)
+                        if (!attrs.car_code && !isEdit) {
+                            attrs.car_code = nextCode;
                         }
                         setFormData(attrs);
                         // If vehicle has a brand, load its models too
@@ -122,6 +127,14 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                                 const modelsList = await vehicleService.getModels(selectedBrand._id);
                                 setModels(modelsList || []);
                             }
+                        }
+                        
+                        // Populate existing images
+                        if (vehicle.images && vehicle.images.length > 0) {
+                            setExistingImages(vehicle.images);
+                        }
+                        if (vehicle.spin_images && vehicle.spin_images.length > 0) {
+                            setExistingSpinImages(vehicle.spin_images);
                         }
                     }
                 }
@@ -162,6 +175,15 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
         } else {
             setFiles(files.filter(f => f.name !== name));
         }
+    };
+
+    const removeExistingImage = (url: string, isSpin = false) => {
+        if (isSpin) {
+            setExistingSpinImages(existingSpinImages.filter(u => u !== url));
+        } else {
+            setExistingImages(existingImages.filter(u => u !== url));
+        }
+        setRemovedImages(prev => [...prev, url]);
     };
 
     const [loadingModels, setLoadingModels] = useState(false);
@@ -230,6 +252,19 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
     const validateForm = () => {
         const newErrors: Record<string, string> = {};
         
+        // 0. Image Validation (Required)
+        if (!isEdit && files.length === 0) {
+            toast.error('At least one vehicle image is required');
+            newErrors['images'] = 'Image required';
+            return false;
+        }
+        
+        if (isEdit && files.length === 0 && existingImages.length === 0) {
+            toast.error('At least one vehicle image is required');
+            newErrors['images'] = 'Image required';
+            return false;
+        }
+
         const currentYear = new Date().getFullYear();
 
         // Include Car ID uniqueness error
@@ -329,6 +364,7 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                 ...formData,
                 images: imageUrls.length > 0 ? imageUrls : (isEdit ? undefined : []),
                 spin_images: spinUrls.length > 0 ? spinUrls : (isEdit ? undefined : []),
+                removedImages: isEdit ? removedImages : undefined,
             };
 
             if (isEdit && id) {
@@ -627,8 +663,22 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                             </div>
                         </div>
 
-                        {files.length > 0 && (
+                        {(files.length > 0 || existingImages.length > 0) && (
                             <div className="grid grid-cols-2 gap-3 mt-6">
+                                {existingImages.map((url, i) => (
+                                    <div key={`existing-${i}`} className="relative group rounded-2xl overflow-hidden aspect-square ring-1 ring-gray-100">
+                                        <img src={url} className="w-full h-full object-cover" alt="" />
+                                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                                            <button 
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); removeExistingImage(url); }}
+                                                className="p-2 bg-white/20 backdrop-blur-md rounded-full text-white hover:bg-white hover:text-red-600 transition-all"
+                                            >
+                                                <X className="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                    </div>
+                                ))}
                                 {files.map((file) => (
                                     <div key={file.name} className="relative group rounded-2xl overflow-hidden aspect-square ring-1 ring-gray-100">
                                         <img src={file.preview} className="w-full h-full object-cover" alt="" />
@@ -668,16 +718,34 @@ export default function AddVehicle({ isEdit = false }: AddVehicleProps) {
                             </div>
                         </div>
 
-                        {spinFiles.length > 0 && (
-                            <div className="mt-4 flex items-center justify-between p-3 bg-indigo-50 rounded-2xl border border-indigo-100">
-                                <span className="text-xs font-bold text-indigo-600">{spinFiles.length} photos ready for spin</span>
-                                <button 
-                                    type="button" 
-                                    onClick={() => setSpinFiles([])}
-                                    className="text-[10px] font-bold text-indigo-400 hover:text-indigo-600 uppercase tracking-widest"
-                                >
-                                    Clear all
-                                </button>
+                        {(spinFiles.length > 0 || existingSpinImages.length > 0) && (
+                            <div className="mt-4 flex flex-col gap-3">
+                                {existingSpinImages.length > 0 && (
+                                    <div className="flex items-center justify-between p-3 bg-white rounded-2xl border border-gray-100">
+                                        <span className="text-xs font-bold text-gray-600">{existingSpinImages.length} existing 360 images</span>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => {
+                                                existingSpinImages.forEach(url => removeExistingImage(url, true));
+                                            }}
+                                            className="text-[10px] font-bold text-rose-400 hover:text-rose-600 uppercase tracking-widest"
+                                        >
+                                            Remove all
+                                        </button>
+                                    </div>
+                                )}
+                                {spinFiles.length > 0 && (
+                                    <div className="flex items-center justify-between p-3 bg-indigo-50 rounded-2xl border border-indigo-100">
+                                        <span className="text-xs font-bold text-indigo-600">{spinFiles.length} new photos ready for spin</span>
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setSpinFiles([])}
+                                            className="text-[10px] font-bold text-indigo-400 hover:text-indigo-600 uppercase tracking-widest"
+                                        >
+                                            Clear new
+                                        </button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>

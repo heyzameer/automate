@@ -6,6 +6,7 @@ import {
 import toast from 'react-hot-toast';
 import { authService } from '../../services/auth.service';
 import { tenantService } from '../../services/tenant.service';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 // ─── Input Component ──────────────────────────────────────────────────────────
 const Field = ({
@@ -64,6 +65,8 @@ const ShowroomSettings = () => {
   const [address, setAddress] = useState('');
   const [locationUrl, setLocationUrl] = useState('');
 
+
+
   // Password fields
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -74,6 +77,13 @@ const ShowroomSettings = () => {
   // Loading states
   const [savingProfile, setSavingProfile] = useState(false);
   const [savingShowroom, setSavingShowroom] = useState(false);
+  
+  const [confirmModal, setConfirmModal] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: () => {}
+  });
   const [savingPassword, setSavingPassword] = useState(false);
 
   // Errors
@@ -147,6 +157,13 @@ const ShowroomSettings = () => {
     }
   };
 
+
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success('Copied to clipboard!');
+  };
+
   // ── Password Save ───────────────────────────────────────────────────────────
   const handleSavePassword = async () => {
     const errs: Record<string, string> = {};
@@ -184,6 +201,13 @@ const ShowroomSettings = () => {
 
   return (
     <div className="space-y-8 max-w-3xl">
+      <ConfirmModal 
+          isOpen={confirmModal.isOpen}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
       <div>
         <h1 className="text-3xl font-black text-slate-900 tracking-tight">Settings</h1>
         <p className="text-slate-500 font-medium mt-1">Manage your profile, showroom details, and account security.</p>
@@ -282,6 +306,8 @@ const ShowroomSettings = () => {
           </button>
         </div>
       </Section>
+
+
 
       {/* ── Change Password ── */}
       <Section

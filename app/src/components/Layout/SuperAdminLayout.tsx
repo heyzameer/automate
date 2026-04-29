@@ -11,6 +11,8 @@ import {
     Menu,
     ChevronRight,
     CreditCard,
+    Monitor,
+    BarChart3
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '../../lib/utils';
@@ -143,6 +145,15 @@ export default function SuperAdminLayout() {
                         </div>
                         <SidebarLink to={ROUTES.SUPER_ADMIN.WA_CONFIG} icon={MessageSquare} onClick={() => setSidebarOpen(false)}>
                             WA API Config
+                        </SidebarLink>
+                        <SidebarLink to={ROUTES.SUPER_ADMIN.INVENTORY_CONFIG} icon={ShieldCheck} onClick={() => setSidebarOpen(false)}>
+                            Inventory Form
+                        </SidebarLink>
+                        <SidebarLink to={ROUTES.SUPER_ADMIN.KIOSK_CONFIG} icon={Monitor} onClick={() => setSidebarOpen(false)}>
+                            Kiosk Config
+                        </SidebarLink>
+                        <SidebarLink to={ROUTES.SUPER_ADMIN.USAGE_ANALYTICS} icon={BarChart3} onClick={() => setSidebarOpen(false)}>
+                            Usage Analytics
                         </SidebarLink>
 
                         <div className="px-4 mt-6 mb-2 py-2 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">

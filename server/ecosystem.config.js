@@ -35,12 +35,6 @@ module.exports = {
       script: 'dist/main.js',
       cwd: './services/notification-service',
       env: { NODE_ENV: 'production' }
-    },
-    {
-      name: 'campaign-service',
-      script: 'dist/main.js',
-      cwd: './services/campaign-service',
-      env: { NODE_ENV: 'production' }
     }
   ]
 };

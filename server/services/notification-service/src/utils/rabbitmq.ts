@@ -11,7 +11,7 @@ export const initRabbitMQ = async () => {
         logger.info('Notification Service attached to RabbitMQ');
 
         // Start Consumers
-        await rabbitMQ.consume('carbot_events', 'notification_queue', ['notification.*'], async (msg) => {
+        await rabbitMQ.consume('carbot_events', 'notification_queue', ['notification.*', 'tenant.*'], async (msg) => {
             const { event, payload } = msg;
             logger.info(`Received notification event ${event} from queue`);
             

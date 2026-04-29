@@ -81,6 +81,46 @@ export class LeadController {
         }
     }
 
+    updateCallLog = async (req: Request, res: Response) => {
+        try {
+            const { leadId, logId } = req.params;
+            const { note } = req.body;
+
+            const lead = await Lead.findById(leadId);
+            if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+
+            const log = (lead.callLogs as any).id(logId);
+            if (!log) return res.status(404).json({ success: false, message: 'Log entry not found' });
+
+            log.note = note;
+            lead.lastActivity = new Date();
+            
+            await lead.save();
+            res.status(200).json({ success: true, data: lead });
+        } catch (error) {
+            logger.error('Error updating call log:', error);
+            res.status(500).json({ success: false, message: 'Failed to update call log' });
+        }
+    }
+
+    deleteCallLog = async (req: Request, res: Response) => {
+        try {
+            const { leadId, logId } = req.params;
+
+            const lead = await Lead.findById(leadId);
+            if (!lead) return res.status(404).json({ success: false, message: 'Lead not found' });
+
+            (lead.callLogs as any).pull({ _id: logId });
+            lead.lastActivity = new Date();
+
+            await lead.save();
+            res.status(200).json({ success: true, data: lead });
+        } catch (error) {
+            logger.error('Error deleting call log:', error);
+            res.status(500).json({ success: false, message: 'Failed to delete call log' });
+        }
+    }
+
     capturePublicLead = async (req: Request, res: Response) => {
         try {
             const { tenantId, phone, name, source, vehicleId, note } = req.body;

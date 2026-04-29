@@ -33,8 +33,8 @@ export class FormConfigService {
         const fieldIndex = config.fields.findIndex(f => f.name === fieldName);
         if (fieldIndex === -1) throw new Error(`Field '${fieldName}' not found`);
 
-        // Update field
-        config.fields[fieldIndex] = { ...config.fields[fieldIndex], ...updates };
+        // Use Mongoose subdocument set method
+        (config.fields[fieldIndex] as any).set(updates);
         config.version += 1;
         config.lastUpdatedBy = adminId;
 
@@ -45,5 +45,25 @@ export class FormConfigService {
 
     async updateFieldOptions(fieldName: string, options: string[], adminId: string) {
         return this.updateField(fieldName, { options }, adminId);
+    }
+
+    async deleteField(fieldName: string, adminId: string) {
+        const config = await this.getLatestConfig();
+        if (!config) throw new Error('Form configuration not found');
+
+        const field = config.fields.find(f => f.name === fieldName);
+        if (!field) {
+            throw new Error(`Field '${fieldName}' not found`);
+        }
+
+        // Use Mongoose array pull method
+        (config.fields as any).pull({ _id: (field as any)._id });
+
+        config.version += 1;
+        config.lastUpdatedBy = adminId;
+
+        await config.save();
+        logger.info(`Admin ${adminId} deleted field: ${fieldName}`);
+        return config;
     }
 }

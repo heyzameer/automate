@@ -16,23 +16,28 @@ import {
     Car,
     Trash2,
     Edit,
-    RotateCcw
+    RotateCcw,
+    TrendingUp
 } from 'lucide-react';
 import { campaignsService, Campaign } from '../../services/campaigns.service';
 import { vehicleService, Vehicle } from '../../services/vehicle.service';
+import { leadsService, Lead } from '../../services/leads.service';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
 
 const AUDIENCES = [
-    { id: 'all', name: 'All Leads', icon: Users, color: 'bg-blue-500' },
-    { id: 'hot', name: 'Hot Leads', icon: CheckCircle2, color: 'bg-emerald-500' },
-    { id: 'cold', name: 'Cold Leads', icon: AlertCircle, color: 'bg-rose-500' },
-    { id: 'customers', name: 'Old Customers', icon: Users, color: 'bg-indigo-500' },
+    { id: 'all', name: 'All Leads', icon: Users, color: 'bg-blue-500', description: 'Broadcast to everyone' },
+    { id: 'hot', name: 'Hot Leads', icon: CheckCircle2, color: 'bg-emerald-500', description: 'High intent buyers' },
+    { id: 'warm', name: 'Warm Leads', icon: TrendingUp, color: 'bg-amber-500', description: 'Interested leads' },
+    { id: 'cold', name: 'Cold Leads', icon: AlertCircle, color: 'bg-rose-500', description: 'Nurture candidates' },
+    { id: 'customers', name: 'Old Customers', icon: Users, color: 'bg-indigo-500', description: 'Past buyers' },
+    { id: 'custom', name: 'Specific Leads', icon: Filter, color: 'bg-slate-700', description: 'Hand-picked targets' },
 ];
 
 export default function Campaigns() {
     const [campaigns, setCampaigns] = useState<Campaign[]>([]);
     const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+    const [leads, setLeads] = useState<Lead[]>([]);
     const [loading, setLoading] = useState(true);
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [executingId, setExecutingId] = useState<string | null>(null);
@@ -45,12 +50,23 @@ export default function Campaigns() {
         audience: 'all',
         message: '',
         vehicleIds: [],
+        targetLeadIds: [],
     });
 
     useEffect(() => {
         fetchCampaigns();
         fetchVehicles();
+        fetchLeads();
     }, []);
+
+    const fetchLeads = async () => {
+        try {
+            const data = await leadsService.getLeads();
+            setLeads(data);
+        } catch (error) {
+            console.error("Lead load error", error);
+        }
+    };
 
     const fetchCampaigns = async () => {
         try {
@@ -72,23 +88,40 @@ export default function Campaigns() {
         }
     };
 
+    const toggleLeadSelection = (id: string) => {
+        setNewCampaign(prev => {
+            const current = prev.targetLeadIds || [];
+            if (current.includes(id)) {
+                return { ...prev, targetLeadIds: current.filter(lId => lId !== id) };
+            } else {
+                return { ...prev, targetLeadIds: [...current, id] };
+            }
+        });
+    };
+
     const handleCreateOrUpdate = async (e: React.FormEvent) => {
         e.preventDefault();
         try {
+            // Clean up targetLeadIds if audience is not custom
+            const campaignData = { ...newCampaign };
+            if (campaignData.audience !== 'custom') {
+                campaignData.targetLeadIds = [];
+            }
+
             // Automatically append vehicle details to message if cars are selected
-            let finalMessage = newCampaign.message;
-            if (newCampaign.vehicleIds && newCampaign.vehicleIds.length > 0 && !editingId) {
-                const selectedCars = vehicles.filter(v => newCampaign.vehicleIds?.includes(v._id!));
+            let finalMessage = campaignData.message || '';
+            if (campaignData.vehicleIds && campaignData.vehicleIds.length > 0 && !editingId) {
+                const selectedCars = vehicles.filter(v => campaignData.vehicleIds?.includes(v._id!));
                 const carText = selectedCars.map(v => `\n- ${v.attributes.brand} ${v.attributes.model} (₹${Number(v.attributes.price).toLocaleString()})`).join('');
                 finalMessage += `\n\nFeatured Vehicles:${carText}`;
             }
 
             if (editingId) {
-                await campaignsService.updateCampaign(editingId, newCampaign);
+                await campaignsService.updateCampaign(editingId, { ...campaignData, message: finalMessage });
                 toast.success("Campaign updated");
             } else {
                 await campaignsService.createCampaign({
-                    ...newCampaign,
+                    ...campaignData,
                     message: finalMessage
                 });
                 toast.success("Campaign created as draft");
@@ -96,7 +129,7 @@ export default function Campaigns() {
             
             setIsCreateModalOpen(false);
             setEditingId(null);
-            setNewCampaign({ name: '', type: 'whatsapp', audience: 'all', message: '', vehicleIds: [] });
+            setNewCampaign({ name: '', type: 'whatsapp', audience: 'all', message: '', vehicleIds: [], targetLeadIds: [] });
             fetchCampaigns();
         } catch (error) {
             toast.error(editingId ? "Failed to update campaign" : "Failed to create campaign");
@@ -322,85 +355,151 @@ export default function Campaigns() {
             {/* Create/Edit Modal */}
             {isCreateModalOpen && (
                 <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-slate-900/60 backdrop-blur-sm">
-                    <div className="bg-white rounded-[3.5rem] w-full max-w-4xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
+                    <div className="bg-white rounded-[3.5rem] w-full max-w-5xl overflow-hidden shadow-2xl animate-in zoom-in-95 duration-300 flex flex-col max-h-[90vh]">
                         <div className="p-10 border-b border-slate-50 flex items-center justify-between flex-shrink-0">
                             <div>
                                 <h3 className="text-3xl font-black text-slate-900">{editingId ? 'Edit Campaign' : 'New Campaign'}</h3>
-                                <p className="text-slate-400 font-medium">{editingId ? 'Refine your message and audience.' : 'Draft a message and select cars to feature.'}</p>
+                                <p className="text-slate-400 font-medium">Broadcast a personalized message to your leads.</p>
                             </div>
-                            <button onClick={() => { setIsCreateModalOpen(false); setEditingId(null); }} className="p-3 hover:bg-slate-100 rounded-2xl text-slate-400">
+                            <button onClick={() => { setIsCreateModalOpen(false); setEditingId(null); }} className="p-3 hover:bg-slate-100 rounded-2xl text-slate-400 transition-all">
                                 <X size={24} />
                             </button>
                         </div>
                         
-                        <div className="flex-1 overflow-y-auto p-10 space-y-10 custom-scrollbar">
-                            <div className="grid grid-cols-2 gap-10">
-                                <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Campaign Details</label>
+                        <div className="flex-1 overflow-y-auto p-10 space-y-12 custom-scrollbar">
+                            {/* Step 1: Name & Content */}
+                            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+                                <div className="space-y-6">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                        Campaign Identity
+                                    </label>
                                     <input 
                                         type="text" 
-                                        placeholder="Campaign Name (e.g. June SUV Bonanza)"
-                                        className="w-full px-8 py-5 bg-slate-50 rounded-2xl font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-50 transition-all border-none"
+                                        placeholder="Campaign Name (e.g. SUV Weekend Sale)"
+                                        className="w-full px-8 py-5 bg-slate-50 rounded-2xl font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-50 transition-all border border-slate-100"
                                         value={newCampaign.name}
                                         onChange={(e) => setNewCampaign({...newCampaign, name: e.target.value})}
                                     />
-                                    <select 
-                                        className="w-full px-8 py-5 bg-slate-50 rounded-2xl font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-50 transition-all border-none"
-                                        value={newCampaign.audience}
-                                        onChange={(e) => setNewCampaign({...newCampaign, audience: e.target.value as any})}
-                                    >
-                                        <option value="all">Broadcast to All leads</option>
-                                        <option value="hot">Focus on Hot leads</option>
-                                        <option value="customers">Remarket to Past Customers</option>
-                                    </select>
                                 </div>
 
-                                <div className="space-y-4">
-                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Personalized Message</label>
+                                <div className="space-y-6">
+                                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                        <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                        Personalized Message
+                                    </label>
                                     <div className="relative">
                                         <textarea 
-                                            rows={5}
-                                            placeholder="Hi {name}, hope you are doing well! We have some amazing vehicles in stock..."
-                                            className="w-full px-8 py-5 bg-slate-50 rounded-[2rem] font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-50 transition-all border-none resize-none"
+                                            rows={3}
+                                            placeholder="Hi {name}, we've got some new arrivals..."
+                                            className="w-full px-8 py-5 bg-slate-50 rounded-2xl font-bold text-slate-900 outline-none focus:ring-4 focus:ring-indigo-50 transition-all border border-slate-100 resize-none"
                                             value={newCampaign.message}
                                             onChange={(e) => setNewCampaign({...newCampaign, message: e.target.value})}
                                         />
-                                        <div className="absolute top-4 right-4 text-[10px] font-black text-indigo-400 bg-white px-3 py-1 rounded-full shadow-sm">
-                                            {`{name}`} Friendly
+                                        <div className="absolute top-4 right-4 text-[10px] font-black text-indigo-400 bg-white px-3 py-1 rounded-full shadow-sm border border-indigo-50">
+                                            {`{name}`} Dynamic
                                         </div>
                                     </div>
                                 </div>
                             </div>
 
-                            {/* Multi-Car Selector */}
+                            {/* Step 2: Audience Selection */}
+                            <div className="space-y-6">
+                                <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                    <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                    Target Audience
+                                </label>
+                                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+                                    {AUDIENCES.map((aud) => (
+                                        <div 
+                                            key={aud.id}
+                                            onClick={() => setNewCampaign({...newCampaign, audience: aud.id as any})}
+                                            className={`p-6 rounded-[2rem] border-2 transition-all cursor-pointer text-center space-y-3 ${
+                                                newCampaign.audience === aud.id 
+                                                ? 'border-indigo-600 bg-indigo-50 shadow-lg shadow-indigo-100 ring-4 ring-indigo-50' 
+                                                : 'border-slate-100 hover:border-indigo-200 bg-white'
+                                            }`}
+                                        >
+                                            <div className={`w-12 h-12 rounded-2xl ${aud.color} text-white flex items-center justify-center mx-auto shadow-lg`}>
+                                                <aud.icon size={20} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black uppercase tracking-tight text-slate-900">{aud.name}</p>
+                                                <p className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">{aud.description}</p>
+                                            </div>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+
+                            {/* Conditional: Lead Selector for 'custom' audience */}
+                            {newCampaign.audience === 'custom' && (
+                                <div className="space-y-6 bg-slate-50 p-8 rounded-[3rem] border border-slate-200/60 animate-in fade-in slide-in-from-top-4 duration-500">
+                                    <div className="flex items-center justify-between mb-2">
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-600">Choose Specific Leads ({newCampaign.targetLeadIds?.length || 0} selected)</label>
+                                        <div className="relative">
+                                             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                                             <input type="text" placeholder="Search leads..." className="pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold outline-none focus:ring-2 focus:ring-indigo-500/20" />
+                                        </div>
+                                    </div>
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-3 max-h-64 overflow-y-auto pr-2 custom-scrollbar">
+                                        {leads.map(lead => (
+                                            <div 
+                                                key={lead._id || lead.id}
+                                                onClick={() => toggleLeadSelection(lead._id || lead.id)}
+                                                className={`p-4 rounded-2xl border-2 transition-all cursor-pointer flex items-center gap-3 ${
+                                                    newCampaign.targetLeadIds?.includes(lead._id || lead.id)
+                                                    ? 'border-indigo-600 bg-white shadow-md'
+                                                    : 'border-white bg-white/50 hover:bg-white hover:border-slate-200'
+                                                }`}
+                                            >
+                                                <div className={`w-2 h-2 rounded-full ${
+                                                    lead.priority === 'Hot' ? 'bg-emerald-500' :
+                                                    lead.priority === 'Warm' ? 'bg-amber-500' : 'bg-slate-300'
+                                                }`} />
+                                                <div className="min-w-0">
+                                                    <p className="text-[10px] font-black text-slate-900 truncate uppercase">{lead.name || 'Unknown'}</p>
+                                                    <p className="text-[8px] font-bold text-slate-400">{lead.phone}</p>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Step 3: Vehicle Selector (Optional) */}
                             {!editingId && (
                                 <div className="space-y-6">
                                     <div className="flex items-center justify-between">
-                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Select Vehicles to Feature ({newCampaign.vehicleIds?.length || 0})</label>
-                                        <span className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full">Optional</span>
+                                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-400 flex items-center gap-2">
+                                            <div className="w-1.5 h-1.5 rounded-full bg-indigo-500"></div>
+                                            Featured Vehicles (Optional)
+                                        </label>
+                                        <span className="text-[8px] font-black text-indigo-600 bg-indigo-50 px-3 py-1 rounded-full uppercase tracking-widest border border-indigo-100">
+                                            {newCampaign.vehicleIds?.length || 0} Cars Linked
+                                        </span>
                                     </div>
                                     
-                                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                         {vehicles.map(v => (
                                             <div 
                                                 key={v._id}
                                                 onClick={() => toggleVehicleSelection(v._id!)}
-                                                className={`p-4 rounded-3xl border-2 transition-all cursor-pointer flex items-center gap-4 ${
+                                                className={`p-4 rounded-[1.5rem] border-2 transition-all cursor-pointer flex items-center gap-4 ${
                                                     newCampaign.vehicleIds?.includes(v._id!) 
-                                                    ? 'border-indigo-600 bg-indigo-50' 
-                                                    : 'border-slate-100 hover:border-indigo-200'
+                                                    ? 'border-indigo-600 bg-indigo-50 shadow-lg shadow-indigo-100/20' 
+                                                    : 'border-slate-100 hover:border-indigo-200 bg-white'
                                                 }`}
                                             >
-                                                <div className="w-12 h-12 rounded-2xl bg-white border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0">
-                                                    {v.images?.[0] ? <img src={v.images[0]} className="w-full h-full object-cover" /> : <Car size={20} className="text-slate-300" />}
+                                                <div className="w-12 h-12 rounded-xl bg-white border border-slate-100 flex items-center justify-center overflow-hidden flex-shrink-0">
+                                                    {v.images?.[0] ? <img src={v.images[0]} className="w-full h-full object-cover" /> : <Car size={18} className="text-slate-200" />}
                                                 </div>
                                                 <div className="min-w-0">
-                                                    <p className="text-xs font-black text-slate-900 truncate">{v.attributes.brand} {v.attributes.model}</p>
-                                                    <p className="text-[10px] font-bold text-slate-400">₹{Number(v.attributes.price).toLocaleString()}</p>
+                                                    <p className="text-[10px] font-black text-slate-900 truncate uppercase">{v.attributes.brand} {v.attributes.model}</p>
+                                                    <p className="text-[8px] font-bold text-slate-400">₹{Number(v.attributes.price).toLocaleString()}</p>
                                                 </div>
                                             </div>
                                         ))}
-                                        {vehicles.length === 0 && <p className="text-slate-400 text-xs italic">No vehicles available to select.</p>}
                                     </div>
                                 </div>
                             )}
@@ -409,15 +508,15 @@ export default function Campaigns() {
                         <div className="p-10 border-t border-slate-50 bg-slate-50/50 flex gap-6 flex-shrink-0">
                             <button 
                                 onClick={() => { setIsCreateModalOpen(false); setEditingId(null); }}
-                                className="flex-1 py-5 rounded-2xl font-black text-xs uppercase tracking-widest text-slate-400 hover:bg-slate-100 transition-all text-center"
+                                className="flex-1 py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest text-slate-400 hover:bg-slate-100 transition-all text-center border border-transparent hover:border-slate-200"
                             >
-                                Cancel
+                                Abandon Draft
                             </button>
                             <button 
                                 onClick={handleCreateOrUpdate}
-                                className="flex-[2] bg-indigo-600 text-white py-5 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
+                                className="flex-[2] bg-indigo-600 text-white py-5 rounded-2xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-200 active:scale-[0.98]"
                             >
-                                {editingId ? 'Save Changes' : 'Create & Save Draft'}
+                                {editingId ? 'Apply Updates' : 'Launch & Save Draft'}
                             </button>
                         </div>
                     </div>

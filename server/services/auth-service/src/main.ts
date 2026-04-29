@@ -97,6 +97,10 @@ class Application {
                 logger.info(`API available at http://localhost:${config.port}/api/v1`);
             });
 
+            // Initialize event consumers
+            const { initUsageConsumer } = await import('./events/UsageConsumer');
+            await initUsageConsumer();
+
             // Graceful shutdown handlers
             this._setupGracefulShutdown();
 

@@ -3,6 +3,7 @@ import { injectable } from 'tsyringe';
 import config from '../config';
 import { logger } from '../utils/logger';
 import { authServiceClient } from '../utils/apiClient';
+import { getRabbitMQ } from '../utils/rabbitmq';
 
 @injectable()
 export class GeminiService {
@@ -42,7 +43,7 @@ export class GeminiService {
         return this.ai!;
     }
 
-    async parseCarQuery(userMessage: string) {
+    async parseCarQuery(userMessage: string, tenantId?: string) {
         try {
             const aiInstance = await this.getAiInstance();
             const prompt = `
@@ -69,6 +70,16 @@ export class GeminiService {
             });
 
             const text = response.text?.trim().replace(/```json|```/g, '') || '{}'; 
+            
+            if (tenantId) {
+                getRabbitMQ().then(mq => {
+                    mq.publish('carbot_events', 'usage.increment', {
+                        tenantId,
+                        service: 'gemini'
+                    });
+                }).catch(e => logger.error('Usage track fail', e));
+            }
+
             return JSON.parse(text);
         } catch (error) {
             logger.error('Error parsing car query with Gemini 3:', error);
@@ -76,7 +87,7 @@ export class GeminiService {
         }
     }
 
-    async parseDateTime(userMessage: string) {
+    async parseDateTime(userMessage: string, tenantId?: string) {
         try {
             const aiInstance = await this.getAiInstance();
             const now = new Date();
@@ -100,6 +111,15 @@ export class GeminiService {
                 model: "gemini-3-flash-preview",
                 contents: prompt,
             });
+
+            if (tenantId) {
+                getRabbitMQ().then(mq => {
+                    mq.publish('carbot_events', 'usage.increment', {
+                        tenantId,
+                        service: 'gemini'
+                    });
+                }).catch(e => logger.error('Usage track fail', e));
+            }
 
             return response.text?.trim() || userMessage;
         } catch (error) {

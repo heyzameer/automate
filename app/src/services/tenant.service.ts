@@ -19,6 +19,15 @@ export const tenantService = {
     return data.data;
   },
 
+  getTenantById: async (id: string): Promise<Tenant> => {
+    const { data } = await api.get<ApiResponse<Tenant>>(API_ENDPOINTS.SUPER.TENANT_BY_ID(id));
+    return data.data;
+  },
+
+  verifyTenant: async (id: string, status: 'verified' | 'pending'): Promise<void> => {
+    await api.post(`${API_ENDPOINTS.SUPER.TENANTS}/${id}/verify`, { status });
+  },
+
   updateTenantPlan: async (id: string, payload: Partial<TenantPayload>): Promise<void> => {
     await api.patch(API_ENDPOINTS.SUPER.TENANT_BY_ID(id), payload);
   },
@@ -42,5 +51,15 @@ export const tenantService = {
 
   updateMyTenant: async (payload: Partial<Tenant>): Promise<void> => {
     await api.patch(API_ENDPOINTS.AUTH.MY_TENANT, payload);
+  },
+  
+  rotateKioskKey: async (): Promise<string> => {
+    const { data } = await api.post<ApiResponse<{ kioskKey: string }>>('/auth/my-tenant/kiosk/rotate');
+    return data.data.kioskKey;
+  },
+
+  rotateTenantKioskKey: async (id: string): Promise<string> => {
+    const { data } = await api.post<ApiResponse<{ kioskKey: string }>>(`/super/tenants/${id}/rotate-kiosk-key`);
+    return data.data.kioskKey;
   }
 };

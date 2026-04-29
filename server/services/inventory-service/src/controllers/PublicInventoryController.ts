@@ -19,7 +19,7 @@ export class PublicInventoryController {
 
             const vehicles = await this.inventoryService.getVehicles(tenantId, {
                 ...req.query,
-                status: 'available' // Public only sees available stock
+                status: { $in: ['available', 'booked'] } // Public sees available and booked stock
             });
             return sendSuccess(res, 'Inventory fetched', { vehicles });
         } catch (error: any) {
@@ -59,7 +59,7 @@ export class PublicInventoryController {
             // Find by attributes.car_code
             const vehicles = await this.inventoryService.getVehicles(tenantId, {
                 car_code: code,
-                status: 'available'
+                status: { $in: ['available', 'booked'] }
             });
             
             const vehicle = vehicles[0];

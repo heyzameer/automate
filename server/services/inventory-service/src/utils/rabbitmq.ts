@@ -5,7 +5,7 @@ const rabbitMQ = new RabbitMQService(process.env.RABBITMQ_URL || 'amqp://localho
 import { container } from 'tsyringe';
 import { SearchService } from '../services/SearchService';
 
-export const getRabbitMQ = async () => {
+export const getRabbitMQ = async (): Promise<RabbitMQService> => {
     try {
         await rabbitMQ.connect();
 

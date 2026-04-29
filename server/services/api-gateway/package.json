@@ -17,6 +17,7 @@
     },
     "dependencies": {
         "@carbot/common": "workspace:*",
+        "axios": "^1.15.2",
         "chalk": "^4.1.2",
         "compression": "^1.7.4",
         "cookie-parser": "^1.4.7",

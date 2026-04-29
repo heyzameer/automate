@@ -30,7 +30,28 @@ router.get('/vehicles', async (req, res) => {
         }
 
         const searchService = container.resolve(SearchService);
-        const vehicles = await searchService.searchVehicles(tenantId, req.query);
+        let vehicles = await searchService.searchVehicles(tenantId, req.query);
+        
+        // MongoDB Fallback if Elasticsearch is empty or out of sync
+        if (!vehicles || vehicles.length === 0) {
+            const query: any = { 
+                tenantId, 
+                status: 'available', 
+                isDelisted: false 
+            };
+            if (req.query.car_code) query['attributes.car_code'] = req.query.car_code;
+            if (req.query.brand) query['attributes.brand'] = new RegExp(req.query.brand as string, 'i');
+            
+            const mongoVehicles = await vehicleRepository.find(query);
+            vehicles = mongoVehicles.map(v => {
+                const obj = (v as any).toObject ? (v as any).toObject() : { ...v };
+                // Convert Map to plain object for the bot
+                if (v.attributes && typeof v.attributes.get === 'function') {
+                    obj.attributes = Object.fromEntries(v.attributes);
+                }
+                return obj;
+            });
+        }
         
         // Ensure max 5 returned via limit
         res.json({ success: true, data: vehicles.slice(0, 5) });

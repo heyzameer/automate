@@ -15,6 +15,9 @@ const campaignController = container.resolve(CampaignController);
 router.use(authenticate);
 router.use(superAuth);
 
+// Tenant Management - GET BY ID must be early to avoid conflicts
+router.get(AUTH_ROUTES.SUPER_ADMIN.TENANT_BY_ID, superAdminController.getTenantById);
+
 // Bot Assignment & Control — PRIORITY ROUTES
 router.patch('/tenants/:id/bot-status', (req: Request, res: Response, next: NextFunction) => {
     logger.info(`[ROUTER HIT] PATCH /tenants/${req.params.id}/bot-status`);
@@ -22,6 +25,10 @@ router.patch('/tenants/:id/bot-status', (req: Request, res: Response, next: Next
 }, superAdminController.toggleBotStatus);
 
 router.post('/tenants/:id/assign-bot', superAdminController.assignBot);
+router.post('/tenants/:id/verify', superAdminController.verifyTenant);
+router.post('/tenants/:id/deactivate', superAdminController.deactivateTenant);
+router.post('/tenants/:id/rotate-kiosk-key', superAdminController.rotateTenantKioskKey);
+router.get('/usage', superAdminController.getUsageStats);
 
 // Tenant Management
 router.get(AUTH_ROUTES.SUPER_ADMIN.TENANTS, superAdminController.getTenants);

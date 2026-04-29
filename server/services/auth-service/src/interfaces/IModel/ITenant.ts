@@ -16,6 +16,12 @@ export interface IWhatsAppConfig {
     websiteLinkTemplate?: string;
 }
 
+export interface IKioskConfig {
+    kioskKey?: string;
+    isActive: boolean;
+    allowedDomains: string[];
+}
+
 export interface IPlanLimits {
     maxCars: number;
     maxLeads: number;
@@ -52,6 +58,7 @@ export interface ITenant extends Document {
     slug: string;
     plan: PlanType;
     isActive: boolean;
+    verificationStatus: 'pending' | 'verified' | 'rejected';
     expiryDate: Date;
     whatsappConfig: IWhatsAppConfig;
     limits: IPlanLimits;
@@ -60,6 +67,7 @@ export interface ITenant extends Document {
     locationUrl?: string;
     paymentNotes?: string;
     paymentRequests: IPaymentRequest[];
+    kioskConfig: IKioskConfig;
     createdAt: Date;
     updatedAt: Date;
 }

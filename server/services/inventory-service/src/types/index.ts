@@ -1,8 +1,8 @@
 export enum UserRole {
+    SUPER_ADMIN = 'super_admin',
+    SHOWROOM_ADMIN = 'showroom_admin',
+    SHOWROOM_STAFF = 'showroom_staff',
     CUSTOMER = 'customer',
-    PARTNER = 'partner',
-    ADMIN = 'admin',
-    SUPER_ADMIN = 'super_admin'
 }
 
 export interface DatabaseConfig {

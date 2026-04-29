@@ -32,6 +32,7 @@ import toast from 'react-hot-toast';
 import { format, differenceInDays } from 'date-fns';
 import { cn } from '../../lib/utils';
 import SpinViewer from '../../components/Vehicles/SpinViewer';
+import { ConfirmModal } from '../../components/ui/ConfirmModal';
 
 export default function VehicleDetail() {
     const { id } = useParams<{ id: string }>();
@@ -43,6 +44,8 @@ export default function VehicleDetail() {
     const [selectedImageIndex, setSelectedImageIndex] = useState(0);
     const [is360Active, setIs360Active] = useState(false);
     const [showFullscreen, setShowFullscreen] = useState(false);
+    const [deleteModalOpen, setDeleteModalOpen] = useState(false);
+    const [isBookModalOpen, setIsBookModalOpen] = useState(false);
 
     const fetchVehicleData = async () => {
         if (!id) return;
@@ -74,12 +77,21 @@ export default function VehicleDetail() {
         return () => window.removeEventListener('keydown', handleEsc);
     }, []);
 
-    const handleStatusUpdate = async (newStatus: Vehicle['status']) => {
+    const handleStatusUpdate = async (newStatus: Vehicle['status'], details?: string) => {
         if (!id || !vehicle) return;
         try {
             setActionLoading(true);
-            await vehicleService.update(id, { status: newStatus } as any);
+            const payload: any = { status: newStatus };
+            
+            if (details !== undefined) {
+                payload.bookingDetails = details;
+            } else if (newStatus !== 'booked') {
+                payload.bookingDetails = ''; // Clear if not booked
+            }
+
+            await vehicleService.update(id, payload);
             toast.success(`Vehicle marked as ${newStatus}`);
+            setIsBookModalOpen(false);
             await fetchVehicleData();
         } catch (error: any) {
             console.error('Status update failed:', error);
@@ -112,9 +124,12 @@ export default function VehicleDetail() {
         }
     };
 
-    const handleDelete = async () => {
+    const handleDeleteClick = () => {
+        setDeleteModalOpen(true);
+    };
+
+    const confirmDelete = async () => {
         if (!id) return;
-        if (!window.confirm('Are you sure you want to delete this listing? This action cannot be undone.')) return;
 
         try {
             setActionLoading(true);
@@ -123,10 +138,10 @@ export default function VehicleDetail() {
             navigate(ROUTES.VEHICLES.BASE);
         } catch (error) {
             toast.error('Failed to delete listing');
-        } finally {
             setActionLoading(false);
         }
     };
+
 
     const handleShare = () => {
         if (navigator.share) {
@@ -151,6 +166,21 @@ export default function VehicleDetail() {
     }
 
     if (!vehicle) return null;
+
+    const handleToggleDelist = async () => {
+        if (!id || !vehicle) return;
+        try {
+            setActionLoading(true);
+            await vehicleService.toggleDelist(id);
+            toast.success(`Vehicle ${vehicle.isDelisted ? 'listed on' : 'hidden from'} bot`);
+            await fetchVehicleData();
+        } catch (error: any) {
+            console.error('Delist toggle failed:', error);
+            toast.error('Failed to update bot visibility');
+        } finally {
+            setActionLoading(false);
+        }
+    };
 
     // Helper to get attribute safely
     const attr = (key: string) => vehicle.attributes?.[key];
@@ -179,15 +209,15 @@ export default function VehicleDetail() {
     const daysInStock = differenceInDays(new Date(), new Date(vehicle.createdAt || new Date()));
     const insuranceExpiry = vehicle.insuranceExpiry ? new Date(vehicle.insuranceExpiry) : null;
     const isInsuranceExpired = insuranceExpiry ? insuranceExpiry < new Date() : false;
+    const insuranceDaysLeft = insuranceExpiry ? differenceInDays(insuranceExpiry, new Date()) : null;
 
-    // List of keys already displayed in the main section to avoid redundancy
+    const rcExpiry = vehicle.rcExpiry ? new Date(vehicle.rcExpiry) : null;
+    const isRCExpired = rcExpiry ? rcExpiry < new Date() : false;
+    const rcDaysLeft = rcExpiry ? differenceInDays(rcExpiry, new Date()) : null;
+
+    // List of keys to exclude from "Advanced Specifications" (because they have dedicated large sections)
     const displayedKeys = [
-        'brand', 'model', 'price', 'year_of_manufacture', 'manufacturing_year', 
-        'km', 'kilometers', 'fuel_type', 'transmission', 'ownership', 
-        'city', 'area', 'variant', 'name', 'purchasePrice', 'refurbishmentCost', 
-        'otherExpenses', 'sellingPrice', 'insuranceExpiry', 'rcNumber', 
-        'service_history', 'spin_images', 'vin', 'rcExpiry', 'car_code',
-        'Service History', 'Spin Images', 'Vin', 'RcExpiry', 'Insurance Validity', 'Plate Number'
+        'name', 'images', 'spin_images', 'service_history', 'bookingDetails', 'car_code'
     ];
 
     return (
@@ -282,10 +312,11 @@ export default function VehicleDetail() {
                                 <div className="absolute top-6 left-6 flex gap-2">
                                     <span className={`px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest backdrop-blur-md shadow-xl border ${
                                         vehicle.status === 'available' ? 'bg-emerald-500/90 text-white border-emerald-400' :
-                                        vehicle.status === 'sold' ? 'bg-indigo-500/90 text-white border-indigo-400' : 
-                                        'bg-amber-500/90 text-white border-amber-400'
+                                        vehicle.status === 'sold' ? 'bg-slate-900/90 text-white border-slate-700' : 
+                                        vehicle.status === 'booked' ? 'bg-amber-500/90 text-white border-amber-400' :
+                                        'bg-slate-400/90 text-white border-slate-300'
                                     }`}>
-                                        {vehicle.status}
+                                        {vehicle.status === 'booked' ? 'Booked' : vehicle.status}
                                     </span>
                                     {daysInStock > 30 && (
                                         <span className="px-4 py-2 bg-rose-500/90 text-white border border-rose-400 rounded-2xl text-[10px] font-black uppercase tracking-widest backdrop-blur-md shadow-xl flex items-center gap-2">
@@ -318,40 +349,121 @@ export default function VehicleDetail() {
 
 
                     {/* Stats Grid */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-6">
-                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-indigo-200 transition-colors flex flex-col justify-between min-h-[160px]">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Age in Stock</p>
-                            <div className="flex items-center justify-between">
-                                <p className="text-2xl font-black text-slate-900">{daysInStock} d</p>
+                            <div className="flex items-center justify-between mt-auto">
+                                <p className="text-3xl font-black text-slate-900">{daysInStock} d</p>
                                 <History className="w-5 h-5 text-indigo-500" />
                             </div>
                         </div>
-                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-indigo-200 transition-colors flex flex-col justify-between min-h-[160px]">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">RC Status</p>
-                            <div className="flex items-center justify-between">
-                                <p className="text-2xl font-black text-slate-900 truncate max-w-[80px]">{vehicle.rcNumber || 'Pending'}</p>
-                                <CheckCircle className="w-5 h-5 text-emerald-500" />
+                            <div className="flex items-center justify-between mt-auto">
+                                <p className="text-2xl font-black text-slate-900 break-all line-clamp-2 pr-2 leading-tight">{vehicle.rcNumber || 'Pending'}</p>
+                                <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
                             </div>
                         </div>
-                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Insurance</p>
-                            <div className="flex items-center justify-between">
-                                <p className={`text-2xl font-black ${isInsuranceExpired ? 'text-rose-500' : 'text-slate-900'}`}>
-                                    {insuranceExpiry ? format(insuranceExpiry, 'MMM yy') : 'N/A'}
-                                </p>
-                                <ShieldAlert className={`w-5 h-5 ${isInsuranceExpired ? 'text-rose-500' : 'text-indigo-500'}`} />
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-indigo-200 transition-colors flex flex-col justify-between min-h-[160px]">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Insurance Validity</p>
+                            <div className="flex flex-col gap-1 mt-auto">
+                                <div className="flex items-center justify-between">
+                                    <p className={`text-2xl font-black ${isInsuranceExpired ? 'text-rose-500' : 'text-slate-900'}`}>
+                                        {insuranceExpiry ? format(insuranceExpiry, 'dd MMM yyyy') : 'N/A'}
+                                    </p>
+                                    <ShieldAlert className={`w-5 h-5 flex-shrink-0 ${isInsuranceExpired ? 'text-rose-500' : 'text-indigo-500'}`} />
+                                </div>
+                                {insuranceDaysLeft !== null && (
+                                    <p className={`text-[10px] font-bold uppercase tracking-wider ${insuranceDaysLeft < 0 ? 'text-rose-500' : insuranceDaysLeft < 30 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                        {insuranceDaysLeft} d
+                                    </p>
+                                )}
                             </div>
                         </div>
-                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm">
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-indigo-200 transition-colors flex flex-col justify-between min-h-[160px]">
+                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">RC Expiry</p>
+                            <div className="flex flex-col gap-1 mt-auto">
+                                <div className="flex items-center justify-between">
+                                    <p className={`text-2xl font-black ${isRCExpired ? 'text-rose-500' : 'text-slate-900'}`}>
+                                        {rcExpiry ? format(rcExpiry, 'dd MMM yyyy') : 'N/A'}
+                                    </p>
+                                    <CheckCircle className={`w-5 h-5 flex-shrink-0 ${isRCExpired ? 'text-rose-500' : 'text-indigo-500'}`} />
+                                </div>
+                                {rcDaysLeft !== null && (
+                                    <p className={`text-[10px] font-bold uppercase tracking-wider ${rcDaysLeft < 0 ? 'text-rose-500' : rcDaysLeft < 30 ? 'text-amber-500' : 'text-emerald-500'}`}>
+                                        {rcDaysLeft} d
+                                    </p>
+                                )}
+                            </div>
+                        </div>
+                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-indigo-200 transition-colors flex flex-col justify-between min-h-[160px]">
                             <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Profit Projection</p>
-                            <div className="flex items-center justify-between">
-                                <p className={`text-2xl font-black ${profit > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            <div className="flex items-center justify-between mt-auto">
+                                <p className={`text-3xl font-black ${profit > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                     ₹{Math.abs(Math.round(profit/1000))}k
                                 </p>
                                 <TrendingUp className={`w-5 h-5 ${profit > 0 ? 'text-emerald-500' : 'text-rose-500'}`} />
                             </div>
                         </div>
                     </div>
+
+                    {/* Booking Details Card (Conditional) */}
+                    {vehicle.status === 'booked' && (
+                        <div className="bg-amber-50 border border-amber-100 rounded-[2.5rem] p-10 relative overflow-hidden group animate-in fade-in slide-in-from-top-4 duration-500">
+                            <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:scale-110 transition-transform">
+                                <Info size={120} className="text-amber-500" />
+                            </div>
+                            <div className="relative z-10">
+                                <div className="flex items-center justify-between mb-6">
+                                    <h2 className="text-xl font-black text-amber-900 uppercase tracking-tight flex items-center gap-3">
+                                        <div className="w-10 h-10 bg-amber-500 text-white rounded-2xl flex items-center justify-center shadow-lg shadow-amber-500/20">
+                                            <Info size={20} />
+                                        </div>
+                                        Active Booking Details
+                                    </h2>
+                                    <div className="flex gap-2">
+                                        <button 
+                                            onClick={() => setIsBookModalOpen(true)}
+                                            className="px-6 py-3 bg-white text-amber-600 border border-amber-200 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-amber-100 transition-all flex items-center gap-2 shadow-sm"
+                                        >
+                                            <Edit size={14} />
+                                            {vehicle.bookingDetails ? 'Edit' : 'Add Details'}
+                                        </button>
+                                        <button 
+                                            onClick={() => handleStatusUpdate('available', '')}
+                                            className="px-6 py-3 bg-white text-rose-500 border border-amber-200 rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-rose-50 transition-all flex items-center gap-2 shadow-sm"
+                                        >
+                                            <Trash2 size={14} />
+                                            Release
+                                        </button>
+                                    </div>
+                                </div>
+                                <div className="p-8 bg-white/60 backdrop-blur-md rounded-[2rem] border border-amber-200/50 shadow-sm">
+                                    {vehicle.bookingDetails ? (
+                                        <div className="space-y-2">
+                                            <p className="text-[10px] font-black text-amber-600 uppercase tracking-[0.2em]">Booking Notes & Customer Info</p>
+                                            <p className="text-2xl font-bold text-amber-900 leading-tight">
+                                                {vehicle.bookingDetails}
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="text-center py-4">
+                                            <p className="text-sm font-bold text-amber-600/60 uppercase tracking-widest mb-4">No booking details recorded yet</p>
+                                            <button 
+                                                onClick={() => setIsBookModalOpen(true)}
+                                                className="px-8 py-4 bg-amber-500 text-white rounded-2xl font-black text-xs uppercase tracking-widest shadow-xl shadow-amber-200 hover:bg-amber-600 transition-all active:scale-95"
+                                            >
+                                                Add Booking Details
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                                <p className="mt-4 text-[10px] font-black text-amber-500/60 uppercase tracking-[0.2em] px-2">
+                                    Note: This vehicle is still visible on the bot but marked as booked.
+                                </p>
+                            </div>
+                        </div>
+                    )}
 
                     {/* Specifications */}
                     <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100">
@@ -421,6 +533,32 @@ export default function VehicleDetail() {
                             )}
                         </div>
 
+                        {/* Internal Financial Records */}
+                        <div className="mt-12 pt-10 border-t border-slate-100">
+                            <div className="flex items-center justify-between mb-8">
+                                <h3 className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.2em]">Purchase & Internal Costs</h3>
+                                <span className="px-2 py-1 bg-slate-100 text-slate-500 rounded text-[8px] font-bold uppercase tracking-widest">Internal Only</span>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Purchase Price</p>
+                                    <p className="text-lg font-bold text-slate-900">₹{purchasePrice.toLocaleString('en-IN')}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Refurbishment</p>
+                                    <p className="text-lg font-bold text-slate-900">₹{refurbishmentCost.toLocaleString('en-IN')}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Other Expenses</p>
+                                    <p className="text-lg font-bold text-slate-900">₹{otherExpenses.toLocaleString('en-IN')}</p>
+                                </div>
+                                <div>
+                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Total Landing Cost</p>
+                                    <p className="text-lg font-bold text-emerald-600">₹{totalCost.toLocaleString('en-IN')}</p>
+                                </div>
+                            </div>
+                        </div>
+
                         {/* Dynamic Attributes */}
                         {vehicle.attributes && Object.keys(vehicle.attributes).length > 0 && (
                             <div className="mt-12 pt-10 border-t border-slate-100 bg-slate-50/30 -mx-10 px-10">
@@ -471,6 +609,36 @@ export default function VehicleDetail() {
                                 <span className="text-lg font-black text-emerald-400">{Math.round(margin)}%</span>
                             </div>
                         </div>
+                        
+                        {vehicle.status === 'booked' && vehicle.bookingDetails && (
+                            <div className="mt-8 p-6 bg-amber-500/10 border border-amber-500/20 rounded-3xl relative group/booking">
+                                <div className="flex items-center justify-between mb-3">
+                                    <div className="flex items-center gap-2">
+                                        <Info size={16} className="text-amber-500" />
+                                        <span className="text-[10px] font-black text-amber-500 uppercase tracking-widest">Booking Information</span>
+                                    </div>
+                                    <div className="flex items-center gap-1 opacity-0 group-hover/booking:opacity-100 transition-opacity">
+                                        <button 
+                                            onClick={() => setIsBookModalOpen(true)}
+                                            className="p-1.5 hover:bg-amber-500/20 rounded-lg text-amber-600 transition-all"
+                                            title="Edit Booking Details"
+                                        >
+                                            <Edit size={12} />
+                                        </button>
+                                        <button 
+                                            onClick={() => handleStatusUpdate('available', '')}
+                                            className="p-1.5 hover:bg-amber-500/20 rounded-lg text-rose-500 transition-all"
+                                            title="Clear Booking & Mark Available"
+                                        >
+                                            <Trash2 size={12} />
+                                        </button>
+                                    </div>
+                                </div>
+                                <p className="text-xs font-bold text-amber-700 leading-relaxed italic">
+                                    "{vehicle.bookingDetails}"
+                                </p>
+                            </div>
+                        )}
 
                         <div className="mt-10 space-y-4">
                             <button 
@@ -481,17 +649,49 @@ export default function VehicleDetail() {
                                 {actionLoading ? <Loader2 size={18} className="animate-spin" /> : <MessageCircle size={18} />}
                                 Trigger Broadcast
                             </button>
+                            <div className="grid grid-cols-2 gap-4">
+                                <button 
+                                    onClick={() => handleStatusUpdate(vehicle.status === 'sold' ? 'available' : 'sold')}
+                                    disabled={actionLoading}
+                                    className={`w-full py-5 border-2 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 ${
+                                        vehicle.status === 'sold' 
+                                        ? 'border-emerald-500 text-emerald-500' 
+                                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    {actionLoading ? <Loader2 size={18} className="animate-spin mx-auto" /> : 
+                                     vehicle.status === 'sold' ? 'Mark as Available' : 'Mark as Sold'}
+                                </button>
+                                <button 
+                                    onClick={() => {
+                                        if (vehicle.status === 'booked') {
+                                            handleStatusUpdate('available');
+                                        } else {
+                                            setIsBookModalOpen(true);
+                                        }
+                                    }}
+                                    disabled={actionLoading}
+                                    className={`w-full py-5 border-2 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 ${
+                                        vehicle.status === 'booked' 
+                                        ? 'border-amber-500 text-amber-500' 
+                                        : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+                                    }`}
+                                >
+                                    {actionLoading ? <Loader2 size={18} className="animate-spin mx-auto" /> : 
+                                     vehicle.status === 'booked' ? 'Mark as Available' : 'Mark as Booked'}
+                                </button>
+                            </div>
                             <button 
-                                onClick={() => handleStatusUpdate(vehicle.status === 'sold' ? 'available' : 'sold')}
+                                onClick={handleToggleDelist}
                                 disabled={actionLoading}
                                 className={`w-full py-5 border-2 rounded-2xl font-black text-xs uppercase tracking-widest transition-all active:scale-95 ${
-                                    vehicle.status === 'sold' 
-                                    ? 'border-emerald-500 text-emerald-500' 
-                                    : 'border-white/10 text-white hover:bg-white/5'
+                                    vehicle.isDelisted 
+                                    ? 'border-rose-500 text-rose-500 hover:bg-rose-50' 
+                                    : 'border-slate-200 text-slate-600 hover:bg-slate-50'
                                 }`}
                             >
                                 {actionLoading ? <Loader2 size={18} className="animate-spin mx-auto" /> : 
-                                 vehicle.status === 'sold' ? 'Mark as Available' : 'Mark as Sold'}
+                                 vehicle.isDelisted ? 'List on WhatsApp Bot' : 'Delist from WhatsApp Bot'}
                             </button>
                         </div>
                     </div>
@@ -547,7 +747,7 @@ export default function VehicleDetail() {
                     </div>
 
                     <button 
-                        onClick={handleDelete}
+                        onClick={handleDeleteClick}
                         disabled={actionLoading}
                         className="w-full py-4 text-xs font-black text-rose-400 uppercase tracking-[0.2em] hover:text-rose-600 transition-all flex items-center justify-center gap-3"
                     >
@@ -556,6 +756,15 @@ export default function VehicleDetail() {
                     </button>
                 </div>
             </div>
+
+            <ConfirmModal 
+                isOpen={deleteModalOpen}
+                title="Delete Listing"
+                message="Are you sure you want to delete this listing? This action cannot be undone."
+                onConfirm={confirmDelete}
+                onCancel={() => setDeleteModalOpen(false)}
+                isLoading={actionLoading}
+            />
 
             {/* Fullscreen Overlay Modal */}
             {showFullscreen && (
@@ -618,6 +827,18 @@ export default function VehicleDetail() {
                     )}
                 </div>
             )}
+            <ConfirmModal 
+                isOpen={isBookModalOpen}
+                title="Booking Details"
+                message="Please enter the customer name and booking amount details below."
+                confirmText="Confirm Booking"
+                onConfirm={(val) => handleStatusUpdate('booked', val)}
+                onCancel={() => setIsBookModalOpen(false)}
+                showInput={true}
+                initialInputValue={vehicle?.bookingDetails || ''}
+                inputPlaceholder="e.g. Rahul Sharma, ₹10k deposit, expected delivery next week"
+                variant="primary"
+            />
         </div>
     );
 }

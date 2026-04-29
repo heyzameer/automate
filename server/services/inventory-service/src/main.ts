@@ -90,9 +90,9 @@ class Application {
         try {
             await this._database.connect();
             
-            // Wait for Search Engine
-            const searchService = container.resolve(SearchService);
-            await searchService.init();
+            // Wait for Search Engine and initialize RabbitMQ consumers
+            const mq = await import('./utils/rabbitmq');
+            await mq.getRabbitMQ();
             
             this._server.listen(config.port, () => {
                 logger.info(`Inventory Service running on port ${config.port}`);

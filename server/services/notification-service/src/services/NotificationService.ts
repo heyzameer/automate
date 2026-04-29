@@ -55,6 +55,24 @@ export class NotificationService {
                 case 'rc.expiring':
                     await this.notifyShowroom(tenantId, 'RC Expiry 📄', `${data.carName} RC is expiring in ${data.days} days.`, { ...data, type: 'rc_expiry' });
                     break;
+                
+                case 'tenant.verified':
+                    await this.sendEmail(data.email, 'Welcome to CarBot! Showroom Verified', `Hi ${data.name},\n\nYour showroom has been verified by our admin team. You can now access all platform features.\n\nHappy Selling!`);
+                    await this.notifyShowroom(tenantId, 'Showroom Verified ✅', 'Your showroom verification is complete.', { type: 'system' });
+                    break;
+
+                case 'tenant.deactivated':
+                    await this.sendEmail(data.email, 'Showroom Deactivated', `Hi ${data.name},\n\nYour showroom has been deactivated. Reason: ${data.reason || 'Not specified'}.\n\nPlease contact support for details.`);
+                    await this.notifyShowroom(tenantId, 'Account Suspended ⚠️', 'Your showroom access has been limited.', { type: 'system' });
+                    break;
+
+                case 'notification.customer_otp':
+                    await this.sendEmail(data.email, `${data.otp} is your CarBot OTP`, `Hi,\n\nYour OTP for logging into ${data.showroomName} kiosk is: ${data.otp}\n\nThis OTP is valid for 10 minutes.`);
+                    break;
+
+                case 'notification.kiosk_booking':
+                    await this.notifyShowroom(tenantId, 'New Kiosk Booking 📅', `A customer has requested a vehicle booking. Check details in the dashboard.`, { type: 'booking', bookingId: data.bookingId });
+                    break;
 
                 default:
                     logger.info(`Unknown event type: ${event}`);
@@ -120,5 +138,16 @@ export class NotificationService {
         // 2. Push in-app alert via Socket
         this.socketService.emitToTenant(tenantId, 'new_notification', notification);
         logger.info(`In-app notification sent to showroom: ${tenantId}`);
+    }
+
+    private async sendEmail(to: string, subject: string, body: string) {
+        if (!to) return;
+        logger.info(`📧 [MOCK EMAIL] To: ${to} | Subject: ${subject}`);
+        console.log("-----------------------------------------");
+        console.log(`FROM: noreply@carbot.ai`);
+        console.log(`TO: ${to}`);
+        console.log(`SUBJECT: ${subject}`);
+        console.log(`\n${body}`);
+        console.log("-----------------------------------------");
     }
 }

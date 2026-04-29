@@ -71,8 +71,16 @@ class Application {
     public async start(): Promise<void> {
         try {
             await this._database.connect();
-            this._server.listen(config.port, () => {
+            this._server.listen(config.port, async () => {
                 logger.info(`WhatsApp Bot Service running on port ${config.port}`);
+                
+                // Init RabbitMQ
+                try {
+                    const { getRabbitMQ } = await import('./utils/rabbitmq');
+                    await getRabbitMQ();
+                } catch (e) {
+                    logger.error('Failed to init RabbitMQ in Bot Service', e);
+                }
             });
         } catch (error) {
             logger.error('Failed to start WhatsApp Bot Service:', error);

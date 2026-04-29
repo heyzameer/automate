@@ -4,6 +4,7 @@ import { InventoryService } from '../services/InventoryService';
 import { FormConfigService } from '../services/FormConfigService';
 import { sendSuccess } from '../utils/response';
 import { logger } from '../utils/logger';
+import { UserRole } from '../types';
 
 @injectable()
 export class InventoryController {
@@ -94,8 +95,15 @@ export class InventoryController {
     // Vehicle Management
     async createVehicle(req: Request, res: Response) {
         try {
-            const tenantId = req.user?.tenantId || 'global';
+            let tenantId = req.user?.tenantId;
             const userId = req.user?.userId || 'unknown';
+            
+            // Allow Super Admin to specify a tenantId in the body
+            if (req.user?.role === UserRole.SUPER_ADMIN && req.body.tenantId) {
+                tenantId = req.body.tenantId;
+            }
+            
+            if (!tenantId) return res.status(403).json({ success: false, message: 'Forbidden: Tenant ID required' });
             
             const { images, ...data } = req.body;
             const vehicle = await this.inventoryService.createVehicle(data, images || [], tenantId, userId);
@@ -110,7 +118,15 @@ export class InventoryController {
     async updateVehicle(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const tenantId = req.user?.tenantId || 'global';
+            let tenantId = req.user?.tenantId;
+            
+            // Allow Super Admin to specify a tenantId in the body/query for overrides
+            if (req.user?.role === UserRole.SUPER_ADMIN && (req.body.tenantId || req.query.tenantId)) {
+                tenantId = (req.body.tenantId || req.query.tenantId) as string;
+            }
+
+            if (!tenantId) return res.status(403).json({ success: false, message: 'Forbidden: Tenant ID required' });
+            
             const { images, removedImages, ...data } = req.body;
 
             const vehicle = await this.inventoryService.updateVehicle(id, data, images || [], removedImages || [], tenantId);
@@ -124,7 +140,14 @@ export class InventoryController {
     async deleteVehicle(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const tenantId = req.user?.tenantId || 'global';
+            let tenantId = req.user?.tenantId;
+            
+            if (req.user?.role === UserRole.SUPER_ADMIN && req.query.tenantId) {
+                tenantId = req.query.tenantId as string;
+            }
+
+            if (!tenantId) return res.status(403).json({ success: false, message: 'Forbidden: Tenant ID required' });
+            
             await this.inventoryService.deleteVehicle(id, tenantId);
             return sendSuccess(res, 'Vehicle deleted successfully');
         } catch (error: any) {
@@ -133,10 +156,32 @@ export class InventoryController {
         }
     }
 
+    async toggleDelist(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            const tenantId = req.user?.tenantId;
+            if (!tenantId) return res.status(403).json({ success: false, message: 'Forbidden: Tenant ID required' });
+
+            const vehicle = await this.inventoryService.toggleDelist(id, tenantId);
+            const msg = vehicle.isDelisted ? 'Vehicle delisted from bot' : 'Vehicle listed on bot';
+            return sendSuccess(res, msg, { vehicle });
+        } catch (error: any) {
+            logger.error('Error toggling delist status:', error);
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
     async getVehicleById(req: Request, res: Response) {
         try {
             const { id } = req.params;
-            const tenantId = req.user?.tenantId || 'global';
+            let tenantId = req.user?.tenantId;
+            
+            if (req.user?.role === UserRole.SUPER_ADMIN && req.query.tenantId) {
+                tenantId = req.query.tenantId as string;
+            }
+
+            if (!tenantId) return res.status(403).json({ success: false, message: 'Forbidden: Tenant ID required' });
+            
             const vehicle = await this.inventoryService.getVehicleById(id, tenantId);
             
             if (!vehicle) {
@@ -152,8 +197,18 @@ export class InventoryController {
 
     async getVehicles(req: Request, res: Response) {
         try {
-            const tenantId = req.user?.tenantId || 'global';
-            const vehicles = await this.inventoryService.getVehicles(tenantId, req.query);
+            let tenantId = req.user?.tenantId;
+            
+            if (req.user?.role === UserRole.SUPER_ADMIN && req.query.tenantId) {
+                tenantId = req.query.tenantId as string;
+            }
+
+            if (!tenantId) return res.status(403).json({ success: false, message: 'Forbidden: Tenant ID required' });
+            
+            const vehicles = await this.inventoryService.getVehicles(tenantId, {
+                ...req.query,
+                includeDelisted: true
+            });
             return sendSuccess(res, 'Vehicles list fetched', { vehicles });
         } catch (error: any) {
             logger.error('Error fetching vehicles:', error);
@@ -211,6 +266,79 @@ export class InventoryController {
             return sendSuccess(res, 'Car code availability checked', { available: isAvailable });
         } catch (error: any) {
             res.status(500).json({ success: false, message: error.message });
+        }
+    }
+
+    // --- Admin Management Methods ---
+    
+    async createBrand(req: Request, res: Response) {
+        try {
+            const brand = await this.inventoryService.createBrand(req.body);
+            return sendSuccess(res, 'Brand created successfully', { brand });
+        } catch (error: any) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async deleteBrand(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            await this.inventoryService.deleteBrand(id);
+            return sendSuccess(res, 'Brand deleted successfully');
+        } catch (error: any) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async createModel(req: Request, res: Response) {
+        try {
+            const model = await this.inventoryService.createModel(req.body);
+            return sendSuccess(res, 'Model created successfully', { model });
+        } catch (error: any) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async deleteModel(req: Request, res: Response) {
+        try {
+            const { id } = req.params;
+            await this.inventoryService.deleteModel(id);
+            return sendSuccess(res, 'Model deleted successfully');
+        } catch (error: any) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async updateDropdownOptions(req: Request, res: Response) {
+        try {
+            const { fieldName } = req.params;
+            const { options } = req.body;
+            const dropdown = await this.inventoryService.updateDropdownOptions(fieldName, options);
+            return sendSuccess(res, 'Dropdown options updated successfully', { dropdown });
+        } catch (error: any) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async updateFormField(req: Request, res: Response) {
+        try {
+            const { fieldName } = req.params;
+            const userId = req.user?.userId || 'system';
+            const config = await this.formService.updateField(fieldName, req.body, userId);
+            return sendSuccess(res, 'Form field updated successfully', { config });
+        } catch (error: any) {
+            res.status(400).json({ success: false, message: error.message });
+        }
+    }
+
+    async deleteFormField(req: Request, res: Response) {
+        try {
+            const { fieldName } = req.params;
+            const userId = req.user?.userId || 'system';
+            const config = await this.formService.deleteField(fieldName, userId);
+            return sendSuccess(res, 'Form field deleted successfully', { config });
+        } catch (error: any) {
+            res.status(400).json({ success: false, message: error.message });
         }
     }
 }

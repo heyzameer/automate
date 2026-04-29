@@ -19,11 +19,16 @@ const tenantSchema = new Schema<ITenant>(
         plan: {
             type: String,
             enum: Object.values(PlanType),
-            default: PlanType.BASIC,
+            default: PlanType.NONE,
         },
         isActive: {
             type: Boolean,
-            default: true,
+            default: false,
+        },
+        verificationStatus: {
+            type: String,
+            enum: ['pending', 'verified', 'rejected'],
+            default: 'pending'
         },
         expiryDate: {
             type: Date,
@@ -40,6 +45,11 @@ const tenantSchema = new Schema<ITenant>(
             includeSpecs: { type: Boolean, default: true },
             includeLocation: { type: Boolean, default: true },
             websiteLinkTemplate: { type: String, default: "" },
+        },
+        kioskConfig: {
+            kioskKey: { type: String, unique: true, sparse: true },
+            isActive: { type: Boolean, default: false },
+            allowedDomains: [{ type: String }]
         },
         limits: {
             maxCars: { type: Number, default: 50 },

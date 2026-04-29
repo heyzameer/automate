@@ -73,7 +73,7 @@ export class EmailService implements IEmailService {
                     <p>Hello ${fullName},</p>
                     <p>Your dealership is now registered on the AutoMoto AI platform. We are excited to help you scale your business with automation.</p>
                     <p>You can now log in to your dashboard to manage your inventory and leads.</p>
-                    <a href="${config.frontendUrl.replace('/auth/google/callback', '/login')}" style="display: inline-block; padding: 12px 24px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px;">Go to Dashboard</a>
+                    <a href="${config.frontendUrl}/login" style="display: inline-block; padding: 12px 24px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 6px; margin-top: 20px;">Go to Dashboard</a>
                 </div>
             `,
         };
@@ -83,6 +83,65 @@ export class EmailService implements IEmailService {
             logger.info(`Welcome email sent to ${to}`);
         } catch (error) {
             logger.error(`Failed to send welcome email to ${to}:`, error);
+        }
+    }
+
+    async sendRegistrationPendingEmail(to: string, fullName: string): Promise<void> {
+        const mailOptions = {
+            from: `"AutoMoto AI" <${config.email.auth.user}>`,
+            to,
+            subject: 'Registration Received - AutoMoto AI',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+                    <h2 style="color: #4f46e5; text-align: center;">AutoMoto AI</h2>
+                    <p>Hello <strong>${fullName}</strong>,</p>
+                    <p>Thank you for registering your dealership with <strong>AutoMoto AI</strong>.</p>
+                    <p>Your application is currently being reviewed by our administrative team. We will verify your credentials and activate your account within 12-24 business hours.</p>
+                    <p>You will receive another email as soon as your digital showroom is ready for launch.</p>
+                    <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 20px 0;">
+                    <p style="font-size: 12px; color: #6b7280; text-align: center;">
+                        If you have any questions, reply to this email to contact our partner support team.
+                    </p>
+                </div>
+            `,
+        };
+
+        try {
+            await this._transporter.sendMail(mailOptions);
+            logger.info(`Registration pending email sent to ${to}`);
+        } catch (error) {
+            logger.error(`Failed to send pending email to ${to}:`, error);
+        }
+    }
+
+    async sendAccountActivatedEmail(to: string, fullName: string): Promise<void> {
+        const mailOptions = {
+            from: `"AutoMoto AI" <${config.email.auth.user}>`,
+            to,
+            subject: 'Account Activated - Welcome to AutoMoto AI!',
+            html: `
+                <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; padding: 20px; border: 1px solid #e0e0e0; border-radius: 10px;">
+                    <h2 style="color: #4f46e5; text-align: center;">Welcome to AutoMoto AI</h2>
+                    <p>Hello <strong>${fullName}</strong>,</p>
+                    <p>Your dealership is now registered and <strong>fully activated</strong> on the AutoMoto AI platform. We are excited to help you scale your business with automation.</p>
+                    <p>You can now log in to your dashboard to manage your inventory, set up your WhatsApp bot, and track your leads.</p>
+                    <div style="text-align: center; margin: 30px 0;">
+                        <a href="${config.frontendUrl}/login" style="display: inline-block; padding: 14px 28px; background-color: #4f46e5; color: white; text-decoration: none; border-radius: 8px; font-weight: bold;">Go to Dashboard</a>
+                    </div>
+                    <p>Happy selling!</p>
+                    <hr style="border: 0; border-top: 1px solid #e0e0e0; margin: 20px 0;">
+                    <p style="font-size: 12px; color: #6b7280; text-align: center;">
+                        © ${new Date().getFullYear()} AutoMoto AI. All rights reserved.
+                    </p>
+                </div>
+            `,
+        };
+
+        try {
+            await this._transporter.sendMail(mailOptions);
+            logger.info(`Account activation email sent to ${to}`);
+        } catch (error) {
+            logger.error(`Failed to send activation email to ${to}:`, error);
         }
     }
 }

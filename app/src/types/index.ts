@@ -21,7 +21,7 @@ export interface Tenant {
   _id?: string;
   name: string;
   slug: string;
-  plan: 'BASIC' | 'PRO' | 'ENTERPRISE';
+  plan: 'NONE' | 'TRIAL' | 'BASIC' | 'PRO' | 'ENTERPRISE' | 'CUSTOM';
   isActive: boolean;
   expiryDate: string;
   limits: {

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Database, Lock, Globe, Save, Cpu, Loader2, ArrowLeft } from 'lucide-react';
+import { Database, Lock, Globe, Save, Cpu, Loader2, ArrowLeft, Eye, EyeOff } from 'lucide-react';
 import toast from 'react-hot-toast';
 import { authService } from '../../services/auth.service';
 
@@ -11,6 +11,7 @@ const SystemSettings = () => {
     });
     const [loading, setLoading] = useState(true);
     const [saving, setSaving] = useState(false);
+    const [showKey, setShowKey] = useState(false);
 
     const fetchSettings = async () => {
         try {
@@ -104,13 +105,22 @@ const SystemSettings = () => {
                             <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest ml-1">Google Gemini API Key</label>
                             <div className="relative group-focus-within:scale-[1.02] transition-transform">
                                 <input 
-                                    type="password" 
+                                    type={showKey ? "text" : "password"} 
                                     value={settings.geminiApiKey || ''} 
                                     onChange={(e) => setSettings({...settings, geminiApiKey: e.target.value})}
                                     placeholder="Enter AIzaSy... Key" 
-                                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:bg-white focus:border-indigo-400 font-mono text-sm transition-all shadow-sm" 
+                                    className="w-full px-6 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:outline-none focus:ring-4 focus:ring-indigo-500/10 focus:bg-white focus:border-indigo-400 font-mono text-sm transition-all shadow-sm pr-20" 
                                 />
-                                <Lock className="absolute right-6 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+                                <div className="absolute right-6 top-1/2 -translate-y-1/2 flex items-center gap-3">
+                                    <button 
+                                        type="button"
+                                        onClick={() => setShowKey(!showKey)}
+                                        className="text-slate-400 hover:text-indigo-600 transition-colors focus:outline-none"
+                                    >
+                                        {showKey ? <EyeOff size={18} /> : <Eye size={18} />}
+                                    </button>
+                                    <Lock className="text-slate-300 w-4 h-4" />
+                                </div>
                             </div>
                             <div className="bg-amber-50 rounded-xl p-4 mt-4 border border-amber-100/50">
                                 <p className="text-[10px] text-amber-700 font-bold leading-relaxed">

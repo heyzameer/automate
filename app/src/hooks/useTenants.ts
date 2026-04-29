@@ -78,6 +78,63 @@ export const useTenants = () => {
     }
   };
 
+  const getTenant = async (id: string) => {
+    setLoading(true);
+    try {
+      return await tenantService.getTenantById(id);
+    } catch {
+      toast.error("Failed to fetch showroom details");
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const verifyTenant = async (id: string, status: 'verified' | 'pending') => {
+    setSaving(true);
+    try {
+      await tenantService.verifyTenant(id, status);
+      toast.success(`Showroom marked as ${status}`);
+      await fetchTenants();
+      return true;
+    } catch {
+      toast.error("Failed to update verification status");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const updateKioskConfig = async (id: string, kioskConfig: any) => {
+    setSaving(true);
+    try {
+      await tenantService.updateTenantPlan(id, { kioskConfig } as any);
+      toast.success("Kiosk configuration updated!");
+      await fetchTenants();
+      return true;
+    } catch {
+      toast.error("Failed to update kiosk configuration");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const rotateKioskKey = async (id: string) => {
+    setSaving(true);
+    try {
+      const newKey = await tenantService.rotateTenantKioskKey(id);
+      toast.success("Kiosk key rotated successfully!");
+      await fetchTenants();
+      return newKey;
+    } catch {
+      toast.error("Failed to rotate kiosk key");
+      return null;
+    } finally {
+      setSaving(false);
+    }
+  };
+
   return {
     tenants,
     loading,
@@ -86,6 +143,10 @@ export const useTenants = () => {
     toggleStatus,
     updatePlan,
     addTenant,
-    assignBot
+    assignBot,
+    getTenant,
+    verifyTenant,
+    updateKioskConfig,
+    rotateKioskKey
   };
 };
