@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/screenshots/super_admin_login.png" alt="ORBIX Logo" width="100%" />
+<img src="docs/screenshots/landing_banner.png" alt="ORBIX Banner" width="100%" />
 
 # ORBIX — AI-Powered Showroom Management Platform
 
@@ -61,6 +61,13 @@ ORBIX is a cloud-native, **multi-tenant SaaS platform** designed specifically fo
 
 ---
 
+### Lead Intelligence — CRM & Funnel
+> Automated lead scoring (Hot/Warm/Cold) and AI-driven conversion tracking for every WhatsApp inquiry.
+
+<img src="docs/screenshots/leads_management.png" alt="ORBIX Lead Management" width="100%" />
+
+---
+
 ### Marketing Hub — Campaign Builder
 > Create hyper-personalized WhatsApp broadcasts targeted at your existing leads with real-time performance tracking.
 
@@ -79,6 +86,21 @@ ORBIX is a cloud-native, **multi-tenant SaaS platform** designed specifically fo
 > A secure, restricted environment for global tenant management, API verification, and platform-wide oversight.
 
 <img src="docs/screenshots/super_admin_login.png" alt="ORBIX Super Admin Login" width="100%" />
+
+#### 🏬 Tenant & Showroom Management
+> Real-time oversight of all showroom partners, subscription status, and live system health.
+
+<img src="docs/screenshots/super_admin_tenants.png" alt="ORBIX Tenant Management" width="100%" />
+
+#### ⚙️ Inventory Engine Config
+> Control the global dynamic form structure, available brands, and models across the entire platform.
+
+<img src="docs/screenshots/super_admin_inventory_config.png" alt="ORBIX Inventory Engine" width="100%" />
+
+#### 📈 Platform-Wide Analytics
+> Track request volume, AI consumption, and system performance across all multi-tenant services.
+
+<img src="docs/screenshots/super_admin_analytics.png" alt="ORBIX Global Analytics" width="100%" />
 
 ---
 
