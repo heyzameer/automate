@@ -34,5 +34,5 @@ export const otpLimiter = rateLimit({
         message: 'Too many OTP requests, please try again later.',
         timestamp: new Date(),
     },
-    validate: { trustProxy: false },
+    validate: false,
 });
