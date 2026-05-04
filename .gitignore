@@ -31,5 +31,5 @@ build/
 # Project Folders
 Doc/
 docs/
-# Do NOT ignore scripts/ because EC2 needs ec2-deploy.sh
+server/scripts/
 # .env.prod is already ignored by .env.* on line 9
