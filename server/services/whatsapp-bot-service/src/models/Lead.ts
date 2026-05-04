@@ -28,6 +28,8 @@ export interface ILeadDocument extends Document {
     status: string;
   }[];
   lastActivity: Date;
+  createdAt: Date;
+  updatedAt: Date;
 }
 
 const callLogSchema = new Schema<ICallLog>({

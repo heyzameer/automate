@@ -1,7 +1,7 @@
 import { Request, Response } from 'express';
 import { injectable } from 'tsyringe';
 import { CampaignService } from '../services/CampaignService';
-import { Campaign } from '../models/Campaign';
+import { Campaign, ICampaignDocument } from '../models/Campaign';
 
 @injectable()
 export class CampaignController {
@@ -45,11 +45,11 @@ export class CampaignController {
             const { id } = req.params;
             const campaign = await this.campaignService.executeCampaign(id);
             
-            // Track Usage
-            if (campaign?.tenantId) {
+            // Track Usage — only if campaign is a full document (not the no-recipients shortcircuit)
+            if (campaign && 'tenantId' in campaign && campaign.tenantId) {
                 import('../utils/rabbitmq').then(m => m.getRabbitMQ()).then(mq => {
                     mq.publish('carbot_events', 'usage.increment', { 
-                        tenantId: campaign.tenantId.toString(), 
+                        tenantId: (campaign as ICampaignDocument).tenantId.toString(), 
                         service: 'campaign' 
                     });
                 });

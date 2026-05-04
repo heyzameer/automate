@@ -1,7 +1,17 @@
 import { injectable } from 'tsyringe';
 import { Campaign } from '../models/Campaign';
 import { logger } from '../utils/logger';
-import { format, addDays, isSameDay } from 'date-fns';
+
+// Native date helpers replacing date-fns (not bundled in production)
+const addDays = (date: Date, days: number): Date => {
+    const d = new Date(date);
+    d.setDate(d.getDate() + days);
+    return d;
+};
+const isSameDay = (a: Date, b: Date): boolean =>
+    a.getFullYear() === b.getFullYear() &&
+    a.getMonth() === b.getMonth() &&
+    a.getDate() === b.getDate();
 
 const FESTIVALS = [
     { name: 'Diwali', date: '11-01', template: 'Happy Diwali to you and your family! 🪔 May this year bring you closer to your dream car. Checkout our festive offers at {showroom_name}!' },
