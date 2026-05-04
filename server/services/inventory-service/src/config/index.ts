@@ -39,7 +39,7 @@ const config: AppConfig = {
         credentials: getBool('CORS_CREDENTIALS', true),
     },
     database: {
-        uri: get('MONGODB_URI', true, 'mongodb://localhost:27017/carbot_inventory')!,
+        uri: get('INVENTORY_MONGO_URI', false) || get('MONGODB_URI', true, 'mongodb://localhost:27017/carbot_inventory')!,
         options: {
             maxPoolSize: getInt('DB_MAX_POOL_SIZE', false, 10),
             serverSelectionTimeoutMS: getInt('DB_SERVER_SELECTION_TIMEOUT', false, 5000),
