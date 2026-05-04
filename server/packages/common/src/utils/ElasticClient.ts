@@ -13,21 +13,29 @@ export class ElasticClient {
 
     public async connect(): Promise<Client> {
         if (!this.client) {
-            try {
-                this.client = new Client(this.options);
-                // Ping to verify connection
-                const ping = await this.client.ping();
-                if (ping) {
-                    logger.info(`Successfully connected to Elasticsearch at ${this.options.node}`);
-                } else {
-                    logger.warn('Elasticsearch ping failed.');
+            let retries = 12; // Try for 60 seconds (12 * 5s)
+            while (retries > 0) {
+                try {
+                    this.client = new Client(this.options);
+                    // Ping to verify connection
+                    const ping = await this.client.ping();
+                    if (ping) {
+                        logger.info(`Successfully connected to Elasticsearch at ${this.options.node}`);
+                        return this.client;
+                    }
+                    throw new Error('Ping failed');
+                } catch (error: any) {
+                    retries--;
+                    if (retries === 0) {
+                        logger.error('Failed to connect to Elasticsearch after all retries', { error: error.message });
+                        throw error;
+                    }
+                    logger.warn(`Elasticsearch connection failed. Retries left: ${retries}. Error: ${error.message}`);
+                    await new Promise(resolve => setTimeout(resolve, 5000));
                 }
-            } catch (error: any) {
-                logger.error('Failed to connect to Elasticsearch', { error: error.message });
-                throw error;
             }
         }
-        return this.client;
+        return this.client!;
     }
 
     public getClient(): Client {
