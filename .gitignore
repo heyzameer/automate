@@ -29,6 +29,7 @@ Thumbs.db
 build/
 
 # Project Folders
-doc/
+Doc/
+docs/
 # Do NOT ignore scripts/ because EC2 needs ec2-deploy.sh
 # .env.prod is already ignored by .env.* on line 9
