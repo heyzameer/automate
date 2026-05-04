@@ -11,7 +11,7 @@ export const generalLimiter = rateLimit({
     },
     standardHeaders: true,
     legacyHeaders: false,
-    validate: { trustProxy: false },
+    validate: false,
 });
 
 export const authLimiter = rateLimit({
@@ -23,7 +23,7 @@ export const authLimiter = rateLimit({
         message: 'Too many authentication attempts, please try again later.',
         timestamp: new Date(),
     },
-    validate: { trustProxy: false },
+    validate: false,
 });
 
 export const otpLimiter = rateLimit({
