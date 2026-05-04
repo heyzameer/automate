@@ -24,14 +24,46 @@ import {
     Eye,
     EyeOff,
     Copy,
-    Save
+    Save,
+    Check,
+    Zap,
+    Star,
+    Crown,
+    X,
+    Megaphone
 } from 'lucide-react';
+
+const cn = (...classes: (string | boolean | undefined | null)[]) => classes.filter(Boolean).join(' ');
+
+const DEFAULT_CUSTOM_LIMITS = { maxCars: 50 };
+const DEFAULT_CUSTOM_FEATURES = { whatsappBot: false, campaigns: false, qrCode: false };
+
+const Toggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
+  <button
+    type="button"
+    onClick={() => onChange(!value)}
+    className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${value ? 'bg-indigo-600' : 'bg-slate-200'}`}
+  >
+    <span className={`inline-block h-4 w-4 transform rounded-full bg-white shadow transition-transform ${value ? 'translate-x-6' : 'translate-x-1'}`} />
+  </button>
+);
 import { useTenants } from '../../hooks/useTenants';
 import { Tenant } from '../../types';
 import { ROUTES } from '../../constants/routes';
 import { PLANS } from './Tenants';
 import toast from 'react-hot-toast';
 import api from '../../lib/api';
+import { API_ENDPOINTS } from '../../constants/endpoints';
+import { formatDistanceToNow } from 'date-fns';
+
+interface TenantStats {
+    totalStock: number;
+    availableStock: number;
+    soldStock: number;
+    totalLeads: number;
+    leadsThisMonth: number;
+    recentLeads: Array<{ _id: string; name: string; phone: string; stage: string; priority: string; createdAt: string }>;
+}
 
 const ShowroomDetail = () => {
     const { id } = useParams<{ id: string }>();
@@ -40,6 +72,8 @@ const ShowroomDetail = () => {
     
     const [tenant, setTenant] = useState<Tenant | null>(null);
     const [loading, setLoading] = useState(true);
+    const [tenantStats, setTenantStats] = useState<TenantStats | null>(null);
+    const [statsLoading, setStatsLoading] = useState(false);
     
     // Form states
     const [botForm, setBotForm] = useState({ phoneNumberId: '', accessToken: '', verifyToken: '' });
@@ -51,6 +85,15 @@ const ShowroomDetail = () => {
     const [kioskKey, setKioskKey] = useState('');
     const [allowedDomains, setAllowedDomains] = useState('');
     const [kioskActive, setKioskActive] = useState(false);
+
+    // Plan States
+    const [selectedPlanKey, setSelectedPlanKey] = useState('basic');
+    const [expiryDate, setExpiryDate] = useState('');
+    const [customLimits, setCustomLimits] = useState({ ...DEFAULT_CUSTOM_LIMITS });
+    const [customFeatures, setCustomFeatures] = useState<any>({ ...DEFAULT_CUSTOM_FEATURES });
+    const [showCustomConfig, setShowCustomConfig] = useState(false);
+    const [isPlanConfigOpen, setIsPlanConfigOpen] = useState(false);
+    const [savingPlan, setSavingPlan] = useState(false);
 
     useEffect(() => {
         if (id) loadTenant(id);
@@ -68,8 +111,29 @@ const ShowroomDetail = () => {
             setKioskKey(data.kioskConfig?.kioskKey || '');
             setKioskActive(data.kioskConfig?.isActive || false);
             setAllowedDomains(data.kioskConfig?.allowedDomains?.join(', ') || '');
+            
+            // Set Plan Data
+            const planKey = String(data.plan || 'basic').toLowerCase();
+            setSelectedPlanKey(planKey);
+            setExpiryDate(new Date(String(data.expiryDate || Date.now())).toISOString().split('T')[0]);
+            setShowCustomConfig(planKey === 'custom');
+            if (planKey === 'custom') {
+                setCustomLimits({ ...DEFAULT_CUSTOM_LIMITS, ...(data as any).limits });
+                setCustomFeatures({ ...DEFAULT_CUSTOM_FEATURES, ...(data as any).features });
+            }
         }
         setLoading(false);
+
+        // Fetch per-tenant usage stats independently
+        setStatsLoading(true);
+        try {
+            const { data: sData } = await api.get(API_ENDPOINTS.SUPER.TENANT_STATS(tenantId));
+            setTenantStats(sData.data);
+        } catch (e) {
+            console.warn('Could not load tenant stats', e);
+        } finally {
+            setStatsLoading(false);
+        }
     };
 
     const handleVerify = async () => {
@@ -100,6 +164,44 @@ const ShowroomDetail = () => {
 
         const success = await assignBot(tid, botForm);
         if (success) loadTenant(tid);
+    };
+
+    const handlePlanSelect = (key: string) => {
+        setSelectedPlanKey(key);
+        setShowCustomConfig(key === 'custom');
+        if (key === 'custom') {
+            const preset = PLANS.find(p => p.key === 'custom')!;
+            setCustomLimits({ ...preset.limits });
+            setCustomFeatures({ ...preset.features });
+        }
+    };
+
+    const handleUpdatePlan = async () => {
+        if (!tenant) return;
+        const tid = tenant.id || tenant._id;
+        if (!tid) return;
+
+        setSavingPlan(true);
+        try {
+            const plan = PLANS.find(p => p.key === selectedPlanKey)!;
+            const limits = selectedPlanKey === 'custom' ? customLimits : plan.limits;
+            const features = selectedPlanKey === 'custom' ? customFeatures : plan.features;
+            const payload = { 
+                plan: selectedPlanKey.toUpperCase(), 
+                limits, 
+                features, 
+                expiryDate: new Date(expiryDate).toISOString() 
+            };
+            const success = await updatePlan(tid, payload);
+            if (success) {
+                toast.success('Plan updated!');
+                loadTenant(tid);
+            }
+        } catch {
+            toast.error('Failed to update plan');
+        } finally {
+            setSavingPlan(false);
+        }
     };
 
     const handleCreatePayment = async (e: React.FormEvent) => {
@@ -168,7 +270,7 @@ const ShowroomDetail = () => {
         );
     }
 
-    const currentPlan = PLANS.find(p => p.key === tenant.plan) || PLANS[0];
+    const currentPlan = PLANS.find(p => p.key.toLowerCase() === tenant.plan?.toLowerCase()) || PLANS[0];
 
     return (
         <div className="min-h-screen bg-[#0a0b14] text-slate-300 pb-20">
@@ -243,6 +345,49 @@ const ShowroomDetail = () => {
             </div>
 
             <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-8">
+
+                {/* ── Usage Stats Banner ─────────────────────────────── */}
+                <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-8">
+                    {[
+                        {
+                            label: 'Total Stock',
+                            value: statsLoading ? '…' : (tenantStats?.totalStock ?? '–'),
+                            sub: statsLoading ? '' : `${tenantStats?.availableStock ?? 0} available`,
+                            color: 'bg-indigo-500/10 text-indigo-400 border-indigo-500/20',
+                        },
+                        {
+                            label: 'Available',
+                            value: statsLoading ? '…' : (tenantStats?.availableStock ?? '–'),
+                            sub: 'Ready to sell',
+                            color: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
+                        },
+                        {
+                            label: 'Sold',
+                            value: statsLoading ? '…' : (tenantStats?.soldStock ?? '–'),
+                            sub: 'Closed deals',
+                            color: 'bg-slate-500/10 text-slate-400 border-slate-500/20',
+                        },
+                        {
+                            label: 'Total Leads',
+                            value: statsLoading ? '…' : (tenantStats?.totalLeads ?? '–'),
+                            sub: 'All time enquiries',
+                            color: 'bg-purple-500/10 text-purple-400 border-purple-500/20',
+                        },
+                        {
+                            label: 'Leads This Month',
+                            value: statsLoading ? '…' : (tenantStats?.leadsThisMonth ?? '–'),
+                            sub: 'Current month',
+                            color: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
+                        },
+                    ].map((stat) => (
+                        <div key={stat.label} className={`rounded-2xl p-5 border ${stat.color} relative overflow-hidden`}>
+                            <p className="text-[10px] font-black uppercase tracking-widest opacity-70 mb-2">{stat.label}</p>
+                            <p className="text-3xl font-black">{stat.value}</p>
+                            <p className="text-[10px] font-bold mt-1 opacity-50 uppercase tracking-widest">{stat.sub}</p>
+                        </div>
+                    ))}
+                </div>
+
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                     
                     {/* Left Column - Core Info */}
@@ -311,6 +456,134 @@ const ShowroomDetail = () => {
                                             <p className="text-xs text-slate-500">Member Since</p>
                                             <p className="text-sm font-medium text-white">{new Date(tenant.createdAt || Date.now()).toLocaleDateString()}</p>
                                         </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Plan Configuration */}
+                        <div className="bg-[#161726] rounded-2xl border border-white/5 overflow-hidden">
+                            <div className="p-6 border-b border-white/5 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                                        <CreditCard className="w-6 h-6" />
+                                    </div>
+                                    <div>
+                                        <h3 className="text-lg font-bold text-white">Plan Configuration</h3>
+                                        <p className="text-xs text-slate-500">Manage subscription and features</p>
+                                    </div>
+                                </div>
+                                <button 
+                                    onClick={() => setIsPlanConfigOpen(!isPlanConfigOpen)}
+                                    className="p-2 hover:bg-white/5 rounded-lg text-slate-400"
+                                >
+                                    <Settings className={`w-5 h-5 transition-transform ${isPlanConfigOpen ? 'rotate-90' : ''}`} />
+                                </button>
+                            </div>
+                            
+                            <div className={`transition-all duration-300 ${isPlanConfigOpen ? 'max-h-[2000px] opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+                                <div className="p-6 space-y-8">
+                                    {/* Plan Selector Grid */}
+                                    <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
+                                        {PLANS.map(plan => (
+                                            <button
+                                                key={plan.key}
+                                                onClick={() => handlePlanSelect(plan.key)}
+                                                className={`relative p-5 rounded-2xl border-2 text-left transition-all duration-300 group ${
+                                                    selectedPlanKey === plan.key 
+                                                        ? 'border-indigo-600 bg-indigo-500/10 shadow-[0_10px_40px_rgba(79,70,229,0.15)] scale-[1.02]' 
+                                                        : 'border-white/5 bg-[#0a0b14] hover:border-white/10 hover:bg-white/5'
+                                                }`}
+                                            >
+                                                {selectedPlanKey === plan.key && (
+                                                    <div className="absolute top-4 right-4 text-white bg-indigo-600 p-1 rounded-full shadow-md">
+                                                        <Check size={10} strokeWidth={4} />
+                                                    </div>
+                                                )}
+                                                <div className="text-3xl mb-3 group-hover:scale-110 transition-transform origin-left">{plan.emoji}</div>
+                                                <div className="text-sm font-black text-white">{plan.label}</div>
+                                                <div className="text-[10px] font-black mt-1 text-slate-400 uppercase tracking-widest">
+                                                    {plan.price}
+                                                </div>
+                                            </button>
+                                        ))}
+                                    </div>
+
+                                    {/* Custom Config Section */}
+                                    {showCustomConfig && (
+                                        <div className="p-6 bg-[#0a0b14] rounded-2xl border border-white/5 animate-in fade-in slide-in-from-top-4 duration-500">
+                                            <div className="flex items-center gap-3 mb-6">
+                                                <div className="w-8 h-8 rounded-lg bg-rose-500/10 flex items-center justify-center text-rose-400">
+                                                    <Settings size={16} />
+                                                </div>
+                                                <h4 className="text-sm font-black text-white uppercase tracking-wider">Custom Plan Governance</h4>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                                <div className="space-y-4">
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Showroom Capacity</label>
+                                                    <div className="flex items-center gap-4 bg-[#161726] p-4 rounded-xl border border-white/5">
+                                                        <input 
+                                                            type="number" 
+                                                            value={customLimits.maxCars}
+                                                            onChange={e => setCustomLimits({ maxCars: parseInt(e.target.value) || 0 })}
+                                                            className="flex-1 bg-transparent border-none text-xl font-black text-white focus:ring-0"
+                                                        />
+                                                        <span className="text-[10px] font-black text-slate-500 uppercase tracking-widest">VEHICLES</span>
+                                                    </div>
+                                                </div>
+
+                                                <div className="space-y-4">
+                                                    <label className="text-[10px] font-black text-slate-500 uppercase tracking-widest block">Feature Access</label>
+                                                    <div className="space-y-3">
+                                                        {[
+                                                            { key: 'whatsappBot', label: 'WhatsApp AI Bot', icon: Bot, color: 'text-emerald-400' },
+                                                            { key: 'campaigns', label: 'Marketing Campaigns', icon: Megaphone, color: 'text-indigo-400' },
+                                                            { key: 'qrCode', label: 'QR Code Generation', icon: Shield, color: 'text-amber-400' }
+                                                        ].map(({ key, label, icon: Icon, color }) => (
+                                                            <div key={key} className="flex items-center justify-between p-3 bg-[#161726] rounded-xl border border-white/5">
+                                                                <div className="flex items-center gap-3">
+                                                                    <Icon size={16} className={color} />
+                                                                    <span className="text-sm font-bold text-white">{label}</span>
+                                                                </div>
+                                                                <Toggle 
+                                                                    value={customFeatures[key]}
+                                                                    onChange={v => setCustomFeatures((prev: any) => ({ ...prev, [key]: v }))}
+                                                                />
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {/* Expiry & Actions */}
+                                    <div className="flex flex-col md:flex-row items-center justify-between gap-6 p-6 bg-indigo-600/5 rounded-2xl border border-indigo-500/10">
+                                        <div className="flex items-center gap-4">
+                                            <div className="w-12 h-12 rounded-2xl bg-indigo-500/10 flex items-center justify-center text-indigo-400">
+                                                <Calendar size={24} />
+                                            </div>
+                                            <div>
+                                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Renewal Date</p>
+                                                <input 
+                                                    type="date" 
+                                                    value={expiryDate}
+                                                    onChange={e => setExpiryDate(e.target.value)}
+                                                    className="bg-transparent border-none text-white font-bold focus:ring-0 p-0 text-lg cursor-pointer"
+                                                    style={{ colorScheme: 'dark' }}
+                                                />
+                                            </div>
+                                        </div>
+                                        
+                                        <button 
+                                            onClick={handleUpdatePlan}
+                                            disabled={savingPlan}
+                                            className="w-full md:w-auto px-10 py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 transition-all shadow-xl shadow-indigo-500/20 active:scale-95 disabled:opacity-50"
+                                        >
+                                            {savingPlan ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />}
+                                            Commit Plan Changes
+                                        </button>
                                     </div>
                                 </div>
                             </div>
@@ -385,14 +658,26 @@ const ShowroomDetail = () => {
                             {!isBotConfigOpen && (
                                 <div className="p-6 bg-emerald-500/5 flex items-center justify-between">
                                     <div className="flex items-center gap-3">
-                                        <div className={`w-2 h-2 rounded-full ${tenant.whatsappConfig?.isActive ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
+                                        <div className={`w-2 h-2 rounded-full ${tenant.whatsappConfig?.botEnabled ? 'bg-emerald-500 animate-pulse' : 'bg-slate-600'}`} />
                                         <span className="text-sm font-medium">
-                                            Bot is {tenant.whatsappConfig?.isActive ? 'Active' : 'Inactive'}
+                                            Bot is {tenant.whatsappConfig?.botEnabled ? 'Active' : 'Disabled'}
                                         </span>
                                     </div>
-                                    <p className="text-xs text-slate-500 font-mono">
-                                        {tenant.whatsappConfig?.phoneNumberId || 'No ID assigned'}
-                                    </p>
+                                    <div className="flex items-center gap-3">
+                                        <button
+                                            onClick={async () => {
+                                                if (!tenant) return;
+                                                const tid = tenant.id || tenant._id;
+                                                if (tid) await api.patch(`/super/tenants/${tid}/bot-toggle`, { botEnabled: !tenant.whatsappConfig?.botEnabled }).then(() => loadTenant(tid));
+                                            }}
+                                            className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all border ${tenant.whatsappConfig?.botEnabled ? 'bg-rose-500/10 text-rose-400 border-rose-500/20 hover:bg-rose-500/20' : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'}`}
+                                        >
+                                            {tenant.whatsappConfig?.botEnabled ? 'Suspend Bot' : 'Enable Bot'}
+                                        </button>
+                                        <p className="text-xs text-slate-500 font-mono">
+                                            {tenant.whatsappConfig?.phoneNumberId || 'No ID assigned'}
+                                        </p>
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -567,6 +852,59 @@ const ShowroomDetail = () => {
                                     </div>
                                 </div>
                             </div>
+                        </div>
+
+                        {/* Recent Leads */}
+                        <div className="bg-[#161726] rounded-2xl p-6 border border-white/5">
+                            <div className="flex items-center justify-between mb-5">
+                                <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Recent Leads</h3>
+                                <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">
+                                    {tenantStats?.totalLeads ?? 0} total
+                                </span>
+                            </div>
+
+                            {statsLoading ? (
+                                <div className="space-y-3">
+                                    {[...Array(3)].map((_, i) => (
+                                        <div key={i} className="h-12 bg-white/5 rounded-xl animate-pulse" />
+                                    ))}
+                                </div>
+                            ) : tenantStats?.recentLeads && tenantStats.recentLeads.length > 0 ? (
+                                <div className="space-y-3">
+                                    {tenantStats.recentLeads.map((lead) => (
+                                        <div key={lead._id} className="flex items-center gap-3 p-3 rounded-xl bg-white/5 hover:bg-white/10 transition-colors">
+                                            <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-black text-xs flex-shrink-0 ${
+                                                lead.priority === 'Hot' ? 'bg-rose-500/20 text-rose-400' :
+                                                lead.priority === 'Warm' ? 'bg-amber-500/20 text-amber-400' :
+                                                'bg-slate-500/20 text-slate-400'
+                                            }`}>
+                                                {lead.name?.substring(0, 2).toUpperCase() || '??'}
+                                            </div>
+                                            <div className="min-w-0 flex-1">
+                                                <p className="text-sm font-bold text-white truncate">{lead.name}</p>
+                                                <div className="flex items-center gap-2 mt-0.5">
+                                                    <span className="text-[9px] font-black text-slate-500 uppercase tracking-widest">{lead.stage}</span>
+                                                    <span className="text-[9px] text-slate-600">·</span>
+                                                    <span className="text-[9px] font-bold text-slate-500">
+                                                        {formatDistanceToNow(new Date(lead.createdAt), { addSuffix: true })}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <span className={`text-[9px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full flex-shrink-0 ${
+                                                lead.priority === 'Hot' ? 'bg-rose-500/20 text-rose-400' :
+                                                lead.priority === 'Warm' ? 'bg-amber-500/20 text-amber-400' :
+                                                'bg-slate-500/20 text-slate-400'
+                                            }`}>
+                                                {lead.priority}
+                                            </span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <div className="py-8 text-center">
+                                    <p className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">No leads yet for this showroom</p>
+                                </div>
+                            )}
                         </div>
 
                         {/* Actions */}

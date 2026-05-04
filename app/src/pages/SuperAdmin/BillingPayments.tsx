@@ -1,8 +1,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { cn } from '../../lib/utils';
 import {
     CreditCard, Loader2, CheckCircle2, XCircle, Clock, Send,
     ExternalLink, Eye, X, BadgeCheck, RefreshCw, Building2,
-    Calendar, IndianRupee, FileImage, ChevronDown, Upload
+    Calendar, IndianRupee, FileImage, ChevronDown, Upload,
+    Download, Plus
 } from 'lucide-react';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
@@ -29,6 +31,8 @@ interface Tenant {
     name: string;
     plan: string;
     expiryDate: string;
+    limits?: { maxCars: number };
+    features?: { whatsappBot: boolean; campaigns: boolean; qrCode: boolean };
 }
 
 // ─── Status Badge ──────────────────────────────────────────────────────────
@@ -65,6 +69,8 @@ const BillingPayments = () => {
     const [proofModal, setProofModal] = useState<PaymentRequest | null>(null);
     const [sendModal, setSendModal] = useState<Tenant | null>(null);
     const [actionLoading, setActionLoading] = useState<string | null>(null);
+    const [expandedImage, setExpandedImage] = useState<string | null>(null);
+    const [zoom, setZoom] = useState(1);
 
     const [verifyState, setVerifyState] = useState<'idle' | 'rejecting' | 'confirming'>('idle');
     const [verifyForm, setVerifyForm] = useState({ rejectReason: '', newExpiryDate: '' });
@@ -89,6 +95,23 @@ const BillingPayments = () => {
 
     useEffect(() => { fetchData(); }, [fetchData]);
 
+    useEffect(() => {
+        if (sendModal) {
+            const features = [];
+            if (sendModal.features?.whatsappBot) features.push('WhatsApp Bot');
+            if (sendModal.features?.campaigns) features.push('Campaigns');
+            if (sendModal.features?.qrCode) features.push('QR Codes');
+            
+            const featureList = features.length > 0 ? ` + Features: ${features.join(', ')}` : '';
+            const carLimit = sendModal.limits?.maxCars ? ` (Limit: ${sendModal.limits.maxCars} cars)` : '';
+            
+            setSendForm(prev => ({
+                ...prev,
+                note: `${sendModal.plan.toUpperCase()} Plan Renewal${carLimit}${featureList}.`
+            }));
+        }
+    }, [sendModal]);
+
     const handleUpdateStatus = async (req: PaymentRequest, newStatus: 'paid' | 'verified' | 'rejected') => {
         setActionLoading(req._id);
         try {
@@ -105,6 +128,25 @@ const BillingPayments = () => {
             toast.error('Failed to update status');
         } finally {
             setActionLoading(null);
+        }
+    };
+
+    const downloadImage = async (url: string, filename: string) => {
+        try {
+            const response = await fetch(url);
+            const blob = await response.blob();
+            const blobUrl = window.URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = blobUrl;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+            window.URL.revokeObjectURL(blobUrl);
+        } catch (err) {
+            console.error('Download failed', err);
+            // Fallback to direct link if fetch fails (CORS)
+            window.open(url, '_blank');
         }
     };
 
@@ -320,14 +362,27 @@ const BillingPayments = () => {
                             </button>
                         </div>
                         <div className="p-6 space-y-4">
-                            <div className="rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-50 flex items-center justify-center min-h-[200px]">
+                            <div 
+                                onClick={() => proofModal.screenshotUrl?.startsWith('http') && setExpandedImage(proofModal.screenshotUrl)}
+                                className={cn(
+                                    "rounded-2xl overflow-hidden border border-slate-100 shadow-sm bg-slate-50 flex items-center justify-center min-h-[200px] cursor-zoom-in group relative",
+                                    proofModal.screenshotUrl?.startsWith('http') && "hover:border-indigo-200 transition-colors"
+                                )}
+                            >
                                 {proofModal.screenshotUrl?.startsWith('http') ? (
-                                    <img
-                                        src={proofModal.screenshotUrl}
-                                        alt="Payment proof"
-                                        className="w-full object-contain max-h-80"
-                                        onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                                    />
+                                    <>
+                                        <img
+                                            src={proofModal.screenshotUrl}
+                                            alt="Payment proof"
+                                            className="w-full object-contain max-h-80"
+                                            onError={e => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                                        />
+                                        <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/10 flex items-center justify-center transition-all">
+                                            <div className="bg-white/90 backdrop-blur-md p-3 rounded-2xl shadow-xl opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all flex items-center gap-2 text-xs font-black uppercase tracking-widest text-slate-900">
+                                                <Eye size={16} /> Click to Expand
+                                            </div>
+                                        </div>
+                                    </>
                                 ) : (
                                     <p className="text-slate-400 text-sm font-medium p-8 text-center">{proofModal.screenshotUrl}</p>
                                 )}
@@ -349,9 +404,20 @@ const BillingPayments = () => {
                                 </div>
                             </div>
                             {proofModal.screenshotUrl?.startsWith('http') && (
-                                <a href={proofModal.screenshotUrl} target="_blank" rel="noreferrer" className="flex items-center justify-center gap-2 w-full py-3 bg-slate-50 border border-slate-100 rounded-2xl text-sm font-bold text-slate-600 hover:bg-slate-100 transition-colors">
-                                    <ExternalLink size={14} /> Open Original
-                                </a>
+                                <div className="space-y-3">
+                                    <button 
+                                        onClick={() => setExpandedImage(proofModal.screenshotUrl!)}
+                                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-slate-900 text-white rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-slate-800 transition-all active:scale-95 shadow-xl"
+                                    >
+                                        <Eye size={16} /> View Full Screen
+                                    </button>
+                                    <button 
+                                        onClick={() => downloadImage(proofModal.screenshotUrl!, `payment-proof-${proofModal.showroomName.toLowerCase().replace(/\s+/g, '-')}.png`)}
+                                        className="w-full flex items-center justify-center gap-2 py-3.5 bg-indigo-50 text-indigo-600 rounded-2xl text-xs font-black uppercase tracking-widest hover:bg-indigo-100 transition-all active:scale-95 border border-indigo-100"
+                                    >
+                                        <Download size={16} /> Download Proof
+                                    </button>
+                                </div>
                             )}
                             
                             {/* Rejection Message Display */}
@@ -512,6 +578,64 @@ const BillingPayments = () => {
                                 </button>
                             </div>
                         </div>
+                    </div>
+                </div>
+            )}
+            {/* ── Full Screen Image Viewer ── */}
+            {expandedImage && (
+                <div 
+                    className="fixed inset-0 z-[100] flex flex-col items-center justify-center p-4 bg-slate-950/98 backdrop-blur-xl animate-in fade-in duration-300"
+                    onClick={() => { setExpandedImage(null); setZoom(1); }}
+                >
+                    <div className="absolute top-8 left-8 right-8 flex items-center justify-between z-10">
+                        <div className="flex items-center gap-4 bg-white/10 backdrop-blur-md px-6 py-3 rounded-2xl border border-white/10">
+                             <div className="flex items-center gap-3 pr-4 border-r border-white/10">
+                                <FileImage className="text-indigo-400" size={20} />
+                                <span className="text-white font-black text-xs uppercase tracking-widest">Image Inspector</span>
+                             </div>
+                             <div className="flex items-center gap-2 pl-2">
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setZoom(z => Math.max(0.5, z - 0.25)); }}
+                                    className="p-2 hover:bg-white/10 rounded-lg text-white/70 transition-colors"
+                                >
+                                    <XCircle size={16} className="rotate-45" /> {/* - */}
+                                </button>
+                                <span className="text-white/60 text-[10px] font-black w-12 text-center">{Math.round(zoom * 100)}%</span>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setZoom(z => Math.min(3, z + 0.25)); }}
+                                    className="p-2 hover:bg-white/10 rounded-lg text-white/70 transition-colors"
+                                >
+                                    <Plus size={16} />
+                                </button>
+                                <button 
+                                    onClick={(e) => { e.stopPropagation(); setZoom(1); }}
+                                    className="ml-2 px-3 py-1 bg-white/10 hover:bg-white/20 rounded-md text-[9px] font-black text-white/70 uppercase tracking-widest transition-all"
+                                >
+                                    Reset
+                                </button>
+                             </div>
+                        </div>
+                        
+                        <button 
+                            onClick={() => { setExpandedImage(null); setZoom(1); }}
+                            className="p-4 bg-rose-500/20 hover:bg-rose-500/40 rounded-full text-rose-200 transition-all shadow-2xl border border-rose-500/30"
+                        >
+                            <X size={24} />
+                        </button>
+                    </div>
+
+                    <div className="w-full h-full flex items-center justify-center overflow-auto custom-scrollbar p-12">
+                        <img 
+                            src={expandedImage} 
+                            alt="Full proof" 
+                            className="max-w-none transition-transform duration-300 ease-out shadow-[0_0_100px_rgba(0,0,0,0.8)] rounded-lg cursor-grab active:cursor-grabbing" 
+                            style={{ transform: `scale(${zoom})` }}
+                            onClick={e => e.stopPropagation()}
+                        />
+                    </div>
+                    
+                    <div className="absolute bottom-8 px-6 py-3 bg-white/10 backdrop-blur-md rounded-2xl border border-white/10 text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">
+                        Use controls to zoom • Click background to exit
                     </div>
                 </div>
             )}

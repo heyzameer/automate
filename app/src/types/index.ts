@@ -21,12 +21,20 @@ export interface Tenant {
   _id?: string;
   name: string;
   slug: string;
-  plan: 'NONE' | 'TRIAL' | 'BASIC' | 'PRO' | 'ENTERPRISE' | 'CUSTOM';
+  phone?: string;
+  plan: 'NONE' | 'TRIAL' | 'BASIC' | 'PRO' | 'ENTERPRISE' | 'CUSTOM' | 'none' | 'trial' | 'basic' | 'pro' | 'enterprise' | 'custom';
   isActive: boolean;
   expiryDate: string;
+  createdAt?: string;
+  verificationStatus?: 'pending' | 'verified' | 'rejected';
   limits: {
     maxCars: number;
-    maxLeads: number;
+    maxLeads?: number;
+  };
+  features: {
+    whatsappBot: boolean;
+    campaigns: boolean;
+    qrCode: boolean;
   };
   whatsappConfig?: {
     phoneNumberId?: string;
@@ -37,6 +45,13 @@ export interface Tenant {
     includeGallery: boolean;
     includeSpecs: boolean;
     includeLocation: boolean;
+    isActive?: boolean;
+  };
+  kioskConfig?: {
+    isActive: boolean;
+    kioskKey: string;
+    allowedDomains: string[];
+    lastUsed?: string;
   };
 }
 

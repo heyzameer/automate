@@ -29,8 +29,10 @@ export const useTenants = () => {
       await tenantService.updateTenantStatus(id, !currentStatus);
       toast.success("Status updated");
       await fetchTenants();
+      return true;
     } catch {
       toast.error("Failed to update status");
+      return false;
     }
   };
 
@@ -40,8 +42,10 @@ export const useTenants = () => {
       await tenantService.updateTenantPlan(id, payload);
       toast.success("Plan updated successfully!");
       await fetchTenants();
+      return true;
     } catch {
       toast.error("Failed to update plan");
+      return false;
     } finally {
       setSaving(false);
     }

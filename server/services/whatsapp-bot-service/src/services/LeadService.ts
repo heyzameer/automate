@@ -55,16 +55,23 @@ export class LeadService {
     }
 
     async createLead(data: any) {
-        // Prevent duplicates - use existing if available
-        let lead = await this.leadRepository.findOne({ tenantId: data.tenantId, phone: data.phone });
+        // Support multiple bookings: Find an existing OPEN lead for the SAME vehicle
+        // If they want to book a DIFFERENT car, or their previous booking is done/cancelled, we create a new Lead entry
+        let lead = await this.leadRepository.findOne({ 
+            tenantId: data.tenantId, 
+            phone: data.phone,
+            vehicleId: data.vehicleId,
+            status: { $nin: ['cancelled', 'lost', 'closed', 'completed'] }
+        });
+
         if (lead) {
-            // Update fields if provided but don't overwrite if data is missing
+            // Update fields for the existing active booking for this car
             if (data.name) lead.name = data.name;
-            if (data.vehicleId) lead.vehicleId = data.vehicleId;
             if (data.status) lead.status = data.status;
             if (data.stage) lead.stage = data.stage;
             if (data.preferredDateTime) lead.preferredDateTime = data.preferredDateTime;
         } else {
+            // Create a new Lead/Booking entry
             lead = await this.leadRepository.create(data);
         }
         
@@ -81,6 +88,15 @@ export class LeadService {
                     status: 'scheduled'
                 });
             }
+
+            // 📢 Notify Showroom Admin of New Booking
+            await notify('booking.new', data.tenantId, {
+                leadId: lead._id || lead.id,
+                customerName: lead.name,
+                vehicleId: data.vehicleId,
+                date: data.preferredDateTime,
+                type: 'booking'
+            });
         } else if (data.vehicleId) {
             await this.scoreLead(lead, 30); // Interest in car = Warm
         } else if (data.status === LeadStatus.NEW) {

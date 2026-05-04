@@ -4,6 +4,7 @@ import QRCode from 'qrcode';
 import { Lead } from '../models/Lead';
 import { LeadService } from '../services/LeadService';
 import { logger } from '../utils/logger';
+import { authServiceClient } from '../utils/apiClient';
 
 @injectable()
 export class LeadController {
@@ -123,7 +124,8 @@ export class LeadController {
 
     capturePublicLead = async (req: Request, res: Response) => {
         try {
-            const { tenantId, phone, name, source, vehicleId, note } = req.body;
+            const tenantId = req.body.tenantId || req.headers['x-tenant-id'];
+            const { phone, name, source, vehicleId, note } = req.body;
             
             if (!tenantId || !phone) {
                 return res.status(400).json({ success: false, message: 'Missing tenantId or phone' });
@@ -160,8 +162,39 @@ export class LeadController {
             const { carCode } = req.params;
             const tenantId = req.headers['x-tenant-id'];
             
+            // Check plan features
+            try {
+                const tenantRes = await authServiceClient.get(`/internal/auth/tenants/${tenantId}`);
+                const tenant = tenantRes.data?.data;
+                if (tenant && tenant.features?.qrCode === false) {
+                    return res.status(403).json({ 
+                        success: false, 
+                        message: 'Feature Locked: QR Code generation is not included in your current plan. Please upgrade to unlock.' 
+                    });
+                }
+            } catch (err: any) {
+                logger.warn(`Failed to verify tenant limits for QR code generation: ${err.message}`);
+                // If we can't verify, we should probably fail safe (lock) or allow depending on policy.
+                // Given the user's request to "enforce this too", let's be strict.
+                if (err.response?.status === 403 || err.response?.status === 401) {
+                    return res.status(403).json({ success: false, message: 'Unauthorized to generate QR code.' });
+                }
+            }
+
             // The URL the QR code will point to
-            const scanUrl = `${process.env.PUBLIC_URL || 'http://localhost:5000'}/api/v1/bot/public/scan/${carCode}?tid=${tenantId}`;
+            let scanUrl = `${process.env.PUBLIC_URL || 'http://localhost:5000'}/api/v1/bot/public/scan/${carCode}?tid=${tenantId}`;
+            
+            // Priority: If showroom has a kiosk website URL, use it!
+            try {
+                const tenantRes = await authServiceClient.get(`/internal/tenants/${tenantId}`);
+                const tenant = tenantRes.data?.data;
+                if (tenant && tenant.kioskConfig?.websiteUrl) {
+                    const baseUrl = tenant.kioskConfig.websiteUrl.replace(/\/$/, '');
+                    scanUrl = `${baseUrl}/inventory/${carCode}`;
+                }
+            } catch (err) {
+                logger.warn(`Failed to fetch tenant websiteUrl for QR: ${err}`);
+            }
             
             const qrCodeDataUrl = await QRCode.toDataURL(scanUrl, {
                 width: 400,
@@ -184,9 +217,22 @@ export class LeadController {
             const { carCode } = req.params;
             const { tid: tenantId } = req.query;
 
-            // In a real app, you'd fetch car details from inventory-service here
-            // const car = await inventoryService.getCarByCode(tenantId, carCode);
-            
+            // Fetch tenant info for the landing page
+            let tenantInfo = { name: 'Showroom', phone: '', address: '' };
+            try {
+                const tenantRes = await authServiceClient.get(`/internal/tenants/${tenantId}`);
+                const t = tenantRes.data?.data;
+                if (t) {
+                    tenantInfo = { 
+                        name: t.name || 'Showroom', 
+                        phone: t.supportPhone || t.phone || '', 
+                        address: t.address || '' 
+                    };
+                }
+            } catch (_) {}
+
+            const cleanPhone = tenantInfo.phone.replace(/\D/g, '');
+
             // For now, let's render a high-end mobile landing page
             const html = `
 <!DOCTYPE html>
@@ -194,7 +240,7 @@ export class LeadController {
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Vehicle Details | CarBot AI</title>
+    <title>${tenantInfo.name} | Vehicle Details</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
@@ -211,32 +257,20 @@ export class LeadController {
             <div class="absolute inset-0 bg-gradient-to-t from-slate-900/80 to-transparent"></div>
             <div class="absolute bottom-6 left-6 right-6 text-white">
                 <span class="bg-indigo-500 text-[10px] font-extrabold uppercase tracking-widest px-2 py-1 rounded">Stock: ${carCode}</span>
-                <h1 class="text-3xl font-extrabold mt-2">Premium SUV</h1>
-                <p class="text-slate-300 font-medium">Model 2023 • 12,500 KM</p>
+                <h1 class="text-3xl font-extrabold mt-2">${tenantInfo.name}</h1>
+                <p class="text-slate-300 font-medium">${tenantInfo.address || 'Premium Selection'}</p>
             </div>
         </div>
 
         <!-- Details Grid -->
         <div class="p-6 grid grid-cols-2 gap-4">
-            <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
-                <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Pricing</p>
-                <p class="text-xl font-extrabold text-slate-900 mt-1">₹ 45.50 Lakh</p>
+            <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm text-center">
+                <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Action</p>
+                <p class="text-xl font-extrabold text-slate-900 mt-1">Visit Site</p>
             </div>
-            <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm">
-                <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Fuel Type</p>
-                <p class="text-xl font-extrabold text-slate-900 mt-1">Diesel</p>
-            </div>
-        </div>
-
-        <!-- Feature List -->
-        <div class="px-6 space-y-3">
-            <div class="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100">
-                <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold">✓</div>
-                <p class="font-bold text-slate-600">Company Serviced</p>
-            </div>
-            <div class="flex items-center gap-4 bg-white p-4 rounded-2xl border border-slate-100">
-                <div class="w-10 h-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600 font-bold">✓</div>
-                <p class="font-bold text-slate-600">Under Warranty</p>
+            <div class="bg-white p-4 rounded-3xl border border-slate-100 shadow-sm text-center">
+                <p class="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest">Status</p>
+                <p class="text-xl font-extrabold text-emerald-600 mt-1">Available</p>
             </div>
         </div>
 
@@ -247,9 +281,6 @@ export class LeadController {
                 <p class="text-slate-400 font-medium text-sm mt-1">Drop your details, our agent will call you.</p>
                 
                 <form id="leadForm" class="mt-6 space-y-4">
-                    <input type="hidden" name="tid" value="${tenantId}">
-                    <input type="hidden" name="vId" value="${carCode}">
-                    
                     <input type="text" id="name" placeholder="Your Name" required
                         class="w-full px-6 py-4 bg-slate-50 border-none rounded-2xl font-bold text-slate-700 outline-none focus:ring-2 focus:ring-indigo-100 transition-all">
                     
@@ -269,12 +300,12 @@ export class LeadController {
 
         <!-- Footer Call Buttons -->
         <div class="fixed bottom-6 left-6 right-6 flex gap-4 z-50">
-            <a href="https://wa.me/91XXXXXXXXXX?text=Hi, I am interested in ${carCode}" 
+            <a href="https://wa.me/${cleanPhone}?text=Hi, I am interested in vehicle ${carCode}" 
                class="flex-1 glass p-5 rounded-3xl flex items-center justify-center gap-3 active:scale-95 transition-all">
                 <span class="text-xl">💬</span>
                 <span class="font-extrabold text-xs uppercase tracking-widest text-indigo-600">WhatsApp</span>
             </a>
-            <a href="tel:+91XXXXXXXXXX" 
+            <a href="tel:${cleanPhone}" 
                class="flex-1 btn-gradient p-5 rounded-3xl flex items-center justify-center gap-3 text-white shadow-xl shadow-indigo-100 active:scale-95 transition-all">
                 <span class="text-xl">📞</span>
                 <span class="font-extrabold text-xs uppercase tracking-widest">Call Now</span>

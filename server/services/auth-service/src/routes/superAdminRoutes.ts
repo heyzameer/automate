@@ -18,6 +18,9 @@ router.use(superAuth);
 // Tenant Management - GET BY ID must be early to avoid conflicts
 router.get(AUTH_ROUTES.SUPER_ADMIN.TENANT_BY_ID, superAdminController.getTenantById);
 
+// Per-tenant usage stats (stock + leads)
+router.get('/tenants/:id/stats', superAdminController.getTenantStats);
+
 // Bot Assignment & Control — PRIORITY ROUTES
 router.patch('/tenants/:id/bot-status', (req: Request, res: Response, next: NextFunction) => {
     logger.info(`[ROUTER HIT] PATCH /tenants/${req.params.id}/bot-status`);

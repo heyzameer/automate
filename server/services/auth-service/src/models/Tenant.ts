@@ -49,26 +49,16 @@ const tenantSchema = new Schema<ITenant>(
         kioskConfig: {
             kioskKey: { type: String, unique: true, sparse: true },
             isActive: { type: Boolean, default: false },
-            allowedDomains: [{ type: String }]
+            allowedDomains: [{ type: String }],
+            websiteUrl: { type: String, trim: true }
         },
         limits: {
             maxCars: { type: Number, default: 50 },
-            maxLeads: { type: Number, default: 500 },
-            maxStaff: { type: Number, default: 2 },
-            maxCampaignsPerMonth: { type: Number, default: 2 },
         },
         features: {
-            appointments: { type: Boolean, default: true },
-            imageSending: { type: Boolean, default: true },
-            nlpSearch: { type: Boolean, default: true },
-            customWelcome: { type: Boolean, default: false },
-            emailAlerts: { type: Boolean, default: false },
-            analyticsLevel: { type: String, enum: ['none', 'basic', 'advanced', 'full'], default: 'basic' },
-            prioritySupport: { type: Boolean, default: false },
-            dedicatedSupport: { type: Boolean, default: false },
-            emailCampaigns: { type: Boolean, default: false },
-            newArrivalBroadcast: { type: Boolean, default: false },
-            leadScoring: { type: Boolean, default: false },
+            whatsappBot: { type: Boolean, default: false },
+            campaigns: { type: Boolean, default: false },
+            qrCode: { type: Boolean, default: false },
         },
         address: { type: String, trim: true },
         locationUrl: { type: String, trim: true },

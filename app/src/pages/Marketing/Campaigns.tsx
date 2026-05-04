@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { cn, handleUpgradePlan } from '../../lib/utils';
+import { useAuth } from '../../hooks/useAuth';
 import {
     Send,
     Users,
@@ -24,6 +26,9 @@ import { vehicleService, Vehicle } from '../../services/vehicle.service';
 import { leadsService, Lead } from '../../services/leads.service';
 import toast from 'react-hot-toast';
 import { format } from 'date-fns';
+import { useAppSelector } from '../../store';
+import { selectTenant } from '../../store/slices/tenantSlice';
+import { ShieldAlert, ArrowUpCircle, ChevronRight, Zap, Megaphone } from 'lucide-react';
 
 const AUDIENCES = [
     { id: 'all', name: 'All Leads', icon: Users, color: 'bg-blue-500', description: 'Broadcast to everyone' },
@@ -42,6 +47,11 @@ export default function Campaigns() {
     const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
     const [executingId, setExecutingId] = useState<string | null>(null);
     const [editingId, setEditingId] = useState<string | null>(null);
+
+    const { getStoredUser } = useAuth();
+    const user = getStoredUser();
+    const tenant = useAppSelector(selectTenant);
+    const isLocked = tenant?.features?.campaigns === false;
 
     // New Campaign Form State
     const [newCampaign, setNewCampaign] = useState<Partial<Campaign>>({
@@ -213,15 +223,70 @@ export default function Campaigns() {
                 </div>
                 <button 
                     onClick={() => setIsCreateModalOpen(true)}
-                    className="inline-flex items-center justify-center px-8 py-4 bg-indigo-600 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-xl shadow-indigo-100"
+                    disabled={isLocked}
+                    className={cn(
+                        "inline-flex items-center justify-center px-8 py-4 rounded-2xl font-black text-xs uppercase tracking-widest transition-all shadow-xl",
+                        isLocked 
+                            ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" 
+                            : "bg-indigo-600 text-white hover:bg-indigo-700 shadow-indigo-100"
+                    )}
                 >
                     <Plus className="w-5 h-5 mr-3" />
                     Create Campaign
                 </button>
             </div>
 
-            {/* Campaign Cards */}
-            {loading ? (
+            {isLocked ? (
+                <div className="bg-white rounded-[3.5rem] overflow-hidden border border-slate-100 shadow-xl relative">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-50/50 via-white to-white pointer-events-none" />
+                    
+                    <div className="relative z-10 p-20 flex flex-col items-center text-center max-w-2xl mx-auto">
+                        <div className="w-24 h-24 bg-indigo-600 rounded-[2rem] flex items-center justify-center text-white mb-10 shadow-2xl shadow-indigo-200 rotate-6">
+                            <Megaphone size={48} />
+                        </div>
+                        
+                        <h2 className="text-4xl font-black text-slate-900 tracking-tight mb-6">
+                            Reach Thousands of Leads with <span className="premium-gradient-text">Marketing Pro</span>
+                        </h2>
+                        
+                        <p className="text-slate-500 font-medium text-lg leading-relaxed mb-12">
+                            Broadcast personalized WhatsApp messages, promote new inventory, and nurture your leads automatically. 
+                            Campaigns are part of our <span className="font-bold text-slate-900">Pro & Enterprise</span> plans.
+                        </p>
+                        
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 w-full mb-12">
+                            {[
+                                { title: 'Bulk WhatsApp', desc: '1-click broadcast to all leads' },
+                                { title: 'Lead Segmenting', desc: 'Target Hot vs Cold leads' },
+                                { title: 'Smart Variables', desc: 'Automatic {name} injection' },
+                                { title: 'Real-time Stats', desc: 'Track open & click rates' }
+                            ].map(f => (
+                                <div key={f.title} className="flex items-center gap-4 bg-slate-50 p-6 rounded-[2rem] border border-slate-100 text-left">
+                                    <div className="w-10 h-10 rounded-full bg-emerald-50 text-emerald-500 flex items-center justify-center flex-shrink-0">
+                                        <Zap size={18} />
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-black text-slate-900 uppercase tracking-tight">{f.title}</p>
+                                        <p className="text-[10px] font-bold text-slate-400">{f.desc}</p>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                        
+                        <button 
+                            onClick={() => handleUpgradePlan(user, tenant)}
+                            className="inline-flex items-center gap-3 px-10 py-5 bg-indigo-600 text-white rounded-[2rem] font-black text-xs uppercase tracking-widest hover:bg-indigo-700 transition-all shadow-2xl shadow-indigo-200"
+                        >
+                            <ArrowUpCircle size={20} />
+                            Upgrade My Plan Now
+                            <ChevronRight size={18} />
+                        </button>
+                    </div>
+                </div>
+            ) : (
+                <>
+                    {/* Campaign Cards */}
+                    {loading ? (
                 <div className="h-96 flex flex-col items-center justify-center gap-4">
                     <Loader2 className="w-12 h-12 animate-spin text-indigo-600" />
                     <p className="text-slate-400 font-black uppercase tracking-widest text-xs animate-pulse">Syncing Campaigns...</p>
@@ -350,6 +415,8 @@ export default function Campaigns() {
                         </div>
                     ))}
                 </div>
+            )}
+            </>
             )}
 
             {/* Create/Edit Modal */}

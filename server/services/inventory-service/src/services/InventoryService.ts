@@ -1,6 +1,6 @@
 import { injectable, inject } from 'tsyringe';
 import axios from 'axios';
-import { IVehicleDocument } from '../models/Vehicle';
+import Vehicle, { IVehicleDocument } from '../models/Vehicle';
 import FormConfig from '../models/FormConfig';
 import { logger } from '../utils/logger';
 import { AIService } from './AIService';
@@ -112,15 +112,49 @@ export class InventoryService implements IInventoryService {
             }
         }
 
+        try {
+            const tenantRes = await axios.get(`http://localhost:5001/api/internal/auth/tenants/${tenantId}`, {
+                headers: { 'x-internal-secret': config.internalSecret },
+                timeout: 2000 // 2 seconds limit for internal auth check
+            });
+            const tenant = tenantRes.data.data;
+            const maxCars = tenant?.limits?.maxCars;
+            
+            if (maxCars !== undefined && maxCars < 999999) {
+                const currentCarsCount = await Vehicle.countDocuments({ tenantId });
+                if (currentCarsCount >= maxCars) {
+                    throw new Error(`Plan Limit Exceeded: Your plan allows a maximum of ${maxCars} cars. Please upgrade your plan to add more vehicles.`);
+                }
+            }
+        } catch (err: any) {
+            if (err.message && err.message.includes('Plan Limit Exceeded')) throw err;
+            logger.warn(`Failed to verify tenant limits: ${err.message}`);
+        }
+
         // Prevent duplicate registration numbers in the same showroom
         if (data.rcNumber) {
+            logger.info(`Checking RC Number uniqueness: ${data.rcNumber}`);
             const existing = await this.vehicleRepository.findOne({ tenantId, rcNumber: data.rcNumber });
             if (existing) {
                 throw new Error(`A vehicle with RC Number '${data.rcNumber}' already exists in your inventory.`);
             }
         }
 
-        const aiPrice = await this.aiService.suggestPrice(data);
+        logger.info('Starting AI Price Suggestion...');
+        // Wrap AI suggestion in a timeout so it doesn't block vehicle creation
+        let aiPrice = null;
+        try {
+            const timeoutPromise = new Promise((_, reject) => 
+                setTimeout(() => reject(new Error('AI Timeout')), 3000)
+            );
+            aiPrice = await Promise.race([
+                this.aiService.suggestPrice(data),
+                timeoutPromise
+            ]);
+            logger.info(`AI Price Suggestion completed: ${aiPrice}`);
+        } catch (err: any) {
+            logger.warn(`AI price suggestion skipped or timed out: ${err.message}`);
+        }
 
         const vehicleData: any = {
             tenantId,
@@ -152,11 +186,15 @@ export class InventoryService implements IInventoryService {
         }
         vehicleData.attributes = attributes;
 
+        logger.info('Saving vehicle to database...');
         const vehicle = await this.vehicleRepository.create(vehicleData);
-        logger.info(`Vehicle created for tenant ${tenantId} by user ${userId}`);
+        logger.info(`Vehicle saved with ID: ${vehicle._id}`);
 
+        logger.info('Connecting to RabbitMQ to publish event...');
         const mq = await import('../utils/rabbitmq').then(m => m.getRabbitMQ());
+        logger.info('Publishing vehicle.created event...');
         await mq.publish('carbot_events', 'vehicle.created', { tenantId, vehicle });
+        logger.info('Event published successfully.');
         
         return vehicle;
     }

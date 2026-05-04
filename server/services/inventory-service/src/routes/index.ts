@@ -13,6 +13,13 @@ const router = Router();
 router.use('/public', publicRoutes);
 router.use('/customer', customerRoutes);
 
+/**
+ * PUBLIC METADATA (Showroom / Kiosk)
+ */
+router.get('/brands', (req, res) => container.resolve(InventoryController).getBrands(req, res));
+router.get('/brands/:brandId/models', (req, res) => container.resolve(InventoryController).getModels(req, res));
+router.get('/dropdown/:fieldName', (req, res) => container.resolve(InventoryController).getDropdownOptions(req, res));
+
 // Protected routes (Showroom Admin / Super Admin)
 router.use(authenticate);
 
@@ -73,7 +80,7 @@ router.patch('/admin/dropdown/:fieldName',
 /**
  * INVENTORY MANAGEMENT (SHOWROOMS)
  */
-router.post('/images/upload', authorize(UserRole.SHOWROOM_ADMIN, UserRole.SHOWROOM_STAFF, UserRole.SUPER_ADMIN), upload.array('images', 10), (req, res) => container.resolve(InventoryController).uploadImages(req, res));
+router.post('/images/upload', authorize(UserRole.SHOWROOM_ADMIN, UserRole.SHOWROOM_STAFF, UserRole.SUPER_ADMIN), upload.array('images', 50), (req, res) => container.resolve(InventoryController).uploadImages(req, res));
 
 router.get('/vehicles', (req, res) => container.resolve(InventoryController).getVehicles(req, res));
 router.get('/vehicles/:id', (req, res) => container.resolve(InventoryController).getVehicleById(req, res));
@@ -85,9 +92,6 @@ router.delete('/vehicles/:id', authorize(UserRole.SHOWROOM_ADMIN, UserRole.SHOWR
 /**
  * HIERARCHICAL & GLOBAL DATA
  */
-router.get('/brands', (req, res) => container.resolve(InventoryController).getBrands(req, res));
-router.get('/brands/:brandId/models', (req, res) => container.resolve(InventoryController).getModels(req, res));
-router.get('/dropdown/:fieldName', (req, res) => container.resolve(InventoryController).getDropdownOptions(req, res));
 router.get('/next-car-code', (req, res) => container.resolve(InventoryController).getNextCarCode(req, res));
 router.get('/vehicles/check-code/:code', (req, res) => container.resolve(InventoryController).checkCarCodeAvailability(req, res));
 

@@ -5,6 +5,9 @@ import { FormConfigService } from '../services/FormConfigService';
 import { sendSuccess } from '../utils/response';
 import { logger } from '../utils/logger';
 import { UserRole } from '../types';
+import sharp from 'sharp';
+import { cloudinary } from '../middleware/upload';
+import { Readable } from 'stream';
 
 @injectable()
 export class InventoryController {
@@ -80,15 +83,40 @@ export class InventoryController {
     // Image Management
     async uploadImages(req: Request, res: Response) {
         try {
-            if (!req.files || (req.files as any[]).length === 0) {
+            const files = req.files as Express.Multer.File[];
+            if (!files || files.length === 0) {
                 return res.status(400).json({ success: false, message: 'No images uploaded' });
             }
-            
-            const urls = (req.files as any[]).map(f => f.path);
-            return sendSuccess(res, 'Images uploaded successfully', { urls });
+
+            const uploadPromises = files.map(async (file) => {
+                // 1. Compress with Sharp
+                const compressedBuffer = await sharp(file.buffer)
+                    .resize(2000, 2000, { fit: 'inside', withoutEnlargement: true })
+                    .jpeg({ quality: 80, progressive: true })
+                    .toBuffer();
+
+                // 2. Upload to Cloudinary via Stream
+                return new Promise<string>((resolve, reject) => {
+                    const uploadStream = cloudinary.uploader.upload_stream(
+                        {
+                            folder: 'carbot-inventory',
+                            public_id: `${Date.now()}-${file.originalname.split('.')[0]}`.replace(/[^a-z0-9]/gi, '_').toLowerCase()
+                        },
+                        (error, result) => {
+                            if (error) return reject(error);
+                            resolve(result!.secure_url);
+                        }
+                    );
+
+                    Readable.from(compressedBuffer).pipe(uploadStream);
+                });
+            });
+
+            const urls = await Promise.all(uploadPromises);
+            return sendSuccess(res, 'Images uploaded and compressed successfully', { urls });
         } catch (error: any) {
-            logger.error('Error uploading images:', error);
-            res.status(500).json({ success: false, message: 'Image upload failed' });
+            logger.error('Error uploading/compressing images:', error);
+            res.status(500).json({ success: false, message: 'Image processing or upload failed' });
         }
     }
 

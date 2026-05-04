@@ -14,7 +14,7 @@ services:
     ports:
       - "9090:9090"
     networks:
-      - carbot-monitoring
+      - orbix-mesh
     extra_hosts:
       - "host.docker.internal:host-gateway"
 
@@ -27,7 +27,7 @@ services:
       - "3100:3100"
     command: -config.file=/etc/loki/local-config.yaml
     networks:
-      - carbot-monitoring
+      - orbix-mesh
 
   promtail:
     image: grafana/promtail:2.8.2
@@ -37,7 +37,7 @@ services:
       - ./promtail/config.yaml:/etc/promtail/config.yaml
     command: -config.file=/etc/promtail/config.yaml
     networks:
-      - carbot-monitoring
+      - orbix-mesh
     depends_on:
       - loki
 
@@ -54,8 +54,8 @@ services:
       - prometheus
       - loki
     networks:
-      - carbot-monitoring
+      - orbix-mesh
 
 networks:
-  carbot-monitoring:
-    driver: bridge
+  orbix-mesh:
+    external: true

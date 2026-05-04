@@ -7,8 +7,8 @@ export interface TenantPayload {
   slug?: string;
   plan: string;
   limits?: {
-    maxCars: number;
-    maxLeads: number;
+    maxCars?: number;
+    maxLeads?: number;
   };
   expiryDate: string;
 }

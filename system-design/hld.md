@@ -132,21 +132,4 @@ graph TD
 - **Subscription is manual:** Super Admin activates a showroom after receiving offline payment (UPI/bank). No payment gateway.
 - **JWT carries tenant context:** Every request carries a `TENANT_JWT` containing `{ tenant_id, user_id, role }`. Gateway injects `X-Tenant-Id` header for downstream services.
 
----
-
-## 1.5 SaaS Plan Tiers
-
-| Feature | Trial | Basic ₹999/mo | Pro ₹2499/mo | Enterprise ₹4999/mo |
-|---------|-------|--------------|--------------|----------------------|
-| Cars in Inventory | 10 | 50 | 200 | Unlimited |
-| Leads / month | 50 | 300 | 1,000 | Unlimited |
-| WhatsApp Bot | ✅ | ✅ | ✅ | ✅ |
-| Basic CRM | ✅ | ✅ | ✅ | ✅ |
-| GST Invoice | ❌ | ✅ | ✅ | ✅ |
-| EMI Calculator | ❌ | ✅ | ✅ | ✅ |
-| AI Price Suggestion | ❌ | ❌ | ✅ | ✅ |
-| 360° Car View | ❌ | ❌ | ✅ | ✅ |
-| WhatsApp Campaigns | ❌ | ❌ | ✅ | ✅ |
-| Full Analytics | ❌ | Basic | Full | Full + Export |
-| Website Builder | ❌ | Subdomain | ✅ + Domain | ✅ |
-| Incentive Tracking | ❌ | ❌ | ✅ | ✅ |
+--

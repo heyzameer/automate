@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Mail, Lock, ShieldCheck, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
+import { Mail, Lock, ShieldCheck, ArrowRight, Loader2, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 const AdminLogin = () => {
     const [formData, setFormData] = useState({ email: '', password: '' });
     const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+    const [showPassword, setShowPassword] = useState(false);
     
     const { loading, error, setError, authenticate, checkAuth } = useAuth();
 
@@ -111,17 +112,24 @@ const AdminLogin = () => {
                             <div className="relative group">
                                 <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500 group-focus-within:text-emerald-500 transition-colors" size={18} />
                                 <input
-                                    type="password"
+                                    type={showPassword ? "text" : "password"}
                                     name="password"
                                     value={formData.password}
                                     required
                                     autoComplete="current-password"
                                     placeholder="••••••••"
-                                    className={`block w-full pl-11 pr-4 py-3 bg-slate-950/50 border rounded-xl text-white placeholder-slate-600 focus:outline-none focus:ring-2 transition-all sm:text-sm ${
+                                    className={`block w-full pl-11 pr-11 py-3 bg-slate-950/50 border rounded-xl text-white placeholder-slate-600 focus:outline-none focus:ring-2 transition-all sm:text-sm ${
                                         fieldErrors.password ? 'border-rose-500/50 focus:ring-rose-500/20 text-rose-100' : 'border-slate-700/50 focus:ring-emerald-500/20 focus:border-emerald-500'
                                     }`}
                                     onChange={handleChange}
                                 />
+                                <button
+                                    type="button"
+                                    onClick={() => setShowPassword(!showPassword)}
+                                    className="absolute right-3.5 top-1/2 -translate-y-1/2 text-slate-500 hover:text-emerald-400 transition-colors"
+                                >
+                                    {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
+                                </button>
                             </div>
                             {fieldErrors.password && <p className="mt-1.5 text-xs font-bold text-rose-400">{fieldErrors.password}</p>}
                         </div>

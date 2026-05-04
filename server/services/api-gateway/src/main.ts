@@ -30,6 +30,21 @@ class Application {
     }
 
     private _initializeMiddlewares(): void {
+        // Body parsing middleware - Set high limit for high-quality images
+        // We skip parsing for multipart/form-data to allow the stream to pass to microservices untouched
+        this._app.use((req, res, next) => {
+            if (req.headers['content-type']?.includes('multipart/form-data')) {
+                return next();
+            }
+            return express.json({ limit: config.maxSizeLimit || '50mb' })(req, res, next);
+        });
+        this._app.use((req, res, next) => {
+            if (req.headers['content-type']?.includes('multipart/form-data')) {
+                return next();
+            }
+            return express.urlencoded({ extended: true, limit: config.maxSizeLimit || '50mb' })(req, res, next);
+        });
+
         // Security middlewares
         this._app.use(securityMiddleware);
         this._app.use(corsMiddleware);

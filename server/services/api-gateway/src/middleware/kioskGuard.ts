@@ -7,8 +7,16 @@ import { getRabbitMQ } from '../utils/rabbitmq';
 export const kioskGuard = async (req: Request, res: Response, next: NextFunction) => {
     const kioskKey = req.headers['x-kiosk-key'] as string;
     
-    // Only apply to inventory public/customer routes
-    if (!req.path.startsWith('/inventory/public') && !req.path.startsWith('/inventory/customer')) {
+    // Only apply to inventory public/customer routes, bot public routes, and customer auth
+    if (!req.path.startsWith('/inventory/public') && 
+        !req.path.startsWith('/inventory/customer') &&
+        !req.path.startsWith('/bot/public') &&
+        !req.path.startsWith('/auth/customer')) {
+        return next();
+    }
+
+    // Allow OPTIONS requests for CORS preflight (Browser doesn't send custom headers in OPTIONS)
+    if (req.method === 'OPTIONS') {
         return next();
     }
 
@@ -54,7 +62,7 @@ export const kioskGuard = async (req: Request, res: Response, next: NextFunction
             req.user!.tenantId = tenant._id || tenant.id;
 
             // Enforcement: If request already has a tenantId (query/body), it MUST match the kiosk's showroom
-            const targetTenantId = req.query.tenantId || req.body.tenantId;
+            const targetTenantId = req.query.tenantId || req.body?.tenantId;
             if (targetTenantId && targetTenantId !== req.user!.tenantId) {
                 return res.status(403).json({ 
                     success: false, 

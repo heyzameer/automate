@@ -49,6 +49,12 @@ export class BotService {
                 return;
             }
 
+            // Check if Plan features allow WhatsApp Bot
+            if (tenant.features?.whatsappBot === false) {
+                logger.info(`Bot feature is not included in the plan for tenant: ${tenant.name}`);
+                return;
+            }
+
             // Check if Subscription has expired
             if (tenant.expiryDate && new Date() > new Date(tenant.expiryDate)) {
                 logger.warn(`Subscription expired for tenant: ${tenant.name}. Disabling bot responses.`);
@@ -97,8 +103,9 @@ export class BotService {
 
             const lowerMessage = messageBody.toLowerCase().trim();
 
-            // 3. Global Commands - always reset to MENU regardless of state
-            if (['menu', 'hi', 'hello', 'start', 'restart'].includes(lowerMessage)) {
+            // 3. Global Commands - fuzzy match for greetings and explicit menu reset
+            const greetingRegex = /^(hi+|hello+|hey+|h+i+|h+h+|start|restart|menu)$/i;
+            if (greetingRegex.test(lowerMessage)) {
                 session.state = 'MENU';
                 await saveSession();
                 return this.sendMenu(tenant, from);
@@ -182,6 +189,9 @@ export class BotService {
                     break;
                 case 'BOOK_DATE':
                     await this.handleBookingDate(tenant, session, from, messageBody);
+                    break;
+                case 'BOOK_TIME':
+                    await this.handleBookingTime(tenant, session, from, messageBody);
                     break;
                 case 'RESCHEDULE_DATE':
                     await this.handleRescheduleDate(tenant, session, from, messageBody);
@@ -399,15 +409,22 @@ export class BotService {
         const includeSpecs = botConfig.includeSpecs !== false; // default true
         const includeLocation = botConfig.includeLocation !== false; // default true
         const websiteLinkTemplate = botConfig.websiteLinkTemplate || '';
+        const kioskWebsiteUrl = tenant.kioskConfig?.websiteUrl || '';
 
         // Build elegant dynamic reply
         let details = `🚗 *${brand} ${model}*`;
         if (v.status === 'booked') details += ` 🔴 *[BOOKED]*`;
         if (price) details += `\n💰 Price: ₹ ${Number(price).toLocaleString('en-IN')}`;
         
-        if (websiteLinkTemplate) {
-            const actualCode = attrs.car_code || code;
-            const fullLink = websiteLinkTemplate.replace('{carCode}', actualCode);
+        let fullLink = '';
+        const actualCode = attrs.car_code || code;
+        if (kioskWebsiteUrl) {
+            fullLink = `${kioskWebsiteUrl.replace(/\/$/, '')}/inventory/${actualCode}`;
+        } else if (websiteLinkTemplate) {
+            fullLink = websiteLinkTemplate.replace('{carCode}', actualCode);
+        }
+
+        if (fullLink) {
             details += `\n\n🔗 *Tap to view full gallery on our website:*\n${fullLink}`;
         }
         
@@ -434,11 +451,11 @@ export class BotService {
         session.context.lead_name = input;
         session.state = 'BOOK_DATE';
 
-        const msg = `Thanks *${input}*! 🗓️ When would you like to schedule your Test Drive?\n\nYou can select a slot below or type a custom date and time.`;
+        const msg = `Thanks *${input}*! 🗓️ Which day would you like to schedule your Test Drive?`;
         const buttons = [
-            { id: 'SLOT_10AM', title: '☀️ 10:00 AM' },
-            { id: 'SLOT_2PM', title: '☁️ 02:00 PM' },
-            { id: 'SLOT_4PM', title: '⛅ 04:00 PM' }
+            { id: 'DATE_TODAY', title: '📅 Today' },
+            { id: 'DATE_TOMORROW', title: '🌅 Tomorrow' },
+            { id: 'DATE_CUSTOM', title: '🗓️ Select Other' }
         ];
 
         await this.whatsappService.sendInteractiveButtons(
@@ -450,12 +467,46 @@ export class BotService {
 
     private async handleBookingDate(tenant: any, session: ISessionData, to: string, input: string) {
         if (!session.context) session.context = {};
+        
+        let dateHint = input;
+        if (input === 'DATE_TODAY') dateHint = 'Today';
+        if (input === 'DATE_TOMORROW') dateHint = 'Tomorrow';
+        
+        if (input === 'DATE_CUSTOM') {
+            return this.whatsappService.sendTextMessage(
+                to, "Please type the date you'd like (e.g., 'Next Monday' or 'May 5th').",
+                tenant.whatsappConfig.phoneNumberId,
+                config.whatsapp.systemToken || tenant.whatsappConfig.accessToken
+            );
+        }
 
-        // Parse natural language date
-        const parsedDate = await this.geminiService.parseDateTime(input, session.tenantId);
+        // Save the date part in context
+        session.context.temp_date = dateHint;
+        session.state = 'BOOK_TIME';
 
-        // ✅ HTTP POST to bot-service internal leads endpoint
-        await botServiceClient.post('/internal/leads', {
+        const msg = `Perfect! 🕒 What time slot works best for ${dateHint}?`;
+        const buttons = [
+            { id: 'TIME_10AM', title: '☀️ 10:00 AM' },
+            { id: 'TIME_2PM', title: '☁️ 02:00 PM' },
+            { id: 'TIME_4PM', title: '⛅ 04:00 PM' }
+        ];
+
+        await this.whatsappService.sendInteractiveButtons(
+            to, msg, buttons,
+            tenant.whatsappConfig.phoneNumberId,
+            config.whatsapp.systemToken || tenant.whatsappConfig.accessToken
+        );
+    }
+
+    private async handleBookingTime(tenant: any, session: ISessionData, to: string, input: string) {
+        if (!session.context) session.context = {};
+
+        // Use the saved temp_date + current input (time) to parse the final date
+        const fullDateInput = `${session.context.temp_date} at ${input}`;
+        const parsedDate = await this.geminiService.parseDateTime(fullDateInput, session.tenantId);
+
+        // 2. Create the Lead entry
+        const leadRes = await botServiceClient.post('/internal/leads', {
             tenantId: session.tenantId,
             phone: to,
             name: session.context.lead_name,
@@ -463,10 +514,32 @@ export class BotService {
             preferredDateTime: parsedDate,
             status: LeadStatus.NEW
         });
+        const lead = leadRes.data?.data;
 
-        await this.whatsappService.sendTextMessage(
-            to,
-            `✅ *Test Drive Requested!*\n\nYour booking for *${parsedDate}* is confirmed. Our team will call you at ${to} to finalize the details.\n\nType MENU for more options.`,
+        // 3. Send rich confirmation card
+        let vehicleName = 'Vehicle';
+        try {
+            const vRes = await inventoryServiceClient.get('/internal/vehicles', {
+                params: { tenantId: session.tenantId, _id: session.context.current_car_id }
+            });
+            const v = vRes.data?.data?.[0];
+            if (v) vehicleName = `${v.attributes?.brand || ''} ${v.attributes?.model || ''}`.trim();
+        } catch (_) {}
+
+        const confirmationMsg = `✅ *Test Drive Requested!*\n\n` +
+                                `🚗 *Vehicle:* ${vehicleName}\n` +
+                                `🗓️ *Date:* ${parsedDate}\n\n` +
+                                `Your booking is confirmed. Our team will call you at ${to} shortly to finalize everything.\n\n` +
+                                `If you need anything else, type *MENU* to browse more cars!\n\n` +
+                                `Need to change something? Use the options below:`;
+
+        const buttons = [
+            { id: `RESCHEDULE_LEAD_${lead?._id || lead?.id}`, title: '🗓️ Reschedule' },
+            { id: `CANCEL_LEAD_${lead?._id || lead?.id}`, title: '❌ Cancel' }
+        ];
+
+        await this.whatsappService.sendInteractiveButtons(
+            to, confirmationMsg, buttons,
             tenant.whatsappConfig.phoneNumberId,
             config.whatsapp.systemToken || tenant.whatsappConfig.accessToken
         );

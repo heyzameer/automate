@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Search, Phone, MessageCircle, Calendar, XCircle, Loader2, Filter, TrendingUp, User, Clock, Car, History, MoreVertical, CheckCircle2, Edit, Trash2 } from 'lucide-react';
 import { leadsService, Lead, LeadStage, LeadPriority } from '../../services/leads.service';
@@ -38,57 +38,55 @@ const StageBadge = ({ stage }: { stage: LeadStage }) => {
     );
 };
 
+import { useAppDispatch, useAppSelector } from '../../store';
+import {
+    fetchLeads,
+    updateLead as updateLeadThunk,
+    addCallLog as addCallLogThunk,
+    updateCallLog as updateCallLogThunk,
+    selectLeads,
+    selectLeadsLoading,
+    upsertLead,
+} from '../../store/slices/leadsSlice';
+import { fetchVehicles, selectVehicles } from '../../store/slices/vehiclesSlice';
+
 export default function Leads() {
     const [searchParams] = useSearchParams();
     const initialSearch = searchParams.get('search') || '';
     
-    const [leads, setLeads] = useState<Lead[]>([]);
-    const [loading, setLoading] = useState(true);
+    const dispatch = useAppDispatch();
+    const allLeads = useAppSelector(selectLeads);
+    const loading = useAppSelector(selectLeadsLoading);
+    const allVehicles = useAppSelector(selectVehicles);
+
     const [search, setSearch] = useState(initialSearch);
     const [filterStage, setFilterStage] = useState<string>('All');
     const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
     const [newNote, setNewNote] = useState('');
     const [editingLogId, setEditingLogId] = useState<string | null>(null);
     const [editNote, setEditNote] = useState('');
-    const [vehiclesMap, setVehiclesMap] = useState<Record<string, Vehicle>>({});
 
-    const fetchLeadsAndVehicles = async () => {
-        try {
-            const [leadsData, vehiclesData] = await Promise.all([
-                leadsService.getLeads(),
-                vehicleService.getAll().catch(() => []) // Silent catch if vehicles fail to load
-            ]);
-            
-            const vMap: Record<string, Vehicle> = {};
-            vehiclesData.forEach((v: Vehicle) => {
-                if (v._id) vMap[v._id] = v;
-                if (v.id) vMap[v.id] = v;
-            });
-            setVehiclesMap(vMap);
-            setLeads(leadsData);
-        } catch {
-            toast.error("Failed to load leads");
-        } finally {
-            setLoading(false);
-        }
-    };
+    // Build vehiclesMap from Redux store — no extra fetch needed
+    const vehiclesMap = useMemo(() => {
+        const m: Record<string, Vehicle> = {};
+        allVehicles.forEach(v => {
+            if (v._id) m[v._id] = v;
+            if (v.id) m[v.id] = v;
+        });
+        return m;
+    }, [allVehicles]);
 
-    useEffect(() => { fetchLeadsAndVehicles(); }, []);
+    const leads = useMemo(() => allLeads, [allLeads]);
 
     useEffect(() => {
-        if (selectedLead?.vehicleId && !vehiclesMap[selectedLead.vehicleId]) {
-            vehicleService.getById(selectedLead.vehicleId)
-                .then(v => {
-                    setVehiclesMap(prev => ({ ...prev, [selectedLead.vehicleId]: v }));
-                })
-                .catch(() => console.error("Could not fetch vehicle", selectedLead.vehicleId));
-        }
-    }, [selectedLead]);
+        dispatch(fetchLeads(undefined)); // guarded — no duplicate
+        dispatch(fetchVehicles());       // guarded — no duplicate
+    }, [dispatch]);
 
     const handleUpdateLead = async (id: string, updates: Partial<Lead>) => {
         try {
             const updated = await leadsService.updateLead(id, updates);
-            setLeads(leads.map(l => (l._id || l.id) === id ? updated : l));
+            dispatch(upsertLead(updated));
             if (selectedLead && (selectedLead._id || selectedLead.id) === id) {
                 setSelectedLead(updated);
             }
@@ -102,7 +100,7 @@ export default function Leads() {
         if (!selectedLead || !newNote) return;
         try {
             const updated = await leadsService.addCallLog(selectedLead._id || selectedLead.id, newNote, "Current User");
-            setLeads(leads.map(l => (l._id || l.id) === (selectedLead._id || selectedLead.id) ? updated : l));
+            dispatch(upsertLead(updated));
             setSelectedLead(updated);
             setNewNote('');
             toast.success("Log added successfully!");
@@ -115,7 +113,7 @@ export default function Leads() {
         if (!selectedLead || !editNote) return;
         try {
             const updated = await leadsService.updateCallLog(selectedLead._id || selectedLead.id, logId, editNote);
-            setLeads(leads.map(l => (l._id || l.id) === (selectedLead._id || selectedLead.id) ? updated : l));
+            dispatch(upsertLead(updated));
             setSelectedLead(updated);
             setEditingLogId(null);
             setEditNote('');
@@ -130,7 +128,7 @@ export default function Leads() {
         if (!window.confirm("Are you sure you want to delete this log entry?")) return;
         try {
             const updated = await leadsService.deleteCallLog(selectedLead._id || selectedLead.id, logId);
-            setLeads(leads.map(l => (l._id || l.id) === (selectedLead._id || selectedLead.id) ? updated : l));
+            dispatch(upsertLead(updated));
             setSelectedLead(updated);
             toast.success("Log deleted successfully!");
         } catch {

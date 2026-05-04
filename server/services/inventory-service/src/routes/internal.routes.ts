@@ -86,4 +86,21 @@ router.get('/analytics', async (req, res) => {
     }
 });
 
+router.get('/stats', async (req, res) => {
+    try {
+        const tenantId = req.query.tenantId as string;
+        if (!tenantId) return res.status(400).json({ success: false, message: 'tenantId required' });
+
+        const [total, available, sold] = await Promise.all([
+            vehicleRepository.count({ tenantId }),
+            vehicleRepository.count({ tenantId, status: 'available' }),
+            vehicleRepository.count({ tenantId, status: 'sold' }),
+        ]);
+
+        res.json({ success: true, data: { totalStock: total, availableStock: available, soldStock: sold } });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 export default router;

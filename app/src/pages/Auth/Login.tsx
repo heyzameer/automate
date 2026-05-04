@@ -179,6 +179,15 @@ const Login = () => {
                                 </>
                             )}
                         </button>
+
+                        <button
+                            type="button"
+                            onClick={() => setFormData({ email: 'demo@showroom.com', password: 'demoPassword123' })}
+                            className="w-full flex justify-center items-center py-3 px-4 rounded-xl text-sm font-bold text-slate-300 transition-all border border-slate-700 hover:bg-slate-800 hover:text-white mt-4"
+                        >
+                            <Sparkles className="mr-2 h-4 w-4 text-amber-400" />
+                            Load Demo Showroom Credentials
+                        </button>
                     </form>
 
                     <div className="mt-8 pt-8 border-t border-slate-800/50">

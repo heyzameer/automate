@@ -58,7 +58,7 @@ export default function TestDrives() {
         fetchData();
     }, []);
 
-    const handleUpdateStatus = async (id: string, status: string) => {
+    const handleUpdateStatus = async (id: string, status: any) => {
         try {
             await leadsService.updateLead(id, { status });
             // Remove from active list immediately
@@ -91,7 +91,7 @@ export default function TestDrives() {
             b.phone?.includes(searchTerm) ||
             vehicleInfo.includes(searchTerm)
         );
-    }).sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    }).sort((a, b) => new Date(b.createdAt || 0).getTime() - new Date(a.createdAt || 0).getTime());
 
     if (loading) return (
         <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">

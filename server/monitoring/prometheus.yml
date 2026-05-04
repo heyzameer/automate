@@ -5,28 +5,28 @@ global:
 scrape_configs:
   - job_name: 'carbot-gateway'
     static_configs:
-      - targets: ['host.docker.internal:5000']
-
+      - targets: ['orbix-monolith:5000']
+    
   - job_name: 'carbot-auth'
     static_configs:
-      - targets: ['host.docker.internal:5001']
+      - targets: ['orbix-monolith:5001']
 
   - job_name: 'carbot-inventory'
     static_configs:
-      - targets: ['host.docker.internal:5002']
+      - targets: ['orbix-monolith:5002']
 
   - job_name: 'carbot-campaign'
     static_configs:
-      - targets: ['host.docker.internal:5005']
+      - targets: ['orbix-monolith:5005']
 
   - job_name: 'carbot-whatsapp-bot'
     static_configs:
-      - targets: ['host.docker.internal:3003']
+      - targets: ['orbix-monolith:3003']
 
   - job_name: 'carbot-notification'
     static_configs:
-      - targets: ['host.docker.internal:5006']
+      - targets: ['orbix-monolith:5006']
 
   - job_name: 'carbot-billing'
     static_configs:
-      - targets: ['host.docker.internal:5008']
+      - targets: ['orbix-monolith:5008']

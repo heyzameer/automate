@@ -1,8 +1,6 @@
 import multer from 'multer';
 import { v2 as cloudinary } from 'cloudinary';
-import { CloudinaryStorage } from 'multer-storage-cloudinary';
 import dotenv from 'dotenv';
-import path from 'path';
 
 dotenv.config();
 
@@ -13,19 +11,12 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET || '_ET2YTdL3a3xAW5K9yP_51ZPGSs'
 });
 
-const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
-  params: async (req, file) => {
-    return {
-      folder: 'carbot-inventory',
-      allowed_formats: ['jpg', 'png', 'jpeg', 'webp'],
-      public_id: `${Date.now()}-${file.originalname.split('.')[0]}`,
-      transformation: [{ width: 2000, crop: 'limit', quality: 'auto:best', fetch_format: 'auto' }]
-    };
-  }
-});
+// Using Memory Storage so we can process with Sharp before Cloudinary
+const storage = multer.memoryStorage();
 
 export const upload = multer({ 
   storage: storage,
-  limits: { fileSize: 50 * 1024 * 1024 } // 50MB limit per file
+  limits: { fileSize: 50 * 1024 * 1024 } // Allow up to 50MB for raw upload, we will compress down to <10MB
 });
+
+export { cloudinary };

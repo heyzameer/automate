@@ -12,6 +12,7 @@ export const API_ENDPOINTS = {
   SUPER: {
     TENANTS: '/super/tenants',
     TENANT_BY_ID: (id: string) => `/super/tenants/${id}`,
+    TENANT_STATS: (id: string) => `/super/tenants/${id}/stats`,
     SETTINGS: '/super/settings',
     WA_CONFIG: '/super/wa-config',
     STATS: '/super/dashboard/stats',

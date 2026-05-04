@@ -11,6 +11,7 @@
     "kill-port:all": "taskkill /F /IM node.exe /T || exit 0"
   },
   "dependencies": {
+    "@reduxjs/toolkit": "^2.11.2",
     "axios": "^1.13.6",
     "clsx": "^2.1.1",
     "date-fns": "^4.1.0",
@@ -20,6 +21,7 @@
     "react-dom": "^19.2.0",
     "react-dropzone": "^14.3.8",
     "react-hot-toast": "^2.6.0",
+    "react-redux": "^9.2.0",
     "react-router-dom": "^7.11.0",
     "socket.io-client": "^4.8.3",
     "tailwind-merge": "^3.4.0"

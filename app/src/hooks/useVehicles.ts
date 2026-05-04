@@ -1,92 +1,105 @@
-import { useState, useCallback, useEffect } from 'react';
-import { vehicleService, Vehicle, CreateVehiclePayload } from '../services/vehicle.service';
+/**
+ * useVehicles — Redux-backed hook.
+ * Components that call this hook all share the same cached data.
+ * The `condition` guard in fetchVehicles prevents duplicate API calls.
+ */
+import { useEffect, useCallback } from 'react';
 import toast from 'react-hot-toast';
-
-export const useVehicles = () => {
-  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [saving, setSaving] = useState(false);
-
-  const fetchVehicles = useCallback(async () => {
-    setLoading(true);
-    try {
-      const data = await vehicleService.getAll();
-      setVehicles(data);
-    } catch {
-      toast.error('Failed to fetch vehicles');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchVehicles();
-  }, [fetchVehicles]);
-
-  const createVehicle = useCallback(async (payload: CreateVehiclePayload): Promise<boolean> => {
-    setSaving(true);
-    try {
-      await vehicleService.create(payload);
-      toast.success('Vehicle listed successfully!');
-      await fetchVehicles();
-      return true;
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e.response?.data?.message || 'Failed to create vehicle');
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, [fetchVehicles]);
-
-  const deleteVehicle = useCallback(async (id: string): Promise<boolean> => {
-    try {
-      await vehicleService.delete(id);
-      toast.success('Vehicle removed');
-      setVehicles(prev => prev.filter(v => (v._id || v.id) !== id));
-      return true;
-    } catch {
-      toast.error('Failed to delete vehicle');
-      return false;
-    }
-  }, []);
-
-  const updateVehicle = useCallback(async (id: string, payload: Partial<CreateVehiclePayload>): Promise<boolean> => {
-    setSaving(true);
-    try {
-      const updated = await vehicleService.update(id, payload);
-      setVehicles(prev => prev.map(v => (v._id || v.id) === id ? updated : v));
-      toast.success('Vehicle updated');
-      return true;
-    } catch (err: unknown) {
-      const e = err as { response?: { data?: { message?: string } } };
-      toast.error(e.response?.data?.message || 'Failed to update vehicle');
-      return false;
-    } finally {
-      setSaving(false);
-    }
-  }, []);
-
-  const toggleDelist = useCallback(async (id: string): Promise<boolean> => {
-    try {
-      const updated = await vehicleService.toggleDelist(id);
-      setVehicles(prev => prev.map(v => (v._id || v.id) === id ? updated : v));
-      toast.success(updated.isDelisted ? 'Delisted from bot' : 'Listed on bot');
-      return true;
-    } catch {
-      toast.error('Failed to change visibility');
-      return false;
-    }
-  }, []);
-
-  return {
-    vehicles,
-    loading,
-    saving,
+import { useAppDispatch, useAppSelector } from '../store';
+import {
     fetchVehicles,
-    createVehicle,
-    deleteVehicle,
-    updateVehicle,
-    toggleDelist,
-  };
+    forceFetchVehicles,
+    createVehicle as createVehicleThunk,
+    updateVehicle as updateVehicleThunk,
+    deleteVehicle as deleteVehicleThunk,
+    toggleDelistVehicle,
+    selectVehicles,
+    selectVehiclesStatus,
+    selectVehiclesSaving,
+    selectVehiclesLoading,
+} from '../store/slices/vehiclesSlice';
+import { CreateVehiclePayload, Vehicle } from '../services/vehicle.service';
+
+export const useVehicles = (autoFetch = true) => {
+    const dispatch = useAppDispatch();
+    const vehicles = useAppSelector(selectVehicles);
+    const status = useAppSelector(selectVehiclesStatus);
+    const saving = useAppSelector(selectVehiclesSaving);
+    const loading = useAppSelector(selectVehiclesLoading);
+
+    // Auto-fetch on mount — condition guard prevents duplicate requests
+    useEffect(() => {
+        if (autoFetch) {
+            dispatch(fetchVehicles());
+        }
+    }, [dispatch, autoFetch]);
+
+    const refetch = useCallback(() => {
+        dispatch(forceFetchVehicles());
+    }, [dispatch]);
+
+    const createVehicle = useCallback(
+        async (payload: CreateVehiclePayload): Promise<boolean> => {
+            const result = await dispatch(createVehicleThunk(payload));
+            if (createVehicleThunk.fulfilled.match(result)) {
+                toast.success('Vehicle listed successfully!');
+                return true;
+            }
+            toast.error((result.payload as string) || 'Failed to create vehicle');
+            return false;
+        },
+        [dispatch]
+    );
+
+    const updateVehicle = useCallback(
+        async (id: string, payload: Partial<Vehicle>): Promise<boolean> => {
+            const result = await dispatch(updateVehicleThunk({ id, payload }));
+            if (updateVehicleThunk.fulfilled.match(result)) {
+                toast.success('Vehicle updated');
+                return true;
+            }
+            toast.error((result.payload as string) || 'Failed to update vehicle');
+            return false;
+        },
+        [dispatch]
+    );
+
+    const deleteVehicle = useCallback(
+        async (id: string): Promise<boolean> => {
+            const result = await dispatch(deleteVehicleThunk(id));
+            if (deleteVehicleThunk.fulfilled.match(result)) {
+                toast.success('Vehicle removed');
+                return true;
+            }
+            toast.error((result.payload as string) || 'Failed to delete vehicle');
+            return false;
+        },
+        [dispatch]
+    );
+
+    const toggleDelist = useCallback(
+        async (id: string): Promise<boolean> => {
+            const result = await dispatch(toggleDelistVehicle(id));
+            if (toggleDelistVehicle.fulfilled.match(result)) {
+                const updated = result.payload;
+                toast.success(updated.isDelisted ? 'Delisted from bot' : 'Listed on bot');
+                return true;
+            }
+            toast.error('Failed to change visibility');
+            return false;
+        },
+        [dispatch]
+    );
+
+    return {
+        vehicles,
+        loading,
+        saving,
+        status,
+        fetchVehicles: refetch,
+        createVehicle,
+        updateVehicle,
+        deleteVehicle,
+        toggleDelist,
+    };
 };

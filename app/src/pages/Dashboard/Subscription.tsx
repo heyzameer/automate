@@ -7,36 +7,12 @@ import { authService } from '../../services/auth.service';
 import api from '../../lib/api';
 import toast from 'react-hot-toast';
 
-const PLAN_FEATURES: Record<string, { label: string; badge: string; features: { name: string; value: string | boolean }[] }> = {
-  trial:      { label: '🆓 Trial', badge: 'bg-slate-100 text-slate-600', features: [
-    { name: 'Cars in inventory', value: '20' }, { name: 'Leads / month', value: '100' }, { name: 'Staff logins', value: '1' }, { name: 'Campaigns / month', value: '0' },
-    { name: 'AI WhatsApp Bot', value: true }, { name: 'NLP Search', value: true }, { name: 'Image Sending', value: true },
-    { name: 'Custom Welcome', value: false }, { name: 'Email Alerts', value: false }, { name: 'Email Campaigns', value: false },
-    { name: 'Lead Scoring', value: false }, { name: 'New Arrival Broadcast', value: false },
-    { name: 'Analytics', value: 'None' }, { name: 'Priority Support', value: false },
-  ]},
-  basic:      { label: '💼 Basic', badge: 'bg-blue-100 text-blue-700', features: [
-    { name: 'Cars in inventory', value: '50' }, { name: 'Leads / month', value: '500' }, { name: 'Staff logins', value: '2' }, { name: 'Campaigns / month', value: '2' },
-    { name: 'AI WhatsApp Bot', value: true }, { name: 'NLP Search', value: true }, { name: 'Image Sending', value: true },
-    { name: 'Custom Welcome', value: true }, { name: 'Email Alerts', value: false }, { name: 'Email Campaigns', value: false },
-    { name: 'Lead Scoring', value: false }, { name: 'New Arrival Broadcast', value: false },
-    { name: 'Analytics', value: 'Basic' }, { name: 'Priority Support', value: false },
-  ]},
-  pro:        { label: '🚀 Pro', badge: 'bg-indigo-100 text-indigo-700', features: [
-    { name: 'Cars in inventory', value: '200' }, { name: 'Leads / month', value: '2,000' }, { name: 'Staff logins', value: '5' }, { name: 'Campaigns / month', value: '10' },
-    { name: 'AI WhatsApp Bot', value: true }, { name: 'NLP Search', value: true }, { name: 'Image Sending', value: true },
-    { name: 'Custom Welcome', value: true }, { name: 'Email Alerts', value: true }, { name: 'Email Campaigns', value: true },
-    { name: 'Lead Scoring', value: true }, { name: 'New Arrival Broadcast', value: true },
-    { name: 'Analytics', value: 'Advanced' }, { name: 'Priority Support', value: true },
-  ]},
-  enterprise: { label: '🏢 Enterprise', badge: 'bg-amber-100 text-amber-700', features: [
-    { name: 'Cars in inventory', value: 'Unlimited' }, { name: 'Leads / month', value: 'Unlimited' }, { name: 'Staff logins', value: 'Unlimited' }, { name: 'Campaigns / month', value: 'Unlimited' },
-    { name: 'AI WhatsApp Bot', value: true }, { name: 'NLP Search', value: true }, { name: 'Image Sending', value: true },
-    { name: 'Custom Welcome', value: true }, { name: 'Email Alerts', value: true }, { name: 'Email Campaigns', value: true },
-    { name: 'Lead Scoring', value: true }, { name: 'New Arrival Broadcast', value: true },
-    { name: 'Analytics', value: 'Full' }, { name: 'Priority Support', value: '✅ Dedicated' },
-  ]},
-  custom: { label: '⚙️ Custom', badge: 'bg-rose-100 text-rose-700', features: [] },
+const PLAN_FEATURES: Record<string, { label: string; badge: string }> = {
+  trial:      { label: '🆓 Trial', badge: 'bg-slate-100 text-slate-600' },
+  basic:      { label: '💼 Basic', badge: 'bg-blue-100 text-blue-700' },
+  pro:        { label: '🚀 Pro', badge: 'bg-indigo-100 text-indigo-700' },
+  enterprise: { label: '🏢 Enterprise', badge: 'bg-amber-100 text-amber-700' },
+  custom:     { label: '⚙️ Custom', badge: 'bg-rose-100 text-rose-700' },
 };
 
 interface PaymentRequest {
@@ -54,6 +30,7 @@ const Subscription = () => {
   const [tenant, setTenant] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [paymentRequests, setPaymentRequests] = useState<PaymentRequest[]>([]);
+  const [carsCount, setCarsCount] = useState(0);
   const [confirmModal, setConfirmModal] = useState<PaymentRequest | null>(null);
   const [confirmForm, setConfirmForm] = useState({ screenshotUrl: '', note: '' });
   const [submitting, setSubmitting] = useState(false);
@@ -66,8 +43,14 @@ const Subscription = () => {
       try {
         const data = await authService.getMyTenant();
         if (data?.tenant) setTenant(data.tenant);
-        const { data: pData } = await api.get('/auth/my-tenant/payment-requests');
-        setPaymentRequests(pData.data || []);
+        
+        const [payRes, vehRes] = await Promise.all([
+          api.get('/auth/my-tenant/payment-requests').catch(() => ({ data: { data: [] } })),
+          api.get('/inventory/vehicles').catch(() => ({ data: { data: [] } }))
+        ]);
+        
+        setPaymentRequests(payRes.data?.data || []);
+        setCarsCount(vehRes.data?.data?.vehicles?.length || 0);
       } catch {
         toast.error('Failed to load subscription info');
       } finally {
@@ -129,9 +112,6 @@ const Subscription = () => {
   const planKey = String(tenant?.plan || 'basic').toLowerCase();
   const planDef = PLAN_FEATURES[planKey] || PLAN_FEATURES['basic'];
   const maxCars = tenant?.limits?.maxCars || 0;
-  const maxLeads = tenant?.limits?.maxLeads || 0;
-  const maxStaff = tenant?.limits?.maxStaff || 1;
-  const maxCampaigns = tenant?.limits?.maxCampaignsPerMonth ?? 2;
   const isUnlimited = maxCars >= 999999;
   const botEnabled = tenant?.whatsappConfig?.botEnabled ?? true;
   const botConfigured = tenant?.whatsappConfig?.isActive ?? false;
@@ -186,11 +166,9 @@ const Subscription = () => {
         </div>
 
         {/* Usage bars */}
-        <div className="relative z-10 grid grid-cols-3 gap-4 mt-8 bg-white/5 rounded-2xl p-6 border border-white/10">
+        <div className="relative z-10 mt-8 bg-white/5 rounded-2xl p-6 border border-white/10 max-w-sm">
           {[
-            { label: 'Cars', used: tenant?.usage?.cars || 0, max: maxCars },
-            { label: 'Leads', used: tenant?.usage?.leads || 0, max: maxLeads },
-            { label: 'Staff', used: tenant?.usage?.staff || 1, max: maxStaff },
+            { label: 'Cars', used: carsCount, max: maxCars },
           ].map(({ label, used, max }) => {
             const pct = isUnlimited || max >= 999999 ? 0 : Math.min((used / max) * 100, 100);
             return (
@@ -213,25 +191,22 @@ const Subscription = () => {
         <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl p-8">
           <h3 className="text-lg font-black text-slate-900 mb-6">Included Features</h3>
           <div className="space-y-3">
-            {planDef.features.map(feat => (
-              <div key={feat.name} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
-                <span className="text-sm font-bold text-slate-700">{feat.name}</span>
-                {typeof feat.value === 'boolean' ? (
-                  feat.value ? <CheckCircle2 size={16} className="text-emerald-500" /> : <XCircle size={16} className="text-slate-300" />
-                ) : (
-                  <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{feat.value}</span>
-                )}
-              </div>
-            ))}
-            {planKey === 'custom' && tenant?.features && (
-              <>
-                <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm font-bold text-slate-700">Cars</span><span className="text-xs font-black text-indigo-600">{maxCars >= 999999 ? '∞' : maxCars}</span></div>
-                <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm font-bold text-slate-700">Leads</span><span className="text-xs font-black text-indigo-600">{maxLeads >= 999999 ? '∞' : maxLeads}</span></div>
-                <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm font-bold text-slate-700">Staff logins</span><span className="text-xs font-black text-indigo-600">{maxStaff >= 999999 ? '∞' : maxStaff}</span></div>
-                <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm font-bold text-slate-700">Custom Welcome</span>{tenant.features.customWelcome ? <CheckCircle2 size={16} className="text-emerald-500" /> : <XCircle size={16} className="text-slate-300" />}</div>
-                <div className="flex items-center justify-between py-2 border-b border-slate-50"><span className="text-sm font-bold text-slate-700">Analytics</span><span className="text-xs font-black text-indigo-600 uppercase">{tenant.features.analyticsLevel}</span></div>
-              </>
-            )}
+            <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+              <span className="text-sm font-bold text-slate-700">Vehicle Limit</span>
+              <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-lg">{maxCars >= 999999 ? 'Unlimited' : maxCars}</span>
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+              <span className="text-sm font-bold text-slate-700">WhatsApp Bot</span>
+              {tenant?.features?.whatsappBot ? <CheckCircle2 size={16} className="text-emerald-500" /> : <XCircle size={16} className="text-slate-300" />}
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+              <span className="text-sm font-bold text-slate-700">Marketing Campaigns</span>
+              {tenant?.features?.campaigns ? <CheckCircle2 size={16} className="text-emerald-500" /> : <XCircle size={16} className="text-slate-300" />}
+            </div>
+            <div className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+              <span className="text-sm font-bold text-slate-700">QR Generation</span>
+              {tenant?.features?.qrCode ? <CheckCircle2 size={16} className="text-emerald-500" /> : <XCircle size={16} className="text-slate-300" />}
+            </div>
           </div>
         </div>
 
@@ -493,7 +468,7 @@ const Subscription = () => {
                   rel="noreferrer" 
                   className="flex-1 py-3 bg-slate-50 border border-slate-100 rounded-2xl text-xs font-bold text-slate-600 hover:bg-slate-100 transition-all text-center flex items-center justify-center gap-2"
                 >
-                  <ExternalLink size={12} /> Open Original
+                  Open Original
                 </a>
                 <button 
                   onClick={() => setViewProof(null)}

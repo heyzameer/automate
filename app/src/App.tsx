@@ -35,13 +35,13 @@ import Subscription from './pages/Dashboard/Subscription';
 import ShowroomSettings from './pages/Dashboard/Settings';
 import RegistrationSuccess from './pages/Auth/RegistrationSuccess';
 import NotificationsPage from './pages/Notifications/NotificationsPage';
-import RealtimeNotifications from './components/Common/RealtimeNotifications';
+
 
 function App() {
   return (
     <Router>
-      <RealtimeNotifications />
       <Toaster position="top-right" />
+
       <Routes>
         <Route path={ROUTES.LANDING} element={<Welcome />} />
         <Route path={ROUTES.ADMIN_LANDING} element={<AdminWelcome />} />
@@ -81,9 +81,9 @@ function App() {
           <Route path="leads" element={<Leads />} />
           <Route path="bookings" element={<TestDrives />} />
           <Route path="campaigns" element={<Campaigns />} />
-          <Route path="settings" element={<ShowroomSettings />} />
-          <Route path="subscription" element={<Subscription />} />
-          <Route path="notifications" element={<NotificationsPage />} />
+          <Route path="dashboard/settings" element={<ShowroomSettings />} />
+          <Route path="dashboard/subscription" element={<Subscription />} />
+          <Route path="dashboard/notifications" element={<NotificationsPage />} />
         </Route>
       </Routes>
     </Router>

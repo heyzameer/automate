@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { 
     Bell, 
     CheckCheck, 
@@ -15,55 +15,45 @@ import {
     User,
     Car
 } from 'lucide-react';
-import { notificationsService, AppNotification } from '../../services/notifications.service';
 import toast from 'react-hot-toast';
 import { format, formatDistanceToNow } from 'date-fns';
 import { cn } from '../../lib/utils';
 import { useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../constants/routes';
+import { useAppDispatch, useAppSelector } from '../../store';
+import {
+    fetchNotifications,
+    markNotificationRead,
+    markAllNotificationsRead,
+    selectNotifications,
+    selectNotificationsLoading,
+    selectUnreadCount,
+} from '../../store/slices/notificationsSlice';
 
 export default function NotificationsPage() {
-    const [notifications, setNotifications] = useState<AppNotification[]>([]);
-    const [loading, setLoading] = useState(true);
+    const dispatch = useAppDispatch();
+    const notifications = useAppSelector(selectNotifications);
+    const loading = useAppSelector(selectNotificationsLoading);
+    const unreadCount = useAppSelector(selectUnreadCount);
     const [searchQuery, setSearchQuery] = useState('');
     const [filter, setFilter] = useState<'all' | 'unread' | 'alerts'>('all');
     const navigate = useNavigate();
 
     useEffect(() => {
-        fetchNotifications();
-    }, []);
+        // Condition guard in the thunk skips re-fetch if already cached
+        dispatch(fetchNotifications());
+    }, [dispatch]);
 
-    const fetchNotifications = async () => {
-        try {
-            setLoading(true);
-            const data = await notificationsService.getNotifications();
-            setNotifications(data);
-        } catch (err) {
-            console.error(err);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    const handleMarkAsRead = async (id: string) => {
-        try {
-            await notificationsService.markAsRead(id);
-            setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-        } catch (err) {
-            console.error(err);
-        }
+    const handleMarkAsRead = (id: string) => {
+        dispatch(markNotificationRead(id));
     };
 
     const handleMarkAllAsRead = async () => {
         try {
-            const unreadIds = notifications.filter(n => !n.isRead).map(n => n._id);
-            if (unreadIds.length === 0) return;
-            
-            await Promise.all(unreadIds.map(id => notificationsService.markAsRead(id)));
-            setNotifications(prev => prev.map(n => ({ ...n, isRead: true })));
+            await dispatch(markAllNotificationsRead()).unwrap();
             toast.success("All notifications marked as read");
-        } catch (err) {
-            console.error(err);
+        } catch {
+            toast.error('Failed to mark all as read');
         }
     };
 
@@ -110,8 +100,6 @@ export default function NotificationsPage() {
         if (filter === 'alerts') return matchesSearch && (n.type.includes('expiry') || n.type.includes('alert') || n.type.includes('scored'));
         return matchesSearch;
     });
-
-    const unreadCount = notifications.filter(n => !n.isRead).length;
 
     // Grouping logic
     const sections = [

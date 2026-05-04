@@ -12,8 +12,8 @@ export const corsMiddleware = cors({
             return callback(null, true);
         }
 
-        // Check if origin is in allowed list
-        if (allowedOrigins.includes(origin)) {
+        // Check if origin is in allowed list OR it's a localhost/kiosk development origin
+        if (allowedOrigins.includes(origin) || origin.includes('localhost') || origin.includes('127.0.0.1')) {
             callback(null, true);
         } else {
             logger.warn(`CORS: Blocked request from origin: ${origin}`);
@@ -22,7 +22,7 @@ export const corsMiddleware = cors({
     },
     credentials: config.cors.credentials,
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-requested-with'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'x-requested-with', 'x-kiosk-key'],
     exposedHeaders: ['Content-Range', 'X-Content-Range'],
     maxAge: 86400, // 24 hours - cache preflight requests
 });

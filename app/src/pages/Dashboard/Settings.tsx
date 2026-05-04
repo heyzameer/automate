@@ -7,6 +7,8 @@ import toast from 'react-hot-toast';
 import { authService } from '../../services/auth.service';
 import { tenantService } from '../../services/tenant.service';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { useAppDispatch, useAppSelector } from '../../store';
+import { selectTenant, patchTenant } from '../../store/slices/tenantSlice';
 
 // ─── Input Component ──────────────────────────────────────────────────────────
 const Field = ({
@@ -53,8 +55,10 @@ const Section = ({ title, subtitle, children }: { title: string; subtitle?: stri
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ShowroomSettings = () => {
+  const dispatch = useAppDispatch();
+  const tenant = useAppSelector(selectTenant);
   const [user, setUser] = useState<any>(null);
-  const [fetching, setFetching] = useState(true);
+  const [fetching, setFetching] = useState(false);
 
   // Profile fields
   const [fullName, setFullName] = useState('');
@@ -92,29 +96,23 @@ const ShowroomSettings = () => {
   const [passwordErrors, setPasswordErrors] = useState<Record<string, string>>({});
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const storedUser = authService.getStoredUser() as any;
-        if (storedUser) {
-          setUser(storedUser);
-          setFullName(storedUser.fullName || '');
-          setPhone(storedUser.phone || '');
-        }
-        const tenantRes: any = await tenantService.getMyTenant();
-        const t = tenantRes?.tenant || tenantRes;
-        if (t) {
-          setBusinessName(t.name || '');
-          setAddress(t.address || '');
-          setLocationUrl(t.locationUrl || '');
-        }
-      } catch {
-        toast.error('Failed to load settings');
-      } finally {
-        setFetching(false);
-      }
-    };
-    load();
+    // User data from localStorage — no network call needed
+    const storedUser = authService.getStoredUser() as any;
+    if (storedUser) {
+      setUser(storedUser);
+      setFullName(storedUser.fullName || '');
+      setPhone(storedUser.phone || '');
+    }
   }, []);
+
+  // Populate showroom fields from the Redux-cached tenant (fetched by DashboardLayout)
+  useEffect(() => {
+    if (tenant) {
+      setBusinessName((tenant as any).name || '');
+      setAddress((tenant as any).address || '');
+      setLocationUrl((tenant as any).locationUrl || '');
+    }
+  }, [tenant]);
 
   // ── Profile Save ────────────────────────────────────────────────────────────
   const handleSaveProfile = async () => {
@@ -149,6 +147,8 @@ const ShowroomSettings = () => {
     setSavingShowroom(true);
     try {
       await tenantService.updateMyTenant({ name: businessName, address, locationUrl } as any);
+      // Keep Redux store in sync — no refetch needed
+      dispatch(patchTenant({ name: businessName, address, locationUrl } as any));
       toast.success('Showroom details updated!');
     } catch (e: any) {
       toast.error(e.response?.data?.message || 'Failed to update showroom details');

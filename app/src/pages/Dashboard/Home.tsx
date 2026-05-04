@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
     Car, 
@@ -14,15 +14,19 @@ import {
 } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { ROUTES } from '../../constants/routes';
-import { analyticsService, DashboardStats } from '../../services/analytics.service';
+import { DashboardStats } from '../../services/analytics.service';
 import { formatDistanceToNow } from 'date-fns';
+import { useAppDispatch, useAppSelector } from '../../store';
+import { fetchDashboardStats, selectDashboardStats, selectAnalyticsLoading } from '../../store/slices/analyticsSlice';
+import { fetchLeads, selectLeads } from '../../store/slices/leadsSlice';
+import { fetchVehicles, selectVehicles } from '../../store/slices/vehiclesSlice';
 
 interface StatCardProps {
     title: string;
     value: string | number;
     icon: React.ElementType;
     color: string;
-    trend: string;
+    trend?: string;
     delay: number;
 }
 
@@ -44,11 +48,20 @@ const StatCard = ({ title, value, icon: Icon, color, trend, delay }: StatCardPro
             </div>
         </div>
         <div className="mt-6 flex items-center text-xs relative z-10">
-            <span className="text-emerald-600 flex items-center font-bold px-2 py-1 bg-emerald-50 rounded-lg">
-                <TrendingUp className="w-3 h-3 mr-1" />
-                {trend}
-            </span>
-            <span className="text-slate-400 ml-3 font-semibold tracking-tight">vs last month</span>
+            {trend ? (
+                <>
+                    <span className="text-emerald-600 flex items-center font-bold px-2 py-1 bg-emerald-50 rounded-lg">
+                        <TrendingUp className="w-3 h-3 mr-1" />
+                        {trend}
+                    </span>
+                    <span className="text-slate-400 ml-3 font-semibold tracking-tight">vs last month</span>
+                </>
+            ) : (
+                <span className="text-indigo-600 flex items-center font-bold px-2 py-1 bg-indigo-50 rounded-lg uppercase tracking-widest">
+                    <Zap className="w-3 h-3 mr-1" />
+                    Live Data
+                </span>
+            )}
         </div>
     </motion.div>
 );
@@ -79,22 +92,17 @@ const ActivityItem = ({ title, time, type }: ActivityItemProps) => (
 )
 
 export default function DashboardHome() {
-    const [stats, setStats] = useState<DashboardStats | null>(null);
-    const [loading, setLoading] = useState(true);
+    const dispatch = useAppDispatch();
+    const stats = useAppSelector(selectDashboardStats);
+    const loading = useAppSelector(selectAnalyticsLoading);
+    const leads = useAppSelector(selectLeads);
+    const vehicles = useAppSelector(selectVehicles);
 
     useEffect(() => {
-        const fetchStats = async () => {
-            try {
-                const data = await analyticsService.getDashboardStats();
-                setStats(data);
-            } catch (err) {
-                console.error("Failed to load dashboard stats", err);
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchStats();
-    }, []);
+        dispatch(fetchDashboardStats());
+        dispatch(fetchLeads());
+        dispatch(fetchVehicles());
+    }, [dispatch]);
 
     const formatCurrency = (val: number) => {
         if (val >= 10000000) return `₹${(val / 10000000).toFixed(1)}Cr`;
@@ -109,9 +117,9 @@ export default function DashboardHome() {
         </div>
     );
 
-    const totalLeads = stats?.funnel.stages.reduce((acc, s) => acc + s.count, 0) || 0;
+    const totalLeads = leads?.length || 0;
     const inventoryDist = stats?.inventory.brandDistribution || [];
-    const totalVehicles = stats?.inventory.totalStock || 0;
+    const totalVehicles = vehicles?.length || 0;
 
     return (
         <div className="space-y-10 pb-20">
@@ -121,9 +129,6 @@ export default function DashboardHome() {
                     <p className="text-slate-500 font-medium mt-2">Scale your operations with real-time dealership insights.</p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <button className="hidden sm:flex px-6 py-3 bg-white border border-slate-200 text-slate-600 rounded-2xl font-bold hover:bg-slate-50 transition-all text-sm shadow-sm">
-                        View Analytics
-                    </button>
                     <Link to={ROUTES.VEHICLES.ADD} className="inline-flex items-center justify-center px-8 py-3 bg-indigo-600 text-white rounded-2xl font-black hover:bg-indigo-700 transition shadow-xl shadow-indigo-100 transform hover:-translate-y-0.5 active:translate-y-0 text-sm">
                         <Plus className="w-5 h-5 mr-2" />
                         List Vehicle
@@ -137,7 +142,6 @@ export default function DashboardHome() {
                     value={totalVehicles}
                     icon={Car}
                     color="bg-indigo-600"
-                    trend="+12%"
                     delay={0.1}
                 />
                 <StatCard
@@ -161,7 +165,6 @@ export default function DashboardHome() {
                     value={totalLeads}
                     icon={MessageCircle}
                     color="bg-indigo-600"
-                    trend="+42%"
                     delay={0.4}
                 />
             </div>
@@ -234,17 +237,6 @@ export default function DashboardHome() {
                             }) : (
                                 <p className="text-center py-10 text-slate-300 font-bold uppercase tracking-widest text-[10px]">Stock incoming...</p>
                             )}
-                        </div>
-                        
-                        <div className="mt-10 p-6 bg-slate-50 rounded-3xl border border-slate-100">
-                             <div className="flex items-center gap-3">
-                                <Users className="text-indigo-600" size={20} />
-                                <div className="flex-1">
-                                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none">Top Sales Staff</p>
-                                    <p className="text-sm font-bold text-slate-900 mt-1 uppercase tracking-tight">Rahul Sharma</p>
-                                </div>
-                                <div className="text-emerald-600 font-black text-sm tracking-tighter">12 Sales</div>
-                             </div>
                         </div>
                     </div>
                 </div>

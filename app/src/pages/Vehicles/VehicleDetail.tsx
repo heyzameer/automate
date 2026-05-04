@@ -348,61 +348,49 @@ export default function VehicleDetail() {
                     </div>
 
 
-                    {/* Stats Grid */}
-                    <div className="grid grid-cols-2 lg:grid-cols-5 gap-6">
-                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-indigo-200 transition-colors flex flex-col justify-between min-h-[160px]">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Age in Stock</p>
-                            <div className="flex items-center justify-between mt-auto">
-                                <p className="text-3xl font-black text-slate-900">{daysInStock} d</p>
-                                <History className="w-5 h-5 text-indigo-500" />
-                            </div>
+                    {/* Operations & Documents Overview */}
+                    <div className="bg-white rounded-[2.5rem] p-10 shadow-sm border border-slate-100">
+                        <div className="flex items-center justify-between mb-8">
+                            <h2 className="text-xl font-black text-slate-900 uppercase tracking-tight">Lifecycle & Documents</h2>
+                            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Internal Details</span>
                         </div>
-                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-indigo-200 transition-colors flex flex-col justify-between min-h-[160px]">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">RC Status</p>
-                            <div className="flex items-center justify-between mt-auto">
-                                <p className="text-2xl font-black text-slate-900 break-all line-clamp-2 pr-2 leading-tight">{vehicle.rcNumber || 'Pending'}</p>
-                                <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
+                        
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-y-10 gap-x-8">
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em] flex items-center gap-1.5"><History size={12} /> Age in Stock</p>
+                                <p className="text-2xl font-black text-slate-900 mt-1">{daysInStock} d</p>
                             </div>
-                        </div>
-                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-indigo-200 transition-colors flex flex-col justify-between min-h-[160px]">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Insurance Validity</p>
-                            <div className="flex flex-col gap-1 mt-auto">
-                                <div className="flex items-center justify-between">
-                                    <p className={`text-2xl font-black ${isInsuranceExpired ? 'text-rose-500' : 'text-slate-900'}`}>
-                                        {insuranceExpiry ? format(insuranceExpiry, 'dd MMM yyyy') : 'N/A'}
-                                    </p>
-                                    <ShieldAlert className={`w-5 h-5 flex-shrink-0 ${isInsuranceExpired ? 'text-rose-500' : 'text-indigo-500'}`} />
-                                </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em] flex items-center gap-1.5"><Calendar size={12} /> Reg Year</p>
+                                <p className="text-xl font-black text-slate-900 mt-1 break-all leading-tight">{attr('registration_year') || 'N/A'}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em] flex items-center gap-1.5"><ShieldAlert size={12} /> Insurance</p>
+                                <p className={`text-xl font-black mt-1 ${isInsuranceExpired ? 'text-rose-500' : 'text-slate-900'}`}>
+                                    {insuranceExpiry ? format(insuranceExpiry, 'dd MMM yyyy') : 'N/A'}
+                                </p>
                                 {insuranceDaysLeft !== null && (
                                     <p className={`text-[10px] font-bold uppercase tracking-wider ${insuranceDaysLeft < 0 ? 'text-rose-500' : insuranceDaysLeft < 30 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                        {insuranceDaysLeft} d
+                                        {insuranceDaysLeft < 0 ? 'Expired' : `${insuranceDaysLeft} d`}
                                     </p>
                                 )}
                             </div>
-                        </div>
-                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-indigo-200 transition-colors flex flex-col justify-between min-h-[160px]">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">RC Expiry</p>
-                            <div className="flex flex-col gap-1 mt-auto">
-                                <div className="flex items-center justify-between">
-                                    <p className={`text-2xl font-black ${isRCExpired ? 'text-rose-500' : 'text-slate-900'}`}>
-                                        {rcExpiry ? format(rcExpiry, 'dd MMM yyyy') : 'N/A'}
-                                    </p>
-                                    <CheckCircle className={`w-5 h-5 flex-shrink-0 ${isRCExpired ? 'text-rose-500' : 'text-indigo-500'}`} />
-                                </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em] flex items-center gap-1.5"><CheckCircle size={12} /> RC Expiry</p>
+                                <p className={`text-xl font-black mt-1 ${isRCExpired ? 'text-rose-500' : 'text-slate-900'}`}>
+                                    {rcExpiry ? format(rcExpiry, 'dd MMM yyyy') : 'N/A'}
+                                </p>
                                 {rcDaysLeft !== null && (
                                     <p className={`text-[10px] font-bold uppercase tracking-wider ${rcDaysLeft < 0 ? 'text-rose-500' : rcDaysLeft < 30 ? 'text-amber-500' : 'text-emerald-500'}`}>
-                                        {rcDaysLeft} d
+                                        {rcDaysLeft < 0 ? 'Expired' : `${rcDaysLeft} d`}
                                     </p>
                                 )}
                             </div>
-                        </div>
-                        <div className="bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm group hover:border-indigo-200 transition-colors flex flex-col justify-between min-h-[160px]">
-                            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">Profit Projection</p>
-                            <div className="flex items-center justify-between mt-auto">
-                                <p className={`text-3xl font-black ${profit > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em] flex items-center gap-1.5"><TrendingUp size={12} /> Profit Projection</p>
+                                <p className={`text-2xl font-black mt-1 ${profit > 0 ? 'text-emerald-500' : 'text-rose-500'}`}>
                                     ₹{Math.abs(Math.round(profit/1000))}k
                                 </p>
-                                <TrendingUp className={`w-5 h-5 ${profit > 0 ? 'text-emerald-500' : 'text-rose-500'}`} />
                             </div>
                         </div>
                     </div>
@@ -472,30 +460,72 @@ export default function VehicleDetail() {
                             <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Verified Details</span>
                         </div>
                         
-                        <div className="grid grid-cols-2 md:grid-cols-3 gap-y-10 gap-x-8">
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-y-10 gap-x-8">
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Car ID</p>
+                                <p className="text-lg font-bold text-slate-900">{attr('car_code') || 'N/A'}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Brand/Make</p>
+                                <p className="text-lg font-bold text-slate-900">{attr('brand') || 'N/A'}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Model</p>
+                                <p className="text-lg font-bold text-slate-900">{attr('model') || 'N/A'}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Variant/Trim</p>
+                                <p className="text-lg font-bold text-slate-900">{attr('variant') || 'N/A'}</p>
+                            </div>
                             <div className="space-y-1">
                                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Make Year</p>
                                 <p className="text-lg font-bold text-slate-900">{year}</p>
                             </div>
                             <div className="space-y-1">
-                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Mileage</p>
-                                <p className="text-lg font-bold text-slate-900">{Number(km).toLocaleString()} KM</p>
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Reg Year</p>
+                                <p className="text-lg font-bold text-slate-900">{attr('registration_year') || 'N/A'}</p>
                             </div>
                             <div className="space-y-1">
-                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Fuel / Trans</p>
-                                <p className="text-lg font-bold text-slate-900">{fuel} • {transmission}</p>
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Fuel Type</p>
+                                <p className="text-lg font-bold text-slate-900">{fuel}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Transmission</p>
+                                <p className="text-lg font-bold text-slate-900">{transmission}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Kilometers Driven</p>
+                                <p className="text-lg font-bold text-slate-900">{Number(km).toLocaleString()} KM</p>
                             </div>
                             <div className="space-y-1">
                                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Ownership</p>
                                 <p className="text-lg font-bold text-slate-900">{ownership}</p>
                             </div>
                             <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Exterior Color</p>
+                                <p className="text-lg font-bold text-slate-900">{attr('exterior_color') || attr('color') || 'N/A'}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Engine (cc)</p>
+                                <p className="text-lg font-bold text-slate-900">{attr('engine_cc') || attr('engine') || 'N/A'}</p>
+                            </div>
+                            <div className="space-y-1">
                                 <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Location</p>
                                 <p className="text-lg font-bold text-slate-900 truncate">{location}</p>
                             </div>
                             <div className="space-y-1">
-                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Variant</p>
-                                <p className="text-lg font-bold text-slate-900">{attr('variant') || 'Top End'}</p>
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Plate Number</p>
+                                <p className="text-lg font-bold text-slate-900">{attr('plate_number') || 'N/A'}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">RC Number</p>
+                                <p className="text-lg font-bold text-slate-900 break-all line-clamp-1">{vehicle.rcNumber || attr('rc_number') || 'N/A'}</p>
+                            </div>
+                            <div className="space-y-1">
+                                <p className="text-[10px] font-black text-indigo-400 uppercase tracking-[0.15em]">Price Negotiable?</p>
+                                <p className="text-lg font-bold text-slate-900">
+                                    {attr('price_negotiable') === 'Yes' || attr('price_negotiable') === true ? 'Yes' : 'No'}
+                                </p>
                             </div>
                         </div>
 

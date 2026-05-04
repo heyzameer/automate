@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { ROUTES } from '../../constants/routes';
 import {
   Plus, Search, Loader2, Edit2, MessageSquare, X, Save,
-  CreditCard, Send, ToggleLeft, ToggleRight, Power, ChevronDown, ChevronUp,
-  Users, Bot, Zap, Shield, Star, Crown, Eye, EyeOff, Circle
+  CreditCard, Send, ToggleLeft, ToggleRight, Power, ChevronDown, ChevronUp, Check,
+  Users, Bot, Zap, Shield, Star, Crown, Eye, EyeOff, Circle, LayoutGrid, Calendar
 } from 'lucide-react';
 import { useTenants } from '../../hooks/useTenants';
 import { Tenant } from '../../types';
@@ -20,38 +20,38 @@ export const PLANS = [
   {
     key: 'none', emoji: '⏳', label: 'No Plan', price: 'N/A',
     badge: 'bg-rose-50 text-rose-400',
-    limits: { maxCars: 0, maxLeads: 0, maxStaff: 0, maxCampaignsPerMonth: 0 },
-    features: { customWelcome: false, emailAlerts: false, analyticsLevel: 'none', prioritySupport: false, dedicatedSupport: false, emailCampaigns: false, newArrivalBroadcast: false, leadScoring: false },
+    limits: { maxCars: 0, maxLeads: 0 },
+    features: { whatsappBot: false, campaigns: false, qrCode: false },
   },
   {
     key: 'trial', emoji: '🆓', label: 'Trial', price: 'Free',
     badge: 'bg-slate-100 text-slate-600',
-    limits: { maxCars: 20, maxLeads: 100, maxStaff: 1, maxCampaignsPerMonth: 0 },
-    features: { customWelcome: false, emailAlerts: false, analyticsLevel: 'none', prioritySupport: false, dedicatedSupport: false, emailCampaigns: false, newArrivalBroadcast: false, leadScoring: false },
+    limits: { maxCars: 20, maxLeads: 100 },
+    features: { whatsappBot: false, campaigns: false, qrCode: false },
   },
   {
     key: 'basic', emoji: '💼', label: 'Basic', price: '₹999/mo',
     badge: 'bg-blue-100 text-blue-700',
-    limits: { maxCars: 50, maxLeads: 500, maxStaff: 2, maxCampaignsPerMonth: 2 },
-    features: { customWelcome: true, emailAlerts: false, analyticsLevel: 'basic', prioritySupport: false, dedicatedSupport: false, emailCampaigns: false, newArrivalBroadcast: false, leadScoring: false },
+    limits: { maxCars: 50, maxLeads: 500 },
+    features: { whatsappBot: true, campaigns: false, qrCode: true },
   },
   {
     key: 'pro', emoji: '🚀', label: 'Pro', price: '₹2,499/mo',
     badge: 'bg-indigo-100 text-indigo-700',
-    limits: { maxCars: 200, maxLeads: 2000, maxStaff: 5, maxCampaignsPerMonth: 10 },
-    features: { customWelcome: true, emailAlerts: true, analyticsLevel: 'advanced', prioritySupport: true, dedicatedSupport: false, emailCampaigns: true, newArrivalBroadcast: true, leadScoring: true },
+    limits: { maxCars: 200, maxLeads: 2000 },
+    features: { whatsappBot: true, campaigns: true, qrCode: true },
   },
   {
     key: 'enterprise', emoji: '🏢', label: 'Enterprise', price: '₹5,999/mo',
     badge: 'bg-amber-100 text-amber-700',
-    limits: { maxCars: 999999, maxLeads: 999999, maxStaff: 999999, maxCampaignsPerMonth: 999999 },
-    features: { customWelcome: true, emailAlerts: true, analyticsLevel: 'full', prioritySupport: true, dedicatedSupport: true, emailCampaigns: true, newArrivalBroadcast: true, leadScoring: true },
+    limits: { maxCars: 999999, maxLeads: 999999 },
+    features: { whatsappBot: true, campaigns: true, qrCode: true },
   },
   {
     key: 'custom', emoji: '⚙️', label: 'Custom', price: 'Configure',
     badge: 'bg-rose-100 text-rose-700',
-    limits: { maxCars: 50, maxLeads: 500, maxStaff: 2, maxCampaignsPerMonth: 2 },
-    features: { customWelcome: false, emailAlerts: false, analyticsLevel: 'basic', prioritySupport: false, dedicatedSupport: false, emailCampaigns: false, newArrivalBroadcast: false, leadScoring: false },
+    limits: { maxCars: 50, maxLeads: 500 },
+    features: { whatsappBot: false, campaigns: false, qrCode: false },
   },
 ];
 
@@ -63,8 +63,8 @@ const planBadgeStyle: Record<string, string> = {
   custom: 'bg-rose-100 text-rose-700',
 };
 
-const DEFAULT_CUSTOM_LIMITS = { maxCars: 50, maxLeads: 500, maxStaff: 2, maxCampaignsPerMonth: 2 };
-const DEFAULT_CUSTOM_FEATURES = { customWelcome: false, emailAlerts: false, analyticsLevel: 'basic' as const, prioritySupport: false, dedicatedSupport: false, emailCampaigns: false, newArrivalBroadcast: false, leadScoring: false };
+const DEFAULT_CUSTOM_LIMITS = { maxCars: 50 };
+const DEFAULT_CUSTOM_FEATURES = { whatsappBot: false, campaigns: false, qrCode: false };
 
 // ─── Toggle Component ─────────────────────────────────────────────────────────
 const Toggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) => void }) => (
@@ -79,22 +79,15 @@ const Toggle = ({ value, onChange }: { value: boolean; onChange: (v: boolean) =>
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const TenantList = () => {
+  const navigate = useNavigate();
   const { tenants, loading, saving, toggleStatus, updatePlan, addTenant, assignBot, fetchTenants } = useTenants();
   const [search, setSearch] = useState('');
   const [planFilter, setPlanFilter] = useState('All Plans');
 
-  const [editingTenant, setEditingTenant] = useState<Tenant | null>(null);
-  const [botModalTenant, setBotModalTenant] = useState<Tenant | null>(null);
   const [payModalTenant, setPayModalTenant] = useState<Tenant | null>(null);
-  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
-
-  const [selectedPlanKey, setSelectedPlanKey] = useState('basic');
-  const [expiryDate, setExpiryDate] = useState('');
-  const [customLimits, setCustomLimits] = useState({ ...DEFAULT_CUSTOM_LIMITS });
-  const [customFeatures, setCustomFeatures] = useState<any>({ ...DEFAULT_CUSTOM_FEATURES });
-  const [showCustomConfig, setShowCustomConfig] = useState(false);
-
+  const [botModalTenant, setBotModalTenant] = useState<Tenant | null>(null);
   const [botForm, setBotForm] = useState({ phoneNumberId: '', accessToken: '', verifyToken: '' });
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [payForm, setPayForm] = useState({ amount: '', note: '' });
   const [addForm, setAddForm] = useState({
     name: '', email: '', phone: '', password: '', fullName: '',
@@ -108,53 +101,8 @@ const TenantList = () => {
   // ── Handlers ──────────────────────────────────────────────────────────────
 
   const openEditModal = (tenant: Tenant) => {
-    setEditingTenant(tenant);
-    const planKey = String(tenant.plan || 'basic').toLowerCase();
-    setSelectedPlanKey(planKey);
-    setExpiryDate(new Date(String(tenant.expiryDate)).toISOString().split('T')[0]);
-    setShowCustomConfig(planKey === 'custom');
-
-    if (planKey === 'custom') {
-      setCustomLimits({ ...DEFAULT_CUSTOM_LIMITS, ...(tenant as any).limits });
-      setCustomFeatures({ ...DEFAULT_CUSTOM_FEATURES, ...(tenant as any).features });
-    }
-  };
-
-  const openBotModal = (tenant: Tenant) => {
-    setBotModalTenant(tenant);
-    setBotForm({
-      phoneNumberId: (tenant as any).whatsappConfig?.phoneNumberId || '',
-      accessToken: (tenant as any).whatsappConfig?.accessToken || '',
-      verifyToken: (tenant as any).whatsappConfig?.verifyToken || '',
-    });
-  };
-
-  const handlePlanSelect = (key: string) => {
-    setSelectedPlanKey(key);
-    setShowCustomConfig(key === 'custom');
-    if (key === 'custom') {
-      const preset = PLANS.find(p => p.key === 'custom')!;
-      setCustomLimits({ ...preset.limits });
-      setCustomFeatures({ ...preset.features });
-    }
-  };
-
-  const handleUpdatePlan = async () => {
-    if (!editingTenant) return;
-    setSavingPlan(true);
-    try {
-      const plan = PLANS.find(p => p.key === selectedPlanKey)!;
-      const limits = selectedPlanKey === 'custom' ? customLimits : plan.limits;
-      const features = selectedPlanKey === 'custom' ? customFeatures : plan.features;
-      const payload = { plan: selectedPlanKey.toUpperCase(), limits, features, expiryDate: new Date(expiryDate).toISOString() };
-      await updatePlan(String(editingTenant._id || editingTenant.id), payload);
-      setEditingTenant(null);
-      toast.success('Plan updated!');
-    } catch {
-      toast.error('Failed to update plan');
-    } finally {
-      setSavingPlan(false);
-    }
+    // Redirect to detail page for plan management
+    navigate(ROUTES.SUPER_ADMIN.SHOWROOM_DETAIL(String(tenant._id || tenant.id)));
   };
 
   const handleToggleBot = async (tenant: Tenant) => {
@@ -246,7 +194,6 @@ const TenantList = () => {
               <tr className="bg-slate-50/50 border-b border-slate-50">
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Showroom</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Plan</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">WhatsApp Bot</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Expiry</th>
                 <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
@@ -272,10 +219,8 @@ const TenantList = () => {
                         {tenant.isActive ? '● Active' : '● Disabled'}
                       </button>
                     </td>
-                    <td className="px-8 py-5">
-                      <span className={`text-xs font-black uppercase tracking-tighter px-2.5 py-1 rounded-lg ${planBadgeStyle[String(tenant.plan || 'basic').toLowerCase()] || 'bg-slate-100 text-slate-600'}`}>
+                    <td className="px-8 py-5 text-xs font-bold text-slate-500 uppercase italic">
                         {tenant.plan || 'Basic'}
-                      </span>
                     </td>
                     <td className="px-8 py-5">
                       {!botActive ? (
@@ -320,17 +265,21 @@ const TenantList = () => {
                     <td className="px-8 py-5 text-xs font-bold text-slate-600">
                       {new Date(tenant.expiryDate).toLocaleDateString()}
                     </td>
-                    <td className="px-8 py-5 text-right space-x-2">
-                      <Link 
-                        to={ROUTES.SUPER_ADMIN.SHOWROOM_DETAIL(tid)} 
-                        title="View Full Details" 
-                        className="p-2 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg inline-block"
-                      >
-                        <Eye size={16} />
-                      </Link>
-                      <button onClick={() => setPayModalTenant(tenant)} title="Send Payment Request" className="p-2 text-amber-600 hover:bg-amber-50 rounded-lg"><CreditCard size={16} /></button>
-                      <button onClick={() => openBotModal(tenant)} title="WhatsApp Config" className="p-2 text-emerald-600 hover:bg-emerald-50 rounded-lg"><MessageSquare size={16} /></button>
-                      <button onClick={() => openEditModal(tenant)} title="Manage Plan" className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg"><Edit2 size={16} /></button>
+                    <td className="px-8 py-5 text-right">
+                      <div className="flex items-center justify-end gap-3">
+                        <Link 
+                          to={ROUTES.SUPER_ADMIN.SHOWROOM_DETAIL(tid)} 
+                          className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-slate-600 bg-slate-100 hover:bg-slate-900 hover:text-white rounded-xl transition-all shadow-sm"
+                        >
+                          <Eye size={12} /> View
+                        </Link>
+                        <button 
+                          onClick={() => setPayModalTenant(tenant)} 
+                          className="flex items-center gap-2 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-600 bg-amber-50 hover:bg-amber-600 hover:text-white rounded-xl transition-all shadow-sm"
+                        >
+                          <CreditCard size={12} /> Bill
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 );
@@ -339,151 +288,6 @@ const TenantList = () => {
           </table>
         </div>
       </div>
-
-      {/* ─────────── PLAN MANAGEMENT MODAL ─────────── */}
-      {editingTenant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm overflow-y-auto">
-          <div className="bg-white rounded-[2rem] w-full max-w-2xl shadow-2xl p-8 space-y-6 my-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-black text-slate-900">Plan Management</h2>
-                <p className="text-xs font-bold text-slate-400 mt-1">{editingTenant.name}</p>
-              </div>
-              <button onClick={() => setEditingTenant(null)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400"><X size={20} /></button>
-            </div>
-
-            {/* Plan Selector */}
-            <div className="grid grid-cols-5 gap-2">
-              {PLANS.map(plan => (
-                <button
-                  key={plan.key}
-                  onClick={() => handlePlanSelect(plan.key)}
-                  className={`p-3 rounded-2xl border-2 text-center transition-all ${selectedPlanKey === plan.key ? 'border-indigo-600 bg-indigo-50 shadow-md' : 'border-slate-100 hover:border-slate-200'}`}
-                >
-                  <div className="text-xl mb-1">{plan.emoji}</div>
-                  <div className="text-[10px] font-black text-slate-700">{plan.label}</div>
-                  <div className={`text-[9px] font-bold mt-1 px-1 py-0.5 rounded ${plan.badge}`}>{plan.price}</div>
-                </button>
-              ))}
-            </div>
-
-            {/* Plan Summary (non-custom) */}
-            {selectedPlanKey !== 'custom' && (() => {
-              const p = PLANS.find(pl => pl.key === selectedPlanKey)!;
-              return (
-                <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 grid grid-cols-2 gap-3 text-xs font-bold text-slate-700">
-                  <div className="flex justify-between"><span className="text-slate-400">Cars</span><span>{p.limits.maxCars >= 999999 ? '∞' : p.limits.maxCars}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Leads/mo</span><span>{p.limits.maxLeads >= 999999 ? '∞' : p.limits.maxLeads}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Staff</span><span>{p.limits.maxStaff >= 999999 ? '∞' : p.limits.maxStaff}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Campaigns/mo</span><span>{p.limits.maxCampaignsPerMonth >= 999999 ? '∞' : p.limits.maxCampaignsPerMonth}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Analytics</span><span className="capitalize">{p.features.analyticsLevel}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Email Campaigns</span><span>{p.features.emailCampaigns ? '✅' : '❌'}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Lead Scoring</span><span>{p.features.leadScoring ? '✅' : '❌'}</span></div>
-                  <div className="flex justify-between"><span className="text-slate-400">Priority Support</span><span>{p.features.prioritySupport ? '✅' : '❌'}</span></div>
-                </div>
-              );
-            })()}
-
-            {/* Custom Plan Configurator */}
-            {selectedPlanKey === 'custom' && (
-              <div className="border border-rose-200 bg-rose-50/30 rounded-2xl overflow-hidden">
-                <button
-                  onClick={() => setShowCustomConfig(v => !v)}
-                  className="w-full flex items-center justify-between px-6 py-4 text-sm font-black text-rose-700"
-                >
-                  <span className="flex items-center gap-2"><Zap size={14} /> Configure Custom Limits & Features</span>
-                  {showCustomConfig ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                </button>
-
-                {showCustomConfig && (
-                  <div className="px-6 pb-6 space-y-6">
-                    {/* Limits */}
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Usage Limits</p>
-                      <div className="grid grid-cols-2 gap-3">
-                        {[
-                          { key: 'maxCars', label: 'Max Cars' },
-                          { key: 'maxLeads', label: 'Max Leads/mo' },
-                          { key: 'maxStaff', label: 'Max Staff' },
-                          { key: 'maxCampaignsPerMonth', label: 'Campaigns/mo' },
-                        ].map(({ key, label }) => (
-                          <div key={key}>
-                            <label className="text-[10px] font-black text-slate-500 uppercase tracking-wider block mb-1">{label}</label>
-                            <div className="flex items-center gap-2">
-                              <input
-                                type="number"
-                                min={0}
-                                value={(customLimits as any)[key]}
-                                onChange={e => setCustomLimits((prev: any) => ({ ...prev, [key]: Number(e.target.value) }))}
-                                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-sm font-bold"
-                              />
-                              <button
-                                onClick={() => setCustomLimits((prev: any) => ({ ...prev, [key]: 999999 }))}
-                                className="text-[10px] font-black text-indigo-600 whitespace-nowrap hover:underline"
-                              >∞</button>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-
-                    {/* Feature Toggles */}
-                    <div>
-                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Feature Access</p>
-                      <div className="space-y-3">
-                        {[
-                          { key: 'customWelcome', label: 'Custom Greeting Message' },
-                          { key: 'emailAlerts', label: 'Email Alerts' },
-                          { key: 'emailCampaigns', label: 'Email Campaigns' },
-                          { key: 'newArrivalBroadcast', label: 'New Arrival Auto-Broadcast' },
-                          { key: 'leadScoring', label: 'Lead Scoring & Priority' },
-                          { key: 'prioritySupport', label: 'Priority Support' },
-                          { key: 'dedicatedSupport', label: 'Dedicated Account Manager' },
-                        ].map(({ key, label }) => (
-                          <div key={key} className="flex items-center justify-between py-1">
-                            <span className="text-sm font-bold text-slate-700">{label}</span>
-                            <Toggle
-                              value={(customFeatures as any)[key]}
-                              onChange={v => setCustomFeatures((prev: any) => ({ ...prev, [key]: v }))}
-                            />
-                          </div>
-                        ))}
-
-                        <div className="flex items-center justify-between py-1">
-                          <span className="text-sm font-bold text-slate-700">Analytics Level</span>
-                          <select
-                            value={customFeatures.analyticsLevel}
-                            onChange={e => setCustomFeatures((prev: any) => ({ ...prev, analyticsLevel: e.target.value as any }))}
-                            className="px-3 py-1.5 bg-white border border-slate-200 rounded-xl text-sm font-bold text-slate-700"
-                          >
-                            <option value="none">None</option>
-                            <option value="basic">Basic</option>
-                            <option value="advanced">Advanced</option>
-                            <option value="full">Full</option>
-                          </select>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Expiry Date */}
-            <div>
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Expiry Date</label>
-              <input type="date" value={expiryDate} onChange={e => setExpiryDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold text-sm" />
-            </div>
-
-            <div className="flex gap-3 justify-end pt-2">
-              <button onClick={() => setEditingTenant(null)} className="px-5 py-2.5 font-bold text-slate-500 hover:bg-slate-50 rounded-xl">Cancel</button>
-              <button onClick={handleUpdatePlan} disabled={savingPlan} className="bg-indigo-600 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-indigo-700 disabled:opacity-50">
-                {savingPlan ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} Apply Plan
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* ─────────── PAYMENT REQUEST MODAL ─────────── */}
       {payModalTenant && (
@@ -511,39 +315,6 @@ const TenantList = () => {
               <button onClick={handleSendPayment} disabled={sendingPay || !payForm.amount} className="bg-amber-500 text-white px-6 py-2.5 rounded-xl font-bold flex items-center gap-2 hover:bg-amber-600 disabled:opacity-50">
                 {sendingPay ? <Loader2 size={16} className="animate-spin" /> : <Send size={16} />} Send Request
               </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ─────────── BOT CONFIG MODAL ─────────── */}
-      {botModalTenant && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-sm">
-          <div className="bg-white rounded-[2rem] w-full max-w-lg shadow-2xl p-8 space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h2 className="text-xl font-black">WhatsApp Setup</h2>
-                <p className="text-xs font-bold text-slate-400">Linking Meta API for {botModalTenant.name}</p>
-              </div>
-              <button onClick={() => setBotModalTenant(null)} className="p-2 hover:bg-slate-100 rounded-xl text-slate-400"><X size={20} /></button>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Phone Number ID</label>
-                <input value={botForm.phoneNumberId} onChange={e => setBotForm({ ...botForm, phoneNumberId: e.target.value })} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold" placeholder="1052..." />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Verify Token</label>
-                <input value={botForm.verifyToken} onChange={e => setBotForm({ ...botForm, verifyToken: e.target.value })} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-bold" placeholder="carbot_verify_..." />
-              </div>
-              <div>
-                <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-2">Meta Access Token</label>
-                <textarea rows={3} value={botForm.accessToken} onChange={e => setBotForm({ ...botForm, accessToken: e.target.value })} className="w-full p-3 bg-slate-50 border border-slate-100 rounded-xl font-mono text-[10px]" placeholder="EAA..." />
-              </div>
-            </div>
-            <div className="flex gap-2 justify-end">
-              <button onClick={() => setBotModalTenant(null)} className="px-4 py-2 font-bold text-slate-400">Cancel</button>
-              <button onClick={handleAssignBot} className="bg-emerald-600 text-white px-6 py-2 rounded-xl font-bold flex items-center gap-2"><Bot size={14} /> Deploy Bot</button>
             </div>
           </div>
         </div>

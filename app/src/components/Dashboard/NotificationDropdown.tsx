@@ -1,42 +1,45 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Bell, Check, Clock, Info, AlertTriangle, Zap, MessageSquare } from 'lucide-react';
-import { notificationsService, AppNotification } from '../../services/notifications.service';
+import { Bell, Clock, Info, Zap } from 'lucide-react';
+import { AppNotification } from '../../services/notifications.service';
+import { socketClient } from '../../lib/socket';
 import { formatDistanceToNow } from 'date-fns';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useAppDispatch, useAppSelector } from '../../store';
+import {
+    fetchNotifications,
+    markNotificationRead,
+    prependNotification,
+    selectNotifications,
+    selectUnreadCount,
+} from '../../store/slices/notificationsSlice';
 
 export default function NotificationDropdown({ tenantId }: { tenantId: string }) {
-    const [notifications, setNotifications] = useState<AppNotification[]>([]);
+    const dispatch = useAppDispatch();
+    const notifications = useAppSelector(selectNotifications);
+    const unreadCount = useAppSelector(selectUnreadCount);
     const [isOpen, setIsOpen] = useState(false);
-    const unreadCount = notifications.filter(n => !n.isRead).length;
     const dropdownRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
-        fetchNotifications();
-        notificationsService.initSocket(tenantId);
-        
-        const unsubscribe = notificationsService.onNotification((newNotif) => {
-            setNotifications(prev => [newNotif, ...prev]);
-        });
+        // Single fetch — condition guard in the thunk prevents duplicate requests
+        dispatch(fetchNotifications());
 
-        return () => unsubscribe();
-    }, [tenantId]);
-
-    const fetchNotifications = async () => {
-        try {
-            const data = await notificationsService.getNotifications();
-            setNotifications(data);
-        } catch (err) {
-            console.error("Failed to load notifications", err);
+        // Connect socket (singleton — safe to call multiple times)
+        socketClient.connect(tenantId);
+        const socket = socketClient.socket;
+        if (socket) {
+            socket.on('new_notification', (notification: AppNotification) => {
+                dispatch(prependNotification(notification));
+            });
         }
-    };
 
-    const handleMarkAsRead = async (id: string) => {
-        try {
-            await notificationsService.markAsRead(id);
-            setNotifications(prev => prev.map(n => n._id === id ? { ...n, isRead: true } : n));
-        } catch (err) {
-            console.error(err);
-        }
+        return () => {
+            socket?.off('new_notification');
+        };
+    }, [tenantId, dispatch]);
+
+    const handleMarkAsRead = (id: string) => {
+        dispatch(markNotificationRead(id));
     };
 
     const getTypeIcon = (type: string) => {

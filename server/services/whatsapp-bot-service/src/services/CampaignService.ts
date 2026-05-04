@@ -12,6 +12,17 @@ export class CampaignService {
     ) {}
 
     async createCampaign(data: any) {
+        try {
+            const { authServiceClient } = require('../utils/apiClient');
+            const tenantRes = await authServiceClient.get(`/internal/auth/tenants/${data.tenantId}`);
+            const tenant = tenantRes.data?.data;
+            if (tenant && tenant.features?.campaigns === false) {
+                throw new Error("Plan Limit Exceeded: Campaigns are not enabled in your current plan. Please upgrade to use Marketing Campaigns.");
+            }
+        } catch (err: any) {
+            if (err.message && err.message.includes('Plan Limit Exceeded')) throw err;
+            logger.warn(`Failed to verify tenant limits: ${err.message}`);
+        }
         return await this.campaignRepository.create(data);
     }
 

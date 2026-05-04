@@ -23,6 +23,10 @@ import {
 const router = Router();
 const authController = container.resolve(AuthController);
 
+// Mount Public Customer Routes
+import customerRoutes from './customerRoutes';
+router.use('/customer', customerRoutes);
+
 import '../config/passport';
 
 router.get(

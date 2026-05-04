@@ -12,6 +12,7 @@ export interface IVehicleSellRequest extends Document {
         kmsDriven: number;
         expectedPrice: number;
     };
+    photos: string[];
     status: 'pending' | 'evaluated' | 'purchased' | 'rejected';
     notes?: string;
 }
@@ -28,6 +29,7 @@ const sellRequestSchema = new Schema<IVehicleSellRequest>({
         kmsDriven: { type: Number, required: true },
         expectedPrice: { type: Number, required: true }
     },
+    photos: [{ type: String, required: true }],
     status: { type: String, enum: ['pending', 'evaluated', 'purchased', 'rejected'], default: 'pending' },
     notes: { type: String }
 }, {

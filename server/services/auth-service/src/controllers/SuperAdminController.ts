@@ -10,6 +10,7 @@ import { UserRole } from '../types';
 import { User } from '../models/User';
 import { SystemSetting } from '../models/SystemSetting';
 import mongoose from 'mongoose';
+import { inventoryServiceClient, botServiceClient } from '../utils/apiClient';
 
 @injectable()
 export class SuperAdminController {
@@ -177,20 +178,20 @@ export class SuperAdminController {
         // Auto-apply plan presets when plan is set (not custom — custom is fully manual)
         const planPresets: Record<string, any> = {
             trial: {
-                limits: { maxCars: 20, maxLeads: 100, maxStaff: 1, maxCampaignsPerMonth: 0 },
-                features: { customWelcome: false, emailAlerts: false, analyticsLevel: 'none', prioritySupport: false, dedicatedSupport: false, emailCampaigns: false, newArrivalBroadcast: false, leadScoring: false }
+                limits: { maxCars: 20 },
+                features: { whatsappBot: false, campaigns: false, qrCode: false }
             },
             basic: {
-                limits: { maxCars: 50, maxLeads: 500, maxStaff: 2, maxCampaignsPerMonth: 2 },
-                features: { customWelcome: true, emailAlerts: false, analyticsLevel: 'basic', prioritySupport: false, dedicatedSupport: false, emailCampaigns: false, newArrivalBroadcast: false, leadScoring: false }
+                limits: { maxCars: 50 },
+                features: { whatsappBot: true, campaigns: false, qrCode: true }
             },
             pro: {
-                limits: { maxCars: 200, maxLeads: 2000, maxStaff: 5, maxCampaignsPerMonth: 10 },
-                features: { customWelcome: true, emailAlerts: true, analyticsLevel: 'advanced', prioritySupport: true, dedicatedSupport: false, emailCampaigns: true, newArrivalBroadcast: true, leadScoring: true }
+                limits: { maxCars: 200 },
+                features: { whatsappBot: true, campaigns: true, qrCode: true }
             },
             enterprise: {
-                limits: { maxCars: 999999, maxLeads: 999999, maxStaff: 999999, maxCampaignsPerMonth: 999999 },
-                features: { customWelcome: true, emailAlerts: true, analyticsLevel: 'full', prioritySupport: true, dedicatedSupport: true, emailCampaigns: true, newArrivalBroadcast: true, leadScoring: true }
+                limits: { maxCars: 999999 },
+                features: { whatsappBot: true, campaigns: true, qrCode: true }
             },
         };
 
@@ -364,6 +365,58 @@ export class SuperAdminController {
             
         sendSuccess(res, 'Platform leads retrieved', leads);
     });
+
+    getTenantStats = asyncHandler(async (req: Request, res: Response) => {
+        const { id } = req.params;
+
+        // Cast to ObjectId for validation, though we will use the string ID for the API calls
+        try {
+            new mongoose.Types.ObjectId(id);
+        } catch {
+            return res.status(400).json({ success: false, message: 'Invalid tenant ID' });
+        }
+
+        let totalStock = 0;
+        let availableStock = 0;
+        let soldStock = 0;
+        let totalLeads = 0;
+        let leadsThisMonth = 0;
+        let recentLeads: any[] = [];
+
+        // 1. Fetch Vehicle stats from Inventory Service
+        try {
+            const invRes = await inventoryServiceClient.get(`/stats?tenantId=${id}`);
+            if (invRes.data?.success) {
+                totalStock = invRes.data.data.totalStock || 0;
+                availableStock = invRes.data.data.availableStock || 0;
+                soldStock = invRes.data.data.soldStock || 0;
+            }
+        } catch (error: any) {
+            logger.error(`Failed to fetch tenant stock stats for ${id}:`, error.message);
+        }
+
+        // 2. Fetch Lead stats from Bot Service
+        try {
+            const botRes = await botServiceClient.get(`/leads/stats?tenantId=${id}`);
+            if (botRes.data?.success) {
+                totalLeads = botRes.data.data.totalLeads || 0;
+                leadsThisMonth = botRes.data.data.leadsThisMonth || 0;
+                recentLeads = botRes.data.data.recentLeads || [];
+            }
+        } catch (error: any) {
+            logger.error(`Failed to fetch tenant lead stats for ${id}:`, error.message);
+        }
+
+        sendSuccess(res, 'Tenant stats retrieved', {
+            totalStock,
+            availableStock,
+            soldStock,
+            totalLeads,
+            leadsThisMonth,
+            recentLeads,
+        });
+    });
+
 
     deleteTenant = asyncHandler(async (req: Request, res: Response) => {
         const { id } = req.params;

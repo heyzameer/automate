@@ -15,10 +15,11 @@ export class CustomerAuthController {
      * Request a login OTP for a showroom kiosk.
      */
     requestOTP = asyncHandler(async (req: Request, res: Response) => {
-        const { email, tenantId, fullName, phone } = req.body;
+        const tenantId = req.body.tenantId || req.headers['x-tenant-id'];
+        const { email, fullName, phone } = req.body;
 
-        if (!email || !tenantId) {
-            return res.status(400).json({ success: false, message: 'Email and TenantId are required' });
+        if (!email || !tenantId || !phone) {
+            return res.status(400).json({ success: false, message: 'Email, TenantId, and Phone Number are required' });
         }
 
         // 1. Generate 6-digit OTP
@@ -56,7 +57,8 @@ export class CustomerAuthController {
      * Verify OTP and issue JWT.
      */
     verifyOTP = asyncHandler(async (req: Request, res: Response) => {
-        const { email, otp, tenantId } = req.body;
+        const tenantId = req.body.tenantId || req.headers['x-tenant-id'];
+        const { email, otp } = req.body;
 
         if (!email || !otp || !tenantId) {
             return res.status(400).json({ success: false, message: 'Email, OTP and TenantId are required' });

@@ -212,4 +212,34 @@ router.get('/leads/vehicle/:vehicleId', async (req, res) => {
     }
 });
 
+router.get('/leads/stats', async (req, res) => {
+    try {
+        const tenantId = req.query.tenantId as string;
+        if (!tenantId) return res.status(400).json({ success: false, message: 'tenantId required' });
+
+        const monthStart = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+
+        const allLeads = await getLeadRepository().find({ tenantId });
+        const leadsThisMonth = allLeads.filter(l => new Date(l.createdAt) >= monthStart).length;
+        const recentLeads = [...allLeads]
+            .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+            .slice(0, 5)
+            .map(l => ({
+                _id: (l as any)._id,
+                name: l.name,
+                phone: l.phone,
+                stage: l.status,
+                priority: l.priority,
+                createdAt: l.createdAt,
+            }));
+
+        res.json({
+            success: true,
+            data: { totalLeads: allLeads.length, leadsThisMonth, recentLeads }
+        });
+    } catch (error: any) {
+        res.status(500).json({ success: false, error: error.message });
+    }
+});
+
 export default router;

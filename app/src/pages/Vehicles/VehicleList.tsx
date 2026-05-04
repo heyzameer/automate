@@ -33,22 +33,26 @@ import { ROUTES } from '../../constants/routes';
 import { cn } from '../../lib/utils';
 import toast from 'react-hot-toast';
 import { ConfirmModal } from '../../components/ui/ConfirmModal';
+import { useAppSelector } from '../../store';
+import { selectTenant } from '../../store/slices/tenantSlice';
+import { ShieldAlert } from 'lucide-react';
 
 interface VehicleCardProps {
     vehicle: Vehicle;
     onDelete: (id: string, e: React.MouseEvent) => void;
     onToggleDelist: (id: string) => void;
     onGetQR: (carCode: string, name: string) => void;
+    isQRDisabled?: boolean;
 }
 
 
-const VehicleCard = ({ vehicle, onDelete, onToggleDelist, onGetQR }: VehicleCardProps) => {
+const VehicleCard = ({ vehicle, onDelete, onToggleDelist, onGetQR, isQRDisabled }: VehicleCardProps) => {
     const navigate = useNavigate();
     const attr = (key: string) => vehicle.attributes?.[key] || 'N/A';
     
-    const price = Number(attr('price')) || vehicle.price || 0;
-    const year = attr('year_of_manufacture') || vehicle.year || 'N/A';
-    const km = attr('km') || vehicle.km_driven || 0;
+    const price = Number(attr('price')) || vehicle.price || vehicle.sellingPrice || 0;
+    const year = attr('year') || attr('year_of_manufacture') || vehicle.year || 'N/A';
+    const km = attr('km_driven') || attr('km') || vehicle.km_driven || 0;
     const name = `${attr('brand') || vehicle.name || ''} ${attr('model') || ''}`.trim() || 'Untitled Vehicle';
     const carCode = vehicle.attributes?.car_code || vehicle._id?.slice(-6).toUpperCase() || 'NA';
 
@@ -132,13 +136,20 @@ const VehicleCard = ({ vehicle, onDelete, onToggleDelist, onGetQR }: VehicleCard
                 </div>
 
                 <div className="pt-4 border-t border-slate-100 flex items-center justify-between gap-3">
-                    <button 
-                        onClick={(e) => { e.stopPropagation(); onGetQR(carCode, name); }}
-                        className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:shadow-lg hover:shadow-indigo-200 transition-all active:scale-95"
-                    >
-                        <QrCode size={14} />
-                        Sticker
-                    </button>
+                    {!isQRDisabled ? (
+                        <button 
+                            onClick={(e) => { e.stopPropagation(); onGetQR(carCode, name); }}
+                            className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-900 text-white rounded-xl font-black text-[10px] uppercase tracking-widest hover:bg-indigo-600 hover:shadow-lg hover:shadow-indigo-200 transition-all active:scale-95"
+                        >
+                            <QrCode size={14} />
+                            Sticker
+                        </button>
+                    ) : (
+                        <div className="flex-1 flex items-center justify-center gap-2 py-3 bg-slate-100 text-slate-400 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-not-allowed border border-slate-200">
+                            <ShieldAlert size={14} />
+                            Locked
+                        </div>
+                    )}
                     <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
                         <Link 
                             to={`${ROUTES.VEHICLES.BASE}/edit/${vehicle._id || vehicle.id}`}
@@ -180,14 +191,17 @@ export default function VehicleList() {
     const [deleteModalOpen, setDeleteModalOpen] = useState(false);
     const [vehicleToDelete, setVehicleToDelete] = useState<string | null>(null);
     const { vehicles, loading, deleteVehicle, toggleDelist } = useVehicles();
+    const tenant = useAppSelector(selectTenant);
+    const isQRDisabled = tenant?.features?.qrCode === false;
 
     const handleGetQR = async (carCode: string, vehicleName: string) => {
         setGeneratingQr(true);
         try {
             const dataUrl = await leadsService.getQRCode(carCode);
             setQrData({ src: dataUrl, code: carCode, name: vehicleName });
-        } catch (error) {
-            toast.error("Failed to generate QR sticker");
+        } catch (error: any) {
+            const message = error.response?.data?.message || "Failed to generate QR sticker";
+            toast.error(message);
         } finally {
             setGeneratingQr(false);
         }
@@ -233,36 +247,78 @@ export default function VehicleList() {
         const canvas = document.createElement('canvas');
         const ctx = canvas.getContext('2d');
         const img = new Image();
+        
         img.onload = () => {
-            const padding = 40;
-            const textHeight = 80;
-            canvas.width = img.width + padding * 2;
-            canvas.height = img.height + padding * 2 + textHeight;
+            const width = 600;
+            const height = 850; // More height to prevent text being cut off
+            canvas.width = width;
+            canvas.height = height;
 
             if (ctx) {
+                // 1. Background
                 ctx.fillStyle = '#ffffff';
-                ctx.fillRect(0, 0, canvas.width, canvas.height);
-                ctx.drawImage(img, padding, padding);
+                ctx.fillRect(0, 0, width, height);
 
-                ctx.fillStyle = '#0f172a'; // slate-900
+                // 2. Midnight Indigo Header Bar
+                ctx.fillStyle = '#1e1b4b'; // indigo-950
+                ctx.fillRect(0, 0, width, 160);
+
+                // 3. Adjusted Header Text
+                ctx.fillStyle = '#ffffff';
                 ctx.textAlign = 'center';
+                ctx.font = '900 32px Inter, system-ui, sans-serif';
+                ctx.fillText('SCAN THE QR CODE', width / 2, 75);
                 
-                // Draw Vehicle Name
-                ctx.font = 'bold 24px sans-serif';
-                ctx.fillText(name, canvas.width / 2, canvas.height - 60);
-                
-                // Draw Car Code
-                ctx.fillStyle = '#64748b'; // slate-500
-                ctx.font = 'bold 16px sans-serif';
-                ctx.fillText(`STOCK ID: ${code}`, canvas.width / 2, canvas.height - 30);
+                ctx.fillStyle = '#818cf8'; // indigo-400
+                ctx.font = 'bold 20px Inter, system-ui, sans-serif';
+                ctx.fillText('TO GET FULL DETAILS', width / 2, 115);
 
+                // 4. Clean Main Border
+                ctx.strokeStyle = '#0f172a';
+                ctx.lineWidth = 12;
+                ctx.strokeRect(6, 6, width - 12, height - 12);
+
+                // 5. Centered QR Code
+                const qrSize = 400;
+                const qrX = (width - qrSize) / 2;
+                const qrY = 210;
+                
+                ctx.drawImage(img, qrX, qrY, qrSize, qrSize);
+
+                // 6. Stock ID (Fully Capitalized)
+                ctx.fillStyle = '#4f46e5'; // indigo-600
+                ctx.font = '900 28px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace';
+                ctx.fillText(`STOCK ID: ${code.toUpperCase()}`, width / 2, 670);
+
+                // 7. Divider Accent
+                ctx.fillStyle = '#e2e8f0';
+                ctx.fillRect(150, 710, width - 300, 2);
+
+                // 8. Signature Footer (Showroom Branding)
+                ctx.fillStyle = '#0f172a';
+                ctx.font = '900 38px Inter, system-ui, sans-serif';
+                const showroomName = tenant?.name || 'CARBOT SHOWROOM';
+                ctx.fillText(showroomName.toUpperCase(), width / 2, 755);
+
+                // Powered by (Small Label)
+                ctx.fillStyle = '#94a3b8'; // slate-400
+                ctx.font = 'bold 14px Inter, system-ui, sans-serif';
+                ctx.fillText('POWERED BY', width / 2, 785);
+                
+                // ORBIX AI (Medium Brand)
+                ctx.fillStyle = '#4f46e5'; // indigo-600
+                ctx.font = '900 22px Inter, system-ui, sans-serif';
+                ctx.fillText('ORBIX AI', width / 2, 815);
+
+                // 9. Download
                 const dataUrl = canvas.toDataURL('image/png');
                 const link = document.createElement('a');
-                link.download = `${code}_${name.replace(/[^a-z0-9]/gi, '_').toLowerCase()}.png`;
+                link.download = `QR_STICKER_${code.toUpperCase()}.png`;
                 link.href = dataUrl;
                 link.click();
             }
         };
+        img.crossOrigin = "anonymous";
         img.src = src;
     };
 
@@ -358,6 +414,7 @@ export default function VehicleList() {
                             onDelete={handleDeleteClick}
                             onToggleDelist={toggleDelist}
                             onGetQR={handleGetQR}
+                            isQRDisabled={isQRDisabled}
                         />
                     ))}
                 </div>

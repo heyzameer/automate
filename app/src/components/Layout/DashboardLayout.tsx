@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { useAppDispatch, useAppSelector } from '../../store';
+import { fetchTenant, selectTenant, selectTenantStatus, clearTenant } from '../../store/slices/tenantSlice';
 import {
     LayoutDashboard,
     PlusCircle,
@@ -15,14 +17,18 @@ import {
     Megaphone,
     ShieldAlert,
     Clock,
-    AlertTriangle
+    AlertTriangle,
+    ChevronRight,
+    ArrowUpCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { cn } from '../../lib/utils';
+import { cn, handleUpgradePlan } from '../../lib/utils';
 import { authService } from '../../services/auth.service';
 import { useAuth } from '../../hooks/useAuth';
 import { ROUTES } from '../../constants/routes';
 import NotificationDropdown from '../Dashboard/NotificationDropdown';
+import RealtimeNotifications from '../Common/RealtimeNotifications';
+import { socketClient } from '../../lib/socket';
 
 interface SidebarLinkProps {
     to: string;
@@ -54,28 +60,13 @@ const SidebarLink = ({ to, icon: Icon, children, end, onClick }: SidebarLinkProp
 export default function DashboardLayout() {
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const [user, setUser] = useState<{ fullName: string; role: string; tenantId?: string } | null>(null);
-    const [tenant, setTenant] = useState<{ plan?: string; verificationStatus?: string; name?: string; isActive?: boolean } | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
     const navigate = useNavigate();
     const location = useLocation();
     const { logout } = useAuth();
-
-    const fetchTenantData = async () => {
-        try {
-            const data = await authService.getMyTenant();
-            if (data?.tenant) {
-                setTenant(data.tenant);
-                // Redirect if deactivated or pending
-                if (!data.tenant.isActive || data.tenant.verificationStatus === 'pending') {
-                    navigate(ROUTES.DEACTIVATED);
-                }
-            }
-        } catch (error) {
-            console.error("Failed to fetch tenant info in layout", error);
-        } finally {
-            setIsLoading(false);
-        }
-    };
+    const dispatch = useAppDispatch();
+    const tenant = useAppSelector(selectTenant);
+    const tenantStatus = useAppSelector(selectTenantStatus);
+    const isLoading = tenantStatus === 'idle' || tenantStatus === 'loading';
 
     useEffect(() => {
         const storedUser = authService.getStoredUser();
@@ -83,22 +74,31 @@ export default function DashboardLayout() {
             if (storedUser.role === 'super_admin') {
                 navigate(ROUTES.SUPER_ADMIN.DASHBOARD);
             } else {
-                // eslint-disable-next-line react-hooks/set-state-in-effect
                 setUser(storedUser);
-                if (!tenant) fetchTenantData();
+                // fetchTenant has a built-in condition guard — only fires if status is idle
+                dispatch(fetchTenant());
             }
         } else {
             navigate(ROUTES.LOGIN);
         }
-    }, [navigate, location.pathname]);
+    }, [navigate]);
+
+    // Redirect if deactivated / pending — runs when tenant data arrives
+    useEffect(() => {
+        if (tenant && (!tenant.isActive || tenant.verificationStatus === 'pending')) {
+            navigate(ROUTES.DEACTIVATED);
+        }
+    }, [tenant, navigate]);
 
     const handleLogout = () => {
+        dispatch(clearTenant());
+        socketClient.reset(); // clean up socket before navigating away
         logout();
     };
 
     const toggleSidebar = () => setSidebarOpen(!sidebarOpen);
 
-    if (!user || isLoading) {
+    if (!user) {
         return (
             <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center relative overflow-hidden font-sans">
                 {/* Background Decor */}
@@ -127,8 +127,8 @@ export default function DashboardLayout() {
                         </div>
                     </motion.div>
                     
-                    <h3 className="text-white font-black text-xl tracking-tight mb-2">Syncing your showroom</h3>
-                    <p className="text-slate-500 font-medium text-sm">Verifying partnership credentials...</p>
+                    <h3 className="text-white font-black text-xl tracking-tight mb-2">Authenticating</h3>
+                    <p className="text-slate-500 font-medium text-sm">Verifying your credentials...</p>
                 </div>
             </div>
         );
@@ -136,8 +136,67 @@ export default function DashboardLayout() {
 
     const initials = user.fullName.split(' ').map((n: string) => n[0]).join('').toUpperCase();
 
+    const PlanBanner = ({ tenant }: { tenant: any }) => {
+        if (!tenant.expiryDate) return null;
+        
+        const expiryDate = new Date(tenant.expiryDate);
+        const now = new Date();
+        const diffTime = expiryDate.getTime() - now.getTime();
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        const isExpired = diffDays < 0;
+        const isExpiringSoon = diffDays >= 0 && diffDays <= 7;
+        const absDays = Math.abs(diffDays);
+
+        if (!isExpired && !isExpiringSoon) return null;
+
+        return (
+            <motion.div 
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                className={cn(
+                    "flex-shrink-0 px-8 py-3 flex flex-col md:flex-row items-center justify-between gap-4 transition-all duration-500 border-b",
+                    isExpired 
+                        ? "bg-rose-600 text-white border-rose-700 shadow-lg shadow-rose-200" 
+                        : "bg-amber-500 text-white border-amber-600 shadow-lg shadow-amber-100"
+                )}
+            >
+                <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-md">
+                        {isExpired ? <AlertTriangle size={20} className="animate-pulse" /> : <Clock size={20} className="animate-pulse" />}
+                    </div>
+                    <div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.2em] opacity-80">Subscription Alert</p>
+                        <h4 className="font-black text-sm tracking-tight leading-tight">
+                            {isExpired 
+                                ? `Plan EXPIRED ${absDays} day${absDays === 1 ? '' : 's'} ago. Critical features might be disabled.` 
+                                : `Subscription expires in ${diffDays} day${diffDays === 1 ? '' : 's'}. Renew now to avoid service interruption.`}
+                        </h4>
+                    </div>
+                </div>
+
+                <div className="flex items-center gap-2">
+                    <button 
+                        onClick={() => handleUpgradePlan(user, tenant)}
+                        className="px-6 py-2 bg-white text-slate-900 rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-slate-50 transition-all shadow-xl active:scale-95"
+                    >
+                        Renew / Upgrade
+                    </button>
+                    <button 
+                        onClick={() => handleUpgradePlan(user, tenant)}
+                        className="hidden sm:block px-6 py-2 bg-black/10 text-white rounded-full font-black text-[10px] uppercase tracking-widest hover:bg-black/20 transition-all active:scale-95 border border-white/20"
+                    >
+                        Contact Billing
+                    </button>
+                </div>
+            </motion.div>
+        );
+    };
+
     return (
-        <div className="min-h-screen bg-[#F8FAFC] flex font-sans">
+        <div className="h-screen overflow-hidden bg-[#F8FAFC] flex font-sans">
+            {/* Socket & real-time notifications — only mounted for authenticated users */}
+            <RealtimeNotifications />
             {/* Mobile Sidebar Overlay */}
             <AnimatePresence>
                 {sidebarOpen && (
@@ -298,28 +357,53 @@ export default function DashboardLayout() {
                 </header>
 
                 {/* Page Content */}
-                <main className="flex-1 overflow-y-auto p-6 lg:p-10 bg-[#fbfcfd] relative">
-                    <div className="max-w-7xl mx-auto">
-                        {tenant?.verificationStatus === 'pending' ? (
-                            <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-white rounded-3xl border border-slate-100 shadow-sm">
-                                <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mb-6 animate-pulse">
-                                    <Clock className="w-10 h-10 text-amber-500" />
+                <main className="flex-1 overflow-hidden flex flex-col bg-[#fbfcfd] relative">
+                    {isLoading ? (
+                        <div className="flex-1 p-6 lg:p-8">
+                            <div className="max-w-7xl mx-auto animate-pulse space-y-8">
+                                <div>
+                                    <div className="h-8 bg-slate-200 rounded-lg w-1/4 mb-3"></div>
+                                    <div className="h-4 bg-slate-100 rounded-lg w-1/3"></div>
                                 </div>
-                                <h1 className="text-3xl font-black text-slate-900 mb-4">Verification Pending</h1>
-                                <p className="text-slate-500 max-w-md mx-auto mb-8 leading-relaxed">
-                                    Welcome to CarBot, <span className="font-bold text-slate-900">{tenant.name}</span>! 
-                                    Our administrative team is currently reviewing your showroom registration. 
-                                    You will receive an email once your account is activated.
-                                </p>
-                                <div className="flex items-center gap-2 px-6 py-3 bg-slate-50 rounded-2xl text-slate-600 font-medium border border-slate-100">
-                                    <ShieldAlert className="w-5 h-5 text-indigo-500" />
-                                    Estimated review time: 12-24 hours
+                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                                    <div className="h-32 bg-slate-100 border border-slate-200 rounded-2xl"></div>
+                                    <div className="h-32 bg-slate-100 border border-slate-200 rounded-2xl"></div>
+                                    <div className="h-32 bg-slate-100 border border-slate-200 rounded-2xl"></div>
                                 </div>
+                                <div className="h-[400px] bg-slate-100 border border-slate-200 rounded-3xl"></div>
                             </div>
-                        ) : (
-                            <Outlet />
-                        )}
-                    </div>
+                        </div>
+                    ) : (
+                        <>
+                            {tenant && <PlanBanner tenant={tenant} />}
+                            
+                            {tenant?.verificationStatus === 'pending' ? (
+                                <div className="flex-1 overflow-y-auto p-6 lg:p-10">
+                                    <div className="max-w-7xl mx-auto flex flex-col items-center justify-center min-h-[60vh] text-center p-8 bg-white rounded-3xl border border-slate-100 shadow-sm">
+                                        <div className="w-20 h-20 bg-amber-50 rounded-full flex items-center justify-center mb-6 animate-pulse">
+                                            <Clock className="w-10 h-10 text-amber-500" />
+                                        </div>
+                                        <h1 className="text-3xl font-black text-slate-900 mb-4">Verification Pending</h1>
+                                        <p className="text-slate-500 max-w-md mx-auto mb-8 leading-relaxed">
+                                            Welcome to CarBot, <span className="font-bold text-slate-900">{tenant.name}</span>! 
+                                            Our administrative team is currently reviewing your showroom registration. 
+                                            You will receive an email once your account is activated.
+                                        </p>
+                                        <div className="flex items-center gap-2 px-6 py-3 bg-slate-50 rounded-2xl text-slate-600 font-medium border border-slate-100">
+                                            <ShieldAlert className="w-5 h-5 text-indigo-500" />
+                                            Estimated review time: 12-24 hours
+                                        </div>
+                                    </div>
+                                </div>
+                            ) : (
+                                <div className="flex-1 overflow-y-auto">
+                                    <div className="max-w-7xl mx-auto p-6 lg:p-8">
+                                        <Outlet />
+                                    </div>
+                                </div>
+                            )}
+                        </>
+                    )}
                 </main>
             </div>
         </div>

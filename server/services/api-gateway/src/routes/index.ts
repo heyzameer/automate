@@ -9,6 +9,12 @@ import { kioskGuard } from '../middleware/kioskGuard';
 
 const router = Router();
 
+// DEBUG: Log all incoming requests to Gateway
+router.use((req, res, next) => {
+    logger.info(`[GATEWAY RECV] ${req.method} ${req.originalUrl} (Path: ${req.path})`);
+    next();
+});
+
 const usageTracker = async (req: Request, res: Response, next: NextFunction) => {
     // Only track if we have a tenantId (either from session or kioskGuard)
     const tenantId = req.headers['x-tenant-id'] || (req.user as any)?.tenantId;
@@ -42,12 +48,13 @@ router.get(GATEWAY_ROUTES.HEALTH, (req: Request, res: Response) => {
 
 // Middleware to inject headers for microservices
 const proxyOptions = {
-    timeout: 30000, // 30 seconds
+    timeout: 120000, // 120 seconds (2 minutes) for high-quality image uploads
+    limit: '50mb', // Increase proxy body limit to 50MB to allow large image uploads
     proxyReqOptDecorator: (proxyReqOpts: any, srcReq: Request) => {
         if (srcReq.user) {
-            proxyReqOpts.headers['X-User-Id'] = srcReq.user.userId;
-            proxyReqOpts.headers['X-User-Email'] = srcReq.user.email;
-            proxyReqOpts.headers['X-User-Role'] = srcReq.user.role;
+            if (srcReq.user.userId) proxyReqOpts.headers['X-User-Id'] = srcReq.user.userId;
+            if (srcReq.user.email) proxyReqOpts.headers['X-User-Email'] = srcReq.user.email;
+            if (srcReq.user.role) proxyReqOpts.headers['X-User-Role'] = srcReq.user.role;
             if (srcReq.user.tenantId) {
                 proxyReqOpts.headers['X-Tenant-Id'] = srcReq.user.tenantId;
             }
@@ -96,13 +103,21 @@ const proxyOptions = {
 
 // Apply authentication to all proxied routes EXCLUDING public bot webhooks, public inventory, and public auth routes
 router.use((req: Request, res: Response, next: NextFunction) => {
+    // Priority Check: Public Kiosk Info (Log this to debug)
+    if (req.originalUrl.includes('/customer/kiosk-info')) {
+        logger.info(`[GATEWAY_AUTH] Allowing public kiosk route: ${req.originalUrl}`);
+        return next();
+    }
+
     // 1. Bot Webhooks and Public Capture/Scan are always public
     if (req.path.startsWith('/bot/webhooks') || req.path.startsWith('/bot/public')) {
         return next();
     }
     
-    // 2. Inventory Public catalog is always public
-    if (req.path.startsWith(`${GATEWAY_ROUTES.INVENTORY}/public`)) {
+    // 2. Inventory Public catalog and metadata are always public
+    if (req.path.startsWith(`${GATEWAY_ROUTES.INVENTORY}/public`) || 
+        req.path.startsWith(`${GATEWAY_ROUTES.INVENTORY}/brands`) ||
+        req.path.startsWith(`${GATEWAY_ROUTES.INVENTORY}/dropdown`)) {
         return next();
     }
 
@@ -110,10 +125,11 @@ router.use((req: Request, res: Response, next: NextFunction) => {
     const publicAuthRoutes = [
         '/register', '/register-tenant', '/login', '/super-login', 
         '/forgot-password', '/reset-password', '/refresh-token',
-        '/customer/auth' // Kiosk Customer OTP Login
+        '/customer/auth', // Kiosk Customer OTP Login
+        '/customer/kiosk-info' // Public Showroom Information
     ];
-    if (req.path.startsWith(GATEWAY_ROUTES.AUTH)) {
-        const isPublicAuth = publicAuthRoutes.some(route => req.path.includes(route));
+    if (req.originalUrl.includes(GATEWAY_ROUTES.AUTH)) {
+        const isPublicAuth = publicAuthRoutes.some(route => req.originalUrl.includes(route));
         if (isPublicAuth) {
             return next();
         }

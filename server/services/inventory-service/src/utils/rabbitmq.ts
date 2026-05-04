@@ -5,22 +5,28 @@ const rabbitMQ = new RabbitMQService(process.env.RABBITMQ_URL || 'amqp://localho
 import { container } from 'tsyringe';
 import { SearchService } from '../services/SearchService';
 
+let isInitialized = false;
+
 export const getRabbitMQ = async (): Promise<RabbitMQService> => {
     try {
         await rabbitMQ.connect();
 
-        const searchService = container.resolve(SearchService);
-        await searchService.init();
+        if (!isInitialized) {
+            const searchService = container.resolve(SearchService);
+            await searchService.init();
 
-        await rabbitMQ.consume('inventory_search_queue', 'carbot_events', ['vehicle.created'], async (data) => {
-            await searchService.indexVehicle(data.tenantId, data.vehicle);
-        });
-        await rabbitMQ.consume('inventory_search_queue', 'carbot_events', ['vehicle.updated'], async (data) => {
-            await searchService.indexVehicle(data.tenantId, data.vehicle);
-        });
-        await rabbitMQ.consume('inventory_search_queue', 'carbot_events', ['vehicle.deleted'], async (data) => {
-            await searchService.deleteVehicle(data.id.toString());
-        });
+            await rabbitMQ.consume('inventory_search_queue', 'carbot_events', ['vehicle.created'], async (data) => {
+                await searchService.indexVehicle(data.tenantId, data.vehicle);
+            });
+            await rabbitMQ.consume('inventory_search_queue', 'carbot_events', ['vehicle.updated'], async (data) => {
+                await searchService.indexVehicle(data.tenantId, data.vehicle);
+            });
+            await rabbitMQ.consume('inventory_search_queue', 'carbot_events', ['vehicle.deleted'], async (data) => {
+                await searchService.deleteVehicle(data.id.toString());
+            });
+            
+            isInitialized = true;
+        }
 
         return rabbitMQ;
     } catch (e) {

@@ -24,23 +24,12 @@ export interface IKioskConfig {
 
 export interface IPlanLimits {
     maxCars: number;
-    maxLeads: number;
-    maxStaff: number;
-    maxCampaignsPerMonth: number;
 }
 
 export interface IPlanFeatures {
-    appointments: boolean;
-    imageSending: boolean;
-    nlpSearch: boolean;
-    customWelcome: boolean;
-    emailAlerts: boolean;
-    analyticsLevel: 'none' | 'basic' | 'advanced' | 'full';
-    prioritySupport: boolean;
-    dedicatedSupport: boolean;
-    emailCampaigns: boolean;
-    newArrivalBroadcast: boolean;
-    leadScoring: boolean;
+    whatsappBot: boolean;
+    campaigns: boolean;
+    qrCode: boolean;
 }
 
 export interface IPaymentRequest {

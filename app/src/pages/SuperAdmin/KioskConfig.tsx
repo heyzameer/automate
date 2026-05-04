@@ -12,16 +12,21 @@ const KioskConfig = () => {
     const { tenants, loading, updateKioskConfig, rotateKioskKey, fetchTenants } = useTenants();
     const [showKeys, setShowKeys] = useState<Record<string, boolean>>({});
     const [allowedDomains, setAllowedDomains] = useState<Record<string, string>>({});
+    const [websiteUrls, setWebsiteUrls] = useState<Record<string, string>>({});
     const [localSaving, setLocalSaving] = useState<Record<string, boolean>>({});
     const [domainErrors, setDomainErrors] = useState<Record<string, string>>({});
 
     useEffect(() => {
         if (tenants.length > 0) {
             const domains: Record<string, string> = {};
+            const urls: Record<string, string> = {};
             tenants.forEach(t => {
-                domains[t.id || t._id] = t.kioskConfig?.allowedDomains?.join(', ') || '';
+                const tid = String(t.id || t._id);
+                domains[tid] = t.kioskConfig?.allowedDomains?.join(', ') || '';
+                urls[tid] = t.kioskConfig?.websiteUrl || '';
             });
             setAllowedDomains(domains);
+            setWebsiteUrls(urls);
         }
     }, [tenants]);
 
@@ -35,7 +40,7 @@ const KioskConfig = () => {
             return true;
         }
         const domains = value.split(',').map(d => d.trim()).filter(d => d);
-        const domainRegex = /^(https?:\/\/)?([\w\d-]+\.)+[\w\d]{2,}(\/.*)?$/;
+        const domainRegex = /^(https?:\/\/)?(localhost|(\d{1,3}\.){3}\d{1,3}|([\w\d-]+\.)+[\w\d]{2,})(:\d+)?(\/.*)?$/;
         const invalid = domains.find(d => !domainRegex.test(d));
         
         if (invalid) {
@@ -48,6 +53,7 @@ const KioskConfig = () => {
 
     const handleUpdateKiosk = async (id: string, currentKiosk: any) => {
         const domainStr = allowedDomains[id] || '';
+        const websiteUrl = websiteUrls[id] || '';
         if (!validateDomains(id, domainStr)) return;
 
         setLocalSaving(prev => ({ ...prev, [id]: true }));
@@ -55,7 +61,8 @@ const KioskConfig = () => {
             const domains = domainStr.split(',').map(d => d.trim()).filter(d => d);
             await updateKioskConfig(id, {
                 ...currentKiosk,
-                allowedDomains: domains
+                allowedDomains: domains,
+                websiteUrl: websiteUrl
             });
             fetchTenants();
         } finally {
@@ -111,8 +118,8 @@ const KioskConfig = () => {
 
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
                 {tenants.map((tenant) => {
-                    const tid = tenant.id || tenant._id;
-                    const config = tenant.kioskConfig || {};
+                    const tid = String(tenant.id || tenant._id);
+                    const config = tenant.kioskConfig || {} as any;
                     const isActive = config.isActive || false;
                     const isShowingKey = showKeys[tid] || false;
 
@@ -192,10 +199,25 @@ const KioskConfig = () => {
                                         </p>
                                     </div>
 
+                                    {/* Website URL */}
+                                    <div className="space-y-2">
+                                        <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block flex items-center gap-1">
+                                            <Globe size={10} /> Kiosk Website Base URL
+                                        </label>
+                                        <input 
+                                            type="text"
+                                            value={websiteUrls[tid] || ''}
+                                            onChange={(e) => setWebsiteUrls({...websiteUrls, [tid]: e.target.value})}
+                                            className="w-full px-5 py-4 bg-slate-50 border border-slate-100 rounded-2xl focus:bg-white focus:ring-4 focus:ring-indigo-500/10 focus:border-indigo-400 transition-all shadow-sm font-bold text-sm text-slate-800"
+                                            placeholder="https://uniquecars.com"
+                                        />
+                                        <p className="text-[10px] text-slate-400 font-medium px-1 italic">Used for "View Full Gallery" links (e.g. {websiteUrls[tid] || 'https://site.com'}/inventory/car01)</p>
+                                    </div>
+
                                     {/* Domains */}
                                     <div className="space-y-2">
                                         <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest block flex items-center gap-1">
-                                            <Globe size={10} /> Allowed Domains (CORS)
+                                            <ShieldAlert size={10} /> Allowed Domains (CORS)
                                         </label>
                                         <input 
                                             type="text"

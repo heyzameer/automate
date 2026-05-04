@@ -11,6 +11,11 @@ export interface AuthTenant {
   name: string;
   plan?: string;
   limits?: { maxCars?: number; maxLeads?: number };
+  features?: {
+    whatsappBot: boolean;
+    campaigns: boolean;
+    qrCode: boolean;
+  };
   expiryDate: string;
   isActive: boolean;
   verificationStatus?: 'pending' | 'verified' | 'rejected';

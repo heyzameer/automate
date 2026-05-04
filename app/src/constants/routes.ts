@@ -7,12 +7,13 @@ export const ROUTES = {
   REGISTER: '/register',
   FORGOT_PASSWORD: '/forgot-password',
   REGISTER_SUCCESS: '/registration-success',
+  DEACTIVATED: '/deactivated',
   
   DASHBOARD: {
     HOME: '/dashboard',
-    SUBSCRIPTION: '/subscription',
-    SETTINGS: '/settings',
-    NOTIFICATIONS: '/notifications',
+    SUBSCRIPTION: '/dashboard/subscription',
+    SETTINGS: '/dashboard/settings',
+    NOTIFICATIONS: '/dashboard/notifications',
   },
   
   VEHICLES: {
