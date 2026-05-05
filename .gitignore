@@ -30,6 +30,5 @@ build/
 
 # Project Folders
 Doc/
-docs/
 server/scripts/
 # .env.prod is already ignored by .env.* on line 9
